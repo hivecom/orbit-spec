@@ -6,8 +6,6 @@ This document tracks experimental and future-facing work that extends beyond the
 
 Tracks are roughly ordered by expected impact and feasibility. A prioritization matrix at the end summarizes the landscape.
 
----
-
 ## 2. Track: Media over QUIC (Iroh)
 
 ### Problem
@@ -48,8 +46,6 @@ Compare directly against the Satellite (LiveKit/WebRTC) baseline from the MVP. O
 ### Dependencies
 
 MVP Satellite infrastructure must be stable and benchmarked to provide a comparison baseline.
-
----
 
 ## 3. Track: Leptos / WASM Frontend
 
@@ -93,8 +89,6 @@ Evaluate developer experience qualitatively: how long does a typical UI change t
 
 MVP client must be feature-complete to serve as a fair comparison target.
 
----
-
 ## 4. Track: Linux Gaming Overlay
 
 The overlay scope is deliberately narrow: a **speaker indicator** (avatar thumbnails with a speaking ring showing who is active in voice) and an optional **webcam pip** (a small floating video tile, similar to Discord's picture-in-picture). No chat window, no notification feed, no interactive UI. This constraint is what makes the Vulkan approach tractable.
@@ -121,8 +115,6 @@ For windowed and borderless-fullscreen games (which still go through the composi
 #### Evaluation Criteria
 
 Prototype both overlay approaches showing a static speaker indicator (3 avatar thumbnails, one with an active speaking ring). Test with 5+ popular Linux-native and Proton games in windowed and borderless-fullscreen modes. Measure frame time impact (target: <0.5ms added per frame). Test on at least three compositors (Sway, Hyprland, GNOME if feasible).
-
----
 
 ### Tier 2: Vulkan Explicit Layer
 
@@ -162,8 +154,6 @@ If stable, add webcam pip: upload a decoded video frame as a texture and composi
 #### Dependencies
 
 Tier 1 must be shipped first. Tier 2 is not a replacement - it covers the exclusive-fullscreen case that Tier 1 cannot reach. Both ship the same visual feature set; only the rendering path differs.
-
----
 
 ## 5. Track: Federation
 
@@ -354,8 +344,6 @@ Identify where each phase breaks and document the gaps before proceeding to the 
 - Phase 0 (Transponder) should be implemented early post-MVP - it improves single-server Satellite auth and is a prerequisite for all federation phases. It requires no IRC server changes. It is also optional - deployments without Transponder degrade gracefully to fully-unverified Satellite sessions.
 - Phase 2 depends on [Track 9 (Server Discovery)](#9-track-server-discovery-and-directory) if directory-based trust is pursued.
 
----
-
 ## 6. Track: End-to-End Encryption
 
 ### Problem
@@ -394,8 +382,6 @@ Only extend to group encryption (via MLS) if DM encryption ships successfully an
 ### Dependencies
 
 Stable identity system from the MVP (account registration, authentication, device management).
-
----
 
 ## 7. Track: Mobile Clients
 
@@ -440,8 +426,6 @@ Evaluate battery usage during a 1-hour voice session (target: not significantly 
 ### Dependencies
 
 MVP desktop client and web widget must be stable. Mobile is not the place to discover backend bugs.
-
----
 
 ## 8. Track: Bot and Integration API
 
@@ -488,8 +472,6 @@ Ship the webhook bridge (Phase 1) as an optional, self-hostable service. Announc
 
 MVP Ground Control deployment must be stable. The webhook bridge is a client of Ergo - if Ground Control is unstable, the bridge inherits that instability.
 
----
-
 ## 9. Track: Server Discovery and Directory
 
 ### Problem
@@ -529,8 +511,6 @@ Launch a minimal directory on hivecom.net once multiple independent Orbit commun
 
 Multiple Orbit communities must exist to populate the directory. This depends on the MVP being easy to deploy and operate.
 
----
-
 ## 10. Prioritization Matrix
 
 The following table summarizes each track's expected impact, implementation feasibility, risk level, and suggested timeline. "Post-MVP" indicates work that could begin once the MVP ships. "R&D" indicates longer-term exploration without a committed timeline.
@@ -560,8 +540,6 @@ The following table summarizes each track's expected impact, implementation feas
 - Items with High Feasibility and Low Risk (Bot API, Server Directory, Transponder) should be prioritized early because they deliver value cheaply. Bot API Phase 0 (IRC docs and example bots) ships day-one with the MVP at zero engineering cost - Phase 1+ (webhook bridge, REST API) follows immediately post-MVP.
 - Federation is now split: Phase 0 (Transponder - identity bridging via signed assertions) is high-feasibility foundational work that improves single-server Satellite auth immediately. It is also optional - deployments without it degrade gracefully. Phases 1–2 (IRC linking and cross-org federation) carry the traditional federation risks and are deferred until Phase 0 is proven.
 
----
-
 ## 11. Process
 
 Each track follows the same lifecycle:
@@ -573,8 +551,6 @@ Each track follows the same lifecycle:
 5. **Spec**: If promoted, write a dedicated specification (similar to [0001](0001-mvp-spec.md)) covering architecture, implementation plan, testing strategy, and rollout.
 
 Abandoned tracks are not failures. They are information. Document what was tried, what was learned, and why it didn't work out. This is more valuable than the prototype code itself.
-
----
 
 ## 12. Revision History
 

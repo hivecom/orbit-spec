@@ -8,8 +8,6 @@ The system is split into two named layers. **Ground Control** is the IRC layer -
 
 The goal of the MVP is to ship a working product - not a prototype, not a demo. That means text chat with history, group voice via Satellite nodes, an anonymous web widget for embedding on external sites, and a lightweight desktop client that doesn't eat 500 MB of RAM at idle. Every component must be functional enough for a small community to use daily. This document is scoped strictly to the MVP. Advanced features - gaming overlays, Media over QUIC transport, Leptos/WASM rewrites, federation, mobile clients, and end-to-end encryption - are explicitly deferred to the research roadmap ([Spec 0002](./0002-research-roadmap.md)). If a feature isn't in this document, it's not in the MVP.
 
----
-
 ## 2. Design Philosophy
 
 **Orbit is a transport layer and client, not an application platform.**
@@ -21,8 +19,6 @@ The core handles four things: text chat, real-time media, identity, and client U
 **Components are independent.** Ground Control, Satellite, Transponder, and Depot have no runtime dependencies on each other. Ground Control is a stock IRC server - it doesn't know Satellite exists. Satellite is a media server - it doesn't know IRC exists. Transponder bridges identity between them but neither requires it to function. Depot stores files and answers to no one. The Orbit client is the only thing that composes these components into a unified experience - but it doesn't require all of them. Connect to just Ground Control and you have IRC chat. Connect to just a Satellite with a join key and you have voice. Any other client - a web page, a game, a bot - can compose a different subset of the same components using the same interfaces. The architecture is a set of independent services, not a coupled stack.
 
 **Opinionated simplicity drives every design decision.** Permissions use IRC's built-in channel modes - `+o`, `+v`, `+b` - and nothing more. There is no custom role system, no role colors, no granular permission overrides in the core. Media is handled through independent Satellite nodes that users can self-host (Bring Your Own Node). There is no centralized orchestrator bot mediating connections. If a community needs richer functionality, they build an extension. Complexity belongs at the edges, not in the core.
-
----
 
 ## 3. Architecture Overview
 
@@ -65,8 +61,6 @@ The core handles four things: text chat, real-time media, identity, and client U
 **Session flow:** When a user starts a voice session, the client picks a Satellite node (server-advertised or BYON), requests a session token directly from that node's HTTP API, then posts a `+orbit/sat-invite` TAGMSG to the channel. Other Orbit users see "Voice session active" and can join by connecting to the same node. Pure IRC clients see nothing - client-only tags are silently ignored.
 
 **There is no orchestrator bot.** Satellite nodes are independent services. Clients talk to them directly. Ground Control handles text transport and signaling only.
-
----
 
 ## 4. Ground Control - IRC (IRCv3)
 
@@ -192,8 +186,6 @@ File sharing uses Depot (S3-compatible object storage) as a public content store
 **Uploads are rate-limited, not identity-gated (for the MVP).** The upload API enforces per-IP rate limits and a maximum file size (configurable by the server operator). Per-user quotas, upload authentication tied to IRC accounts, and file deletion by uploaders are deferred to post-MVP. Files are immutable once uploaded - server operators can purge files via S3 admin tools.
 
 Anonymous web widget users cannot upload files (enforced by the widget gateway, which does not proxy upload requests).
-
----
 
 ## 5. Satellite - Real-Time Media
 
@@ -369,8 +361,6 @@ This enables several use cases that do not require IRC infrastructure:
 
 In standalone mode, all participants are unverified (there is no Transponder or IRC identity to verify against). Ephemeral chat via LiveKit data channels is available; persistent chat is not (that requires Ground Control). This is an intentional, honest trade-off - the experience is reduced but functional.
 
----
-
 ## 6. Identity and Authentication
 
 ### 6.1 Registered Users
@@ -420,8 +410,6 @@ Browser (widget)          Web Backend          Widget Gateway           Ground C
 - The allowlist is a static configuration file (editable by the server operator).
 - JWTs with unrecognized `iss` claims are rejected immediately.
 - The widget gateway also validates the `Origin` header of WebSocket connections against the allowlist as a secondary check.
-
----
 
 ## 7. Orbit Desktop Client - Tauri v2 + Svelte
 
@@ -568,8 +556,6 @@ Ergochat includes built-in bouncer/always-on functionality that handles offline 
 
 Orbit deployments SHOULD enable Ergochat's always-on mode for registered users. This ensures that users receive all messages sent while they were offline, and that their channel memberships are preserved across disconnections.
 
----
-
 ## 8. Orbit Web Widget
 
 ### 8.1 Overview
@@ -656,8 +642,6 @@ Everything else - text chat, channel management, voice & video sessions, file sh
 
 **MVP priority:** For the MVP, the desktop client is the primary target. The full web client is a natural fast-follow since it shares the same Svelte codebase - the main work is abstracting the Tauri-specific APIs (URI handling, tray, audio device selection) behind a platform adapter layer.
 
----
-
 ## 9. Infrastructure and Deployment
 
 ### 9.1 Component Overview
@@ -717,8 +701,6 @@ One `docker compose up` should yield a fully functional Orbit instance. Configur
 
 Note: Satellite is optional. You can run `docker compose up ergochat caddy` for a minimal text-only Orbit server.
 
----
-
 ## 10. Extensions
 
 Orbit intentionally does not solve custom roles, calendars, events, game integrations, advanced moderation workflows, music bots, or any other domain-specific feature. These are solved by **extensions**.
@@ -737,8 +719,6 @@ This keeps Orbit's core small, fast, and focused. It also means existing IRC bot
 - A **calendar bot** that posts event reminders to channels on a schedule.
 - A **moderation bot** with auto-mod rules, word filters, and spam detection.
 - A **music bot** that streams audio to a Satellite session, controlled via IRC commands.
-
----
 
 ## 11. Tag Integrity and Client Trust Model
 
@@ -771,8 +751,6 @@ This model is analogous to how email works - the transport (SMTP) delivers messa
 
 Orbit clients that do not implement these verification rules are non-compliant. Third-party IRC clients connecting to an Orbit server will not enforce these rules (they don't understand `+orbit/*` tags), but this is expected - they also won't render edits, deletes, or media invites. The security boundary is between Orbit clients, not between arbitrary IRC clients.
 
----
-
 ## 12. Explicitly Out of Scope for the MVP
 
 The following are **not** part of the MVP release. Each item either requires significant research, has unresolved design questions, or is a non-essential enhancement. They are tracked in [Spec 0002](./0002-research-roadmap.md).
@@ -793,8 +771,6 @@ The following are **not** part of the MVP release. Each item either requires sig
 | Message threads / forums                 | IRC doesn't have a native threading model; needs design work         |
 | Custom role / permission system          | Use IRC modes; extend via extensions if needed                       |
 | Client plugin API                        | Extensions work via IRC bots for the MVP; client-side plugin system is post-MVP |
-
----
 
 ## 13. Open Questions
 
@@ -819,7 +795,5 @@ These are genuine unresolved decisions that need resolution before or during MVP
 9. **Multi-node sessions**: Can a voice session span multiple Satellite nodes? Probably not for the MVP - one session, one node. But what happens if a node goes down during an active session? Should the client attempt to migrate to another node?
 
 10. **Widget gateway architecture**: Should the widget gateway be a standalone service, or can it be implemented as an Ergochat module/plugin? A standalone service is more flexible but adds a deployment component. An Ergochat plugin reduces moving parts but couples us to Ergochat's extension API.
-
----
 
 *This is a living document. It will be updated as implementation progresses and open questions are resolved. Changes are tracked in the repository's commit history.*
