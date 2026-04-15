@@ -1,6 +1,6 @@
 # Orbit Design Specification
 
-Orbit is a decentralized, open-source communication platform built by [Hivecom](https://github.com/hivecom). It aims to be a viable alternative to platforms like Discord, prioritizing openness, user autonomy, and modern real-time communication standards.
+Orbit is a decentralized, open-source communication platform. It aims to be a viable alternative to platforms like Discord, prioritizing openness, user autonomy, and modern real-time communication standards.
 
 ## About This Repository
 
