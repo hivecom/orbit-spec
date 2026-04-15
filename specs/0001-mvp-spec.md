@@ -18,7 +18,7 @@ The core handles four things: text chat, real-time media, identity, and client U
 
 **Orbit is a layer on top of existing IRC.** Any IRCv3 server that supports message tags can become Orbit-enabled. Two users running Orbit on any compliant IRC network can use Satellite for voice - even if the server operator hasn't configured any official media nodes. Users just bring their own.
 
-**Components are independent.** Ground Control, Satellite, Transponder, and Depot have no runtime dependencies on each other. Ground Control is a stock IRC server — it doesn't know Satellite exists. Satellite is a media server — it doesn't know IRC exists. Transponder bridges identity between them but neither requires it to function. Depot stores files and answers to no one. The Orbit client is the only thing that composes these components into a unified experience — but it doesn't require all of them. Connect to just Ground Control and you have IRC chat. Connect to just a Satellite with a join key and you have voice. Any other client — a web page, a game, a bot — can compose a different subset of the same components using the same interfaces. The architecture is a set of independent services, not a coupled stack.
+**Components are independent.** Ground Control, Satellite, Transponder, and Depot have no runtime dependencies on each other. Ground Control is a stock IRC server - it doesn't know Satellite exists. Satellite is a media server - it doesn't know IRC exists. Transponder bridges identity between them but neither requires it to function. Depot stores files and answers to no one. The Orbit client is the only thing that composes these components into a unified experience - but it doesn't require all of them. Connect to just Ground Control and you have IRC chat. Connect to just a Satellite with a join key and you have voice. Any other client - a web page, a game, a bot - can compose a different subset of the same components using the same interfaces. The architecture is a set of independent services, not a coupled stack.
 
 **Opinionated simplicity drives every design decision.** Permissions use IRC's built-in channel modes - `+o`, `+v`, `+b` - and nothing more. There is no custom role system, no role colors, no granular permission overrides in the core. Media is handled through independent Satellite nodes that users can self-host (Bring Your Own Node). There is no centralized orchestrator bot mediating connections. If a community needs richer functionality, they build an extension. Complexity belongs at the edges, not in the core.
 
@@ -60,7 +60,7 @@ The core handles four things: text chat, real-time media, identity, and client U
 └────────────────────────────────────────────────────────────────────┘
 ```
 
-**Discovery flow:** When an Orbit client connects to a domain, it resolves DNS SRV records to discover available services — Ground Control (IRC), Satellite nodes, Depot, and (post-MVP) Transponder. DNS is the primary discovery mechanism because it works independently of any running service: a domain can advertise Satellite nodes without running IRC, or IRC without Satellite. The client resolves `_satellite._tcp.example.com` and queries each discovered node's metadata endpoint for name, region, and capacity. Users can also configure their own Satellite node URL in Orbit's settings (BYON).
+**Discovery flow:** When an Orbit client connects to a domain, it resolves DNS SRV records to discover available services - Ground Control (IRC), Satellite nodes, Depot, and (post-MVP) Transponder. DNS is the primary discovery mechanism because it works independently of any running service: a domain can advertise Satellite nodes without running IRC, or IRC without Satellite. The client resolves `_satellite._tcp.example.com` and queries each discovered node's metadata endpoint for name, region, and capacity. Users can also configure their own Satellite node URL in Orbit's settings (BYON).
 
 **Session flow:** When a user starts a voice session, the client picks a Satellite node (server-advertised or BYON), requests a session token directly from that node's HTTP API, then posts a `+orbit/sat-invite` TAGMSG to the channel. Other Orbit users see "Voice session active" and can join by connecting to the same node. Pure IRC clients see nothing - client-only tags are silently ignored.
 
@@ -126,16 +126,16 @@ Key configuration points for an Orbit-compatible Ergochat instance:
 - **SASL**: Required for registered users. SASL PLAIN and SCRAM-SHA-256 over TLS.
 - **Client-only tag allowlist**: Ergochat relays all `+`-prefixed tags by default per IRCv3 spec. No special configuration needed, but the server should enforce maximum tag size limits.
 - **Connection limits**: Per-IP connection limits configured to prevent abuse while allowing the widget gateway to hold multiple guest connections.
-- **`#orbit.meta` channel** *(optional)*: A server-wide announcements and configuration broadcast channel. Not required for Orbit functionality — service discovery is handled via DNS, not IRC channels.
-- **Nickname reservation**: The `guest-` prefix MUST be reserved at the NickServ level. Ergochat supports nickname reservation patterns — configure it to reject registration of any nickname starting with `guest-`. This prevents collision between registered users and anonymous widget guests.
+- **`#orbit.meta` channel** *(optional)*: A server-wide announcements and configuration broadcast channel. Not required for Orbit functionality - service discovery is handled via DNS, not IRC channels.
+- **Nickname reservation**: The `guest-` prefix MUST be reserved at the NickServ level. Ergochat supports nickname reservation patterns - configure it to reject registration of any nickname starting with `guest-`. This prevents collision between registered users and anonymous widget guests.
 
 ### 4.5 Mapping IRC Primitives to Orbit Concepts
 
 #### Channels
 
-IRC channels are flat — there is no hierarchy, no categories, no sub-channels. Orbit treats them as-is. Channels are presented to the user as a list, with no client-side interpretation of naming conventions. If a community wants to organize channels by prefix (e.g., `#gaming-strategy`, `#gaming-lfg`), they are free to do so, but Orbit does not parse, enforce, or render any convention as a hierarchy. This keeps the client honest to the protocol and avoids ambiguity with existing IRC channels that contain dots, dashes, or other separators.
+IRC channels are flat - there is no hierarchy, no categories, no sub-channels. Orbit treats them as-is. Channels are presented to the user as a list, with no client-side interpretation of naming conventions. If a community wants to organize channels by prefix (e.g., `#gaming-strategy`, `#gaming-lfg`), they are free to do so, but Orbit does not parse, enforce, or render any convention as a hierarchy. This keeps the client honest to the protocol and avoids ambiguity with existing IRC channels that contain dots, dashes, or other separators.
 
-For real-time session chat (quick callouts during voice, links shared during a screen share), Satellite provides its own ephemeral chat via LiveKit data channels (see [Section 5.1](#51-what-is-a-satellite-node)). This is intentionally separate from IRC — ephemeral messages are not persisted, not searchable, and not visible to IRC clients. Persistent, historical chat belongs in Ground Control. Throwaway, in-session chat belongs in Satellite.
+For real-time session chat (quick callouts during voice, links shared during a screen share), Satellite provides its own ephemeral chat via LiveKit data channels (see [Section 5.1](#51-what-is-a-satellite-node)). This is intentionally separate from IRC - ephemeral messages are not persisted, not searchable, and not visible to IRC clients. Persistent, historical chat belongs in Ground Control. Throwaway, in-session chat belongs in Satellite.
 
 #### Message Editing and Deletion
 
@@ -147,7 +147,7 @@ For real-time session chat (quick callouts during voice, links shared during a s
 
 **Identity Verification for Edits and Deletes**
 
-The `+orbit/*` message tags are client-only tags — any IRC client can send any value. There is no server-side enforcement of who can edit or delete which messages, because Ergochat does not interpret Orbit-specific tags. The mitigation is **client-side enforcement using the server-asserted `account-tag`**.
+The `+orbit/*` message tags are client-only tags - any IRC client can send any value. There is no server-side enforcement of who can edit or delete which messages, because Ergochat does not interpret Orbit-specific tags. The mitigation is **client-side enforcement using the server-asserted `account-tag`**.
 
 The IRCv3 `account-tag` is set by the IRC server based on the sender's authenticated SASL session. It cannot be forged by clients. Orbit clients MUST use `account-tag` as the authoritative source of message authorship and MUST enforce the following rules:
 
@@ -174,7 +174,7 @@ If you need more - role hierarchies, per-channel upload limits, auto-mod rules, 
 
 **Identity Display**
 
-Orbit clients MUST clearly distinguish between authenticated and unauthenticated users in all contexts — chat messages, user lists, voice sessions, and DMs. The IRCv3 `account-tag` is the source of truth. Users with a verified `account-tag` SHOULD be displayed with their account name and a visual indicator of authentication (e.g., a badge, icon, or distinct styling). Users without an `account-tag` (unauthenticated, guest, or connecting from a client that doesn't support SASL) MUST be visually distinguished as unverified. This is a gap in traditional IRC clients that Orbit explicitly addresses — identity verification and display is a core client responsibility, not an optional feature.
+Orbit clients MUST clearly distinguish between authenticated and unauthenticated users in all contexts - chat messages, user lists, voice sessions, and DMs. The IRCv3 `account-tag` is the source of truth. Users with a verified `account-tag` SHOULD be displayed with their account name and a visual indicator of authentication (e.g., a badge, icon, or distinct styling). Users without an `account-tag` (unauthenticated, guest, or connecting from a client that doesn't support SASL) MUST be visually distinguished as unverified. This is a gap in traditional IRC clients that Orbit explicitly addresses - identity verification and display is a core client responsibility, not an optional feature.
 
 #### File Sharing
 
@@ -187,9 +187,9 @@ File sharing uses Depot (S3-compatible object storage) as a public content store
 5. The Orbit client renders an inline preview (images, audio, video) or a download card.
 6. Pure IRC clients see a plain URL.
 
-**Downloads are public.** Anyone with the URL can fetch the file directly from Depot. The URL is the access control — if you don't want someone to access a file, don't share the URL. This is the same model as Imgur, public S3 buckets, or paste services.
+**Downloads are public.** Anyone with the URL can fetch the file directly from Depot. The URL is the access control - if you don't want someone to access a file, don't share the URL. This is the same model as Imgur, public S3 buckets, or paste services.
 
-**Uploads are rate-limited, not identity-gated (for the MVP).** The upload API enforces per-IP rate limits and a maximum file size (configurable by the server operator). Per-user quotas, upload authentication tied to IRC accounts, and file deletion by uploaders are deferred to post-MVP. Files are immutable once uploaded — server operators can purge files via S3 admin tools.
+**Uploads are rate-limited, not identity-gated (for the MVP).** The upload API enforces per-IP rate limits and a maximum file size (configurable by the server operator). Per-user quotas, upload authentication tied to IRC accounts, and file deletion by uploaders are deferred to post-MVP. Files are immutable once uploaded - server operators can purge files via S3 admin tools.
 
 Anonymous web widget users cannot upload files (enforced by the widget gateway, which does not proxy upload requests).
 
@@ -225,9 +225,9 @@ DNS is the primary discovery mechanism for Satellite nodes. This is an intention
 
 SRV record priority and weight are respected for load balancing and failover. Multiple SRV records can advertise multiple nodes under the same domain.
 
-Nodes discovered via DNS are shown as "Server Nodes" with a verified badge — the domain's DNS records are the operator's assertion that these nodes are official.
+Nodes discovered via DNS are shown as "Server Nodes" with a verified badge - the domain's DNS records are the operator's assertion that these nodes are official.
 
-**Fallback: no DNS records.** If no `_satellite._tcp` SRV records exist for the domain, no server-operated Satellite nodes are available. Voice features degrade gracefully — P2P calls still work (they don't need a Satellite node), and BYON nodes can still be used, but group voice via server nodes is unavailable.
+**Fallback: no DNS records.** If no `_satellite._tcp` SRV records exist for the domain, no server-operated Satellite nodes are available. Voice features degrade gracefully - P2P calls still work (they don't need a Satellite node), and BYON nodes can still be used, but group voice via server nodes is unavailable.
 
 **Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit.satellites`) with node descriptors in the topic. DNS is preferred because: (1) it doesn't require creating or configuring anything on the IRC server, (2) it works for domains that run Satellite nodes without IRC, (3) DNS changes propagate without touching the IRC server, and (4) it's the same mechanism used for Ground Control discovery (`_orbit._tcp`), keeping the discovery model consistent across all Orbit services.
 
@@ -301,8 +301,8 @@ Password-protected sessions are useful for private meetings, restricted briefing
 
 - **Unreachable node**: If the Satellite node in a `+orbit/sat-invite` is unreachable, the client displays an error ("Voice node unavailable") and does not join. The invite remains visible in the channel with a "node offline" indicator.
 - **Token rejection**: If the token service rejects a join request (invalid key, session full, password wrong), the client shows the specific error reason returned by the token service.
-- **Node crash during session**: If a Satellite node goes down during an active session, all participants are disconnected. The client shows "Voice session ended unexpectedly." There is no automatic migration to another node in the MVP — the session initiator (or any participant) must start a new session on a different node and post a new `+orbit/sat-invite`.
-- **Competing invites**: If multiple users post `+orbit/sat-invite` for the same channel simultaneously (different nodes or different rooms), the Orbit client displays all active sessions. Users choose which to join. There is no "one active session per channel" constraint — multiple concurrent voice sessions in the same channel are valid (e.g., different sub-groups).
+- **Node crash during session**: If a Satellite node goes down during an active session, all participants are disconnected. The client shows "Voice session ended unexpectedly." There is no automatic migration to another node in the MVP - the session initiator (or any participant) must start a new session on a different node and post a new `+orbit/sat-invite`.
+- **Competing invites**: If multiple users post `+orbit/sat-invite` for the same channel simultaneously (different nodes or different rooms), the Orbit client displays all active sessions. Users choose which to join. There is no "one active session per channel" constraint - multiple concurrent voice sessions in the same channel are valid (e.g., different sub-groups).
 
 ### 5.6 1-on-1 Calls (P2P)
 
@@ -316,7 +316,7 @@ Private calls between two users bypass Satellite entirely:
 
 No server processes media for 1-on-1 calls. The only server involvement is signaling relay through Ground Control.
 
-**Privacy Note:** P2P call signaling is relayed through Ground Control (IRC). This means the IRC server operator can observe who is calling whom, ICE candidates (which may reveal IP addresses including local/private IPs), and SDP content (codec preferences, media capabilities). This is consistent with the trust model for text chat — the server operator can already read message content (E2E encryption is deferred to [Spec 0002](./0002-research-roadmap.md)). Users who do not trust the server operator with call metadata should use a Satellite node for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
+**Privacy Note:** P2P call signaling is relayed through Ground Control (IRC). This means the IRC server operator can observe who is calling whom, ICE candidates (which may reveal IP addresses including local/private IPs), and SDP content (codec preferences, media capabilities). This is consistent with the trust model for text chat - the server operator can already read message content (E2E encryption is deferred to [Spec 0002](./0002-research-roadmap.md)). Users who do not trust the server operator with call metadata should use a Satellite node for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
 
 ### 5.7 Satellite Authentication
 
@@ -367,7 +367,7 @@ This enables several use cases that do not require IRC infrastructure:
 - **BYON-only communities** where users host their own Satellite and share room links
 - **Bootstrapping new communities** before setting up a full Ground Control instance
 
-In standalone mode, all participants are unverified (there is no Transponder or IRC identity to verify against). Ephemeral chat via LiveKit data channels is available; persistent chat is not (that requires Ground Control). This is an intentional, honest trade-off — the experience is reduced but functional.
+In standalone mode, all participants are unverified (there is no Transponder or IRC identity to verify against). Ephemeral chat via LiveKit data channels is available; persistent chat is not (that requires Ground Control). This is an intentional, honest trade-off - the experience is reduced but functional.
 
 ---
 
@@ -447,7 +447,7 @@ Svelte compiles to minimal vanilla JavaScript with no Virtual DOM. It achieves m
 
 **Text Chat:**
 - IRC connection management: connect, auto-reconnect with exponential backoff, TLS required.
-- Channel list presented as a flat list. No hierarchy parsing — channels are displayed as-is.
+- Channel list presented as a flat list. No hierarchy parsing - channels are displayed as-is.
 - Message history fetched via IRCv3 `chathistory` on channel join.
 - Rich rendering: inline link previews, image thumbnails, emoji (Unicode + custom per-server), basic Markdown (bold, italic, code, strikethrough).
 - Message editing and deletion (rendered from `+orbit/msg-edit` and `+orbit/msg-delete` tags).
@@ -481,7 +481,7 @@ Svelte compiles to minimal vanilla JavaScript with no Virtual DOM. It achieves m
 | `orbit://server.example.com/channel-name`               | Connect and navigate to `#channel-name`               |
 | `orbit://server.example.com/channel-name?voice=true`    | Connect, navigate to `#channel-name`, auto-join voice |
 
-Channel names omit the `#` prefix in the URI path. The client prepends `#` when joining — this avoids URL-encoding issues with the `#` character (which is a fragment delimiter in URIs).
+Channel names omit the `#` prefix in the URI path. The client prepends `#` when joining - this avoids URL-encoding issues with the `#` character (which is a fragment delimiter in URIs).
 
 **Satellite standalone links:**
 
@@ -492,7 +492,7 @@ Channel names omit the `#` prefix in the URI path. The client prepends `#` when 
 
 The `sat/` path prefix distinguishes Satellite direct links from Ground Control links. The `node-url` is the Satellite node's hostname (e.g., `sat1.example.com`).
 
-**Invite model:** Since Orbit is decentralized, there is no central invite service. An `orbit://` link *is* the invite — sharing the link is sharing the invite. The server operator controls access via IRC channel modes (`+i` for invite-only, `+k` for key-protected channels). The `orbit://` URI is essentially a deep link, not a magic token.
+**Invite model:** Since Orbit is decentralized, there is no central invite service. An `orbit://` link *is* the invite - sharing the link is sharing the invite. The server operator controls access via IRC channel modes (`+i` for invite-only, `+k` for key-protected channels). The `orbit://` URI is essentially a deep link, not a magic token.
 
 **Platform registration:**
 
@@ -500,11 +500,11 @@ The `sat/` path prefix distinguishes Satellite direct links from Ground Control 
 - **Windows**: Registry key under `HKEY_CLASSES_ROOT\orbit` pointing to the Orbit executable with `%1` argument.
 - **macOS**: `CFBundleURLTypes` entry in `Info.plist` with scheme `orbit`.
 
-On invocation, the app launches (or focuses if already running) and routes to the specified server/channel or Satellite session. If the client is not installed, `orbit://` links are inert — there is no web fallback in the MVP (the full web client could serve as a fallback in a post-MVP update).
+On invocation, the app launches (or focuses if already running) and routes to the specified server/channel or Satellite session. If the client is not installed, `orbit://` links are inert - there is no web fallback in the MVP (the full web client could serve as a fallback in a post-MVP update).
 
 ### 7.4 DNS SRV Resolution
 
-DNS is the universal discovery mechanism for all Orbit services. Users enter only a domain (e.g., `example.com`); the client resolves SRV records to find each service. This means a domain can advertise any combination of services — IRC only, Satellite only, or the full stack — and the client adapts automatically.
+DNS is the universal discovery mechanism for all Orbit services. Users enter only a domain (e.g., `example.com`); the client resolves SRV records to find each service. This means a domain can advertise any combination of services - IRC only, Satellite only, or the full stack - and the client adapts automatically.
 
 | Record                              | Purpose                              |
 |-------------------------------------|--------------------------------------|
@@ -636,8 +636,8 @@ Separate from the embeddable widget, a **full-featured Svelte web app** can prov
 
 **What works natively in the browser:**
 
-- Ground Control connection via WebSocket — browsers support WebSocket natively, identical to the Tauri webview path.
-- Satellite voice and video via WebRTC — browsers have native WebRTC support. Group sessions (LiveKit) and P2P calls both work without any Tauri backend involvement.
+- Ground Control connection via WebSocket - browsers support WebSocket natively, identical to the Tauri webview path.
+- Satellite voice and video via WebRTC - browsers have native WebRTC support. Group sessions (LiveKit) and P2P calls both work without any Tauri backend involvement.
 - All text chat features: message history, editing, deletion, rich rendering, unread indicators.
 - File uploads and downloads via S3 pre-signed URLs.
 
@@ -645,16 +645,16 @@ Separate from the embeddable widget, a **full-featured Svelte web app** can prov
 
 | Capability                    | Desktop (Tauri)                              | Web Client                                              |
 |-------------------------------|----------------------------------------------|---------------------------------------------------------|
-| Custom `orbit://` URI scheme  | Registered with OS; opens/focuses the app    | Not available — browsers cannot register custom URI handlers |
-| System tray with badges       | Native OS system tray with unread counts     | Not available — uses browser tab title and favicon badges instead |
+| Custom `orbit://` URI scheme  | Registered with OS; opens/focuses the app    | Not available - browsers cannot register custom URI handlers |
+| System tray with badges       | Native OS system tray with unread counts     | Not available - uses browser tab title and favicon badges instead |
 | Audio device management       | Rust-side audio via `cpal` with fine control | Web Audio API (functional but less control over device selection) |
 | OS-native notifications       | Full OS notification integration             | Web Notifications API (requires permission grant; less reliable) |
 
-Everything else — text chat, channel management, voice & video sessions, file sharing, message history, user presence — works identically.
+Everything else - text chat, channel management, voice & video sessions, file sharing, message history, user presence - works identically.
 
 **Deployment:** The web client is a separate deployment from the widget. The widget remains the lightweight (<50 KB) embed option for third-party sites with limited capabilities (see §8.4). The full web client is a complete application deployment intended for users who prefer not to install the desktop client.
 
-**MVP priority:** For the MVP, the desktop client is the primary target. The full web client is a natural fast-follow since it shares the same Svelte codebase — the main work is abstracting the Tauri-specific APIs (URI handling, tray, audio device selection) behind a platform adapter layer.
+**MVP priority:** For the MVP, the desktop client is the primary target. The full web client is a natural fast-follow since it shares the same Svelte codebase - the main work is abstracting the Tauri-specific APIs (URI handling, tray, audio device selection) behind a platform adapter layer.
 
 ---
 
@@ -713,7 +713,7 @@ A reference `docker-compose.yml` will be provided for self-hosters that includes
 - coturn (STUN/TURN)
 - Caddy (reverse proxy, automatic TLS)
 
-One `docker compose up` should yield a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list, widget allowlist). Satellite node discovery is handled via DNS SRV records configured at the domain level — no IRC channel configuration is needed.
+One `docker compose up` should yield a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list, widget allowlist). Satellite node discovery is handled via DNS SRV records configured at the domain level - no IRC channel configuration is needed.
 
 Note: Satellite is optional. You can run `docker compose up ergochat caddy` for a minimal text-only Orbit server.
 
@@ -742,16 +742,16 @@ This keeps Orbit's core small, fast, and focused. It also means existing IRC bot
 
 ## 11. Tag Integrity and Client Trust Model
 
-Orbit's rich features (message editing, deletion, media signaling, file metadata) are transported as IRCv3 client-only tags (`+orbit/*`). These tags are relayed by the IRC server without interpretation or validation — the server passes them through as opaque metadata. This is by design (it means Orbit works on any IRCv3-compliant server), but it creates a trust boundary that clients must enforce.
+Orbit's rich features (message editing, deletion, media signaling, file metadata) are transported as IRCv3 client-only tags (`+orbit/*`). These tags are relayed by the IRC server without interpretation or validation - the server passes them through as opaque metadata. This is by design (it means Orbit works on any IRCv3-compliant server), but it creates a trust boundary that clients must enforce.
 
 **Server-asserted vs. client-asserted data:**
 
 | Data | Source | Trust Level | Forgeable? |
 |------|--------|-------------|------------|
-| `account-tag` | Set by the IRC server based on SASL authentication | Server-asserted | No — the server is authoritative |
+| `account-tag` | Set by the IRC server based on SASL authentication | Server-asserted | No - the server is authoritative |
 | `msgid` | Assigned by the IRC server | Server-asserted | No |
 | `server-time` | Set by the IRC server | Server-asserted | No |
-| `+orbit/msg-edit` | Set by the sending client | Client-asserted | Yes — any client can send this tag |
+| `+orbit/msg-edit` | Set by the sending client | Client-asserted | Yes - any client can send this tag |
 | `+orbit/msg-delete` | Set by the sending client | Client-asserted | Yes |
 | `+orbit/sat-invite` | Set by the sending client | Client-asserted | Yes |
 | `+orbit/sdp-offer` | Set by the sending client | Client-asserted | Yes |
@@ -767,9 +767,9 @@ Orbit's rich features (message editing, deletion, media signaling, file metadata
 
 **Unverified senders**: Messages from users without an `account-tag` (unauthenticated users) that carry `+orbit/msg-edit` or `+orbit/msg-delete` tags MUST be silently ignored. Unverified users cannot edit or delete messages.
 
-This model is analogous to how email works — the transport (SMTP) delivers messages without validating sender claims, but the receiving mail client checks DKIM signatures and SPF records to verify authenticity. In Orbit's case, `account-tag` is the DKIM equivalent: a server-asserted proof of identity that clients use to validate client-asserted claims.
+This model is analogous to how email works - the transport (SMTP) delivers messages without validating sender claims, but the receiving mail client checks DKIM signatures and SPF records to verify authenticity. In Orbit's case, `account-tag` is the DKIM equivalent: a server-asserted proof of identity that clients use to validate client-asserted claims.
 
-Orbit clients that do not implement these verification rules are non-compliant. Third-party IRC clients connecting to an Orbit server will not enforce these rules (they don't understand `+orbit/*` tags), but this is expected — they also won't render edits, deletes, or media invites. The security boundary is between Orbit clients, not between arbitrary IRC clients.
+Orbit clients that do not implement these verification rules are non-compliant. Third-party IRC clients connecting to an Orbit server will not enforce these rules (they don't understand `+orbit/*` tags), but this is expected - they also won't render edits, deletes, or media invites. The security boundary is between Orbit clients, not between arbitrary IRC clients.
 
 ---
 
