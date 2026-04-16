@@ -4,7 +4,7 @@
 
 Orbit is a decentralized, open-source communication platform built by Hivecom. It targets communities, gaming groups, and privacy-conscious users who want an alternative to Discord without surrendering control of their data or infrastructure. Orbit is designed from the ground up to be self-hostable, lightweight, and built on open standards rather than proprietary protocols.
 
-The system is split into two named layers. **Ground Control** is the IRC layer - an Ergochat instance running IRCv3, handling text messaging, presence, channel state, and signaling. **Satellite** is the real-time media layer - independent media nodes (SFU instances) that handle voice, video, and streaming. **Depot** is the storage layer - S3-compatible object storage (MinIO, S3, or equivalent) for file uploads and avatars. Orbit itself is the client application (desktop and web widget) that ties these layers together into a cohesive experience. A fourth named component, **Transponder**, is an optional standalone identity service that bridges IRC authentication to Satellite nodes via signed tokens - it is not part of the MVP but is designed as the first post-MVP addition (see [Spec 0002 §5](./0002-research-roadmap.md#5-track-federation)).
+The system is split into multiple named layers. **Ground Control** is the IRC layer - an Ergochat instance running IRCv3, handling text messaging, presence, channel state, and signaling. **Satellite** is the real-time media layer - independent media nodes (SFU instances) that handle voice, video, and streaming. **Depot** is the storage layer - S3-compatible object storage (MinIO, S3, or equivalent) for file uploads and avatars. Orbit itself is the client application (desktop and web widget) that ties these layers together into a cohesive experience. A fourth named component, **Transponder**, is an optional standalone identity service that bridges IRC authentication to Satellite nodes via signed tokens - it is not part of the MVP but is designed as the first post-MVP addition (see [Spec 0002 §5](./0002-research-roadmap.md#5-track-federation)).
 
 The goal of the MVP is to ship a working product - not a prototype, not a demo. That means text chat with history, group voice via Satellite nodes, an anonymous web widget for embedding on external sites, and a lightweight desktop client that doesn't eat 500 MB of RAM at idle. Every component must be functional enough for a small community to use daily. This document is scoped strictly to the MVP. Advanced features - gaming overlays, Media over QUIC transport, Leptos/WASM rewrites, federation, mobile clients, and end-to-end encryption - are explicitly deferred to the research roadmap ([Spec 0002](./0002-research-roadmap.md)). If a feature isn't in this document, it's not in the MVP.
 
@@ -12,7 +12,7 @@ The goal of the MVP is to ship a working product - not a prototype, not a demo. 
 
 **Orbit is a transport layer and client, not an application platform.**
 
-The core handles four things: text chat, real-time media, identity, and client UX. Everything else - calendars, events, custom moderation workflows, rich permission systems, game integrations - is an **extension**. Extensions are IRC bots, server plugins, or Orbit client plugins that build on top of the Orbit tag namespace and Satellite APIs. This is an opinionated choice. Orbit stays thin so it stays fast and maintainable.
+The core handles four things: text chat, real-time media, identity, and client UX. Everything else - calendars, events, custom moderation workflows, rich permission systems, game integrations - is an **extension**. **Orbit extensions** are client-side plugins for the orbit-app that build on top of the Orbit tag namespace. **IRC bots** handle server-side automation as first-class citizens of the IRC ecosystem. Both extend Orbit at the edges without touching the core. This is an opinionated choice. Orbit stays thin so it stays fast and maintainable.
 
 **Orbit is a layer on top of existing IRC.** Any IRCv3 server that supports message tags can become Orbit-enabled. Two users running Orbit on any compliant IRC network can use Satellite for voice - even if the server operator hasn't configured any official media nodes. Users just bring their own.
 
@@ -28,11 +28,11 @@ The core handles four things: text chat, real-time media, identity, and client U
 │                                                                    │
 │   ┌────────────────┐  ┌────────────────┐  ┌─────────────────────┐  │
 │   │ Orbit Desktop  │  │ Orbit Web      │  │ Third-party IRC     │  │
-│   │ Tauri + Svelte │  │ Widget (Svelte)│  │ WeeChat, irssi, ... │  │
+│   │ Tauri + Svelte │  │ Client (Svelte)│  │ WeeChat, irssi, ... │  │
 │   └───────┬────────┘  └───────┬────────┘  └──────────┬──────────┘  │
 │           │                   │                      │             │
 └───────────┼───────────────────┼──────────────────────┼─────────────┘
-            │ IRC/WS            │ WSS (widget gateway) │ IRC/TLS
+            │ IRC/WS            │ IRC/WS               │ IRC/TLS
             │                   │                      │
 ┌───────────┼───────────────────┼──────────────────────┼─────────────┐
 │           │                   │                      │             │
@@ -119,8 +119,7 @@ Key configuration points for an Orbit-compatible Ergochat instance:
 - **History storage**: Enabled with configurable per-channel retention (default: 7 days or 10,000 messages, whichever comes first).
 - **SASL**: Required for registered users. SASL PLAIN and SCRAM-SHA-256 over TLS.
 - **Client-only tag allowlist**: Ergochat relays all `+`-prefixed tags by default per IRCv3 spec. No special configuration needed, but the server should enforce maximum tag size limits.
-- **Connection limits**: Per-IP connection limits configured to prevent abuse while allowing the widget gateway to hold multiple guest connections.
-- **`#orbit.meta` channel** *(optional)*: A server-wide announcements and configuration broadcast channel. Not required for Orbit functionality - service discovery is handled via DNS, not IRC channels.
+- **Connection limits**: Per-IP connection limits configured to prevent abuse. Browser-based web clients connect directly, so limits should accommodate multiple simultaneous guest connections from the same IP (e.g., shared NAT or multiple browser tabs).
 - **Nickname reservation**: The `guest-` prefix MUST be reserved at the NickServ level. Ergochat supports nickname reservation patterns - configure it to reject registration of any nickname starting with `guest-`. This prevents collision between registered users and anonymous widget guests.
 
 ### 4.5 Mapping IRC Primitives to Orbit Concepts
@@ -164,7 +163,7 @@ Orbit uses IRC's built-in channel modes. Period.
 
 There are no custom roles, no role colors, no granular permission overrides. This is an opinionated decision. IRC has a proven, battle-tested permissions model. It covers the needs of the vast majority of communities.
 
-If you need more - role hierarchies, per-channel upload limits, auto-mod rules, custom role colors - build an extension. An IRC bot connected to Ground Control can enforce arbitrarily complex rules by monitoring channel events and acting on them. An optional Orbit client plugin can add UI for the extension's features. But the core stays simple.
+If you need more - role hierarchies, per-channel upload limits, auto-mod rules, custom role colors - build an extension. An IRC bot connected to Ground Control can enforce arbitrarily complex rules by monitoring channel events and acting on them. An Orbit client extension can add UI for complementary features in the desktop client (post-MVP). But the core stays simple.
 
 **Identity Display**
 
@@ -185,7 +184,7 @@ File sharing uses Depot (S3-compatible object storage) as a public content store
 
 **Uploads are rate-limited, not identity-gated (for the MVP).** The upload API enforces per-IP rate limits and a maximum file size (configurable by the server operator). Per-user quotas, upload authentication tied to IRC accounts, and file deletion by uploaders are deferred to post-MVP. Files are immutable once uploaded - server operators can purge files via S3 admin tools.
 
-Anonymous web widget users cannot upload files (enforced by the widget gateway, which does not proxy upload requests).
+Anonymous web users (guests) cannot upload files; the Depot upload API rejects requests from unauthenticated users.
 
 ## 5. Satellite - Real-Time Media
 
@@ -221,7 +220,7 @@ Nodes discovered via DNS are shown as "Server Nodes" with a verified badge - the
 
 **Fallback: no DNS records.** If no `_satellite._tcp` SRV records exist for the domain, no server-operated Satellite nodes are available. Voice features degrade gracefully - P2P calls still work (they don't need a Satellite node), and BYON nodes can still be used, but group voice via server nodes is unavailable.
 
-**Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit.satellites`) with node descriptors in the topic. DNS is preferred because: (1) it doesn't require creating or configuring anything on the IRC server, (2) it works for domains that run Satellite nodes without IRC, (3) DNS changes propagate without touching the IRC server, and (4) it's the same mechanism used for Ground Control discovery (`_orbit._tcp`), keeping the discovery model consistent across all Orbit services.
+**Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit.satellites`) with node descriptors in the topic. DNS is preferred because: (1) it doesn't require creating or configuring anything on the IRC server, (2) it works for domains that run Satellite nodes without IRC, and (3) DNS changes propagate without touching the IRC server, keeping all Orbit service advertisement in one authoritative place.
 
 ### 5.3 Bring Your Own Node (BYON)
 
@@ -347,10 +346,10 @@ Satellite nodes are fully independent services. They can be used without Ground 
 The bootstrapping mechanism is a direct link:
 
 ```
-orbit://sat/sat1.example.com/room-id?name=Hangout
+satellite://sat1.example.com/room-id?name=Hangout
 ```
 
-The `sat/` path prefix distinguishes Satellite standalone links from Ground Control links (see §7.3). The remainder of the path encodes the Satellite node URL and room identifier. User A creates a session on a Satellite node, generates a shareable link, and sends it out-of-band (text message, email, another chat platform). User B opens the link, the Orbit client connects directly to the Satellite's token service, obtains a JWT, and joins the session.
+The `satellite://` URI scheme is dedicated exclusively to Satellite standalone links and is registered separately from `orbit://` (see §7.3). The host and path encode the Satellite node URL and room identifier. User A creates a session on a Satellite node, generates a shareable link, and sends it out-of-band (text message, email, another chat platform). User B opens the link, the Orbit client connects directly to the Satellite's token service, obtains a JWT, and joins the session.
 
 This enables several use cases that do not require IRC infrastructure:
 
@@ -372,44 +371,23 @@ In standalone mode, all participants are unverified (there is no Transponder or 
 
 ### 6.2 Anonymous Web Widget Users
 
+The Orbit web client (whether embedded as a widget or deployed as a full web app) connects directly to Ergochat's WebSocket endpoint — the same path as the desktop client. There is no middleware proxy.
+
 ```
-Browser (widget)          Web Backend          Widget Gateway           Ground Control
-     │                       │                      │                        │
-     │  Request session      │                      │                        │
-     │──────────────────────►│                      │                        │
-     │                       │                      │                        │
-     │                       │  Generate JWT        │                        │
-     │                       │  (guest ID, channels,│                        │
-     │                       │   domain claim, TTL) │                        │
-     │◄──────────────────────│                      │                        │
-     │  JWT                  │                      │                        │
-     │                       │                      │                        │
-     │  Connect WSS + JWT    │                      │                        │
-     │─────────────────────────────────────────────►│                        │
-     │                       │                      │  Validate JWT          │
-     │                       │                      │  Assign guest nick     │
-     │                       │                      │  Connect to Ergochat   │
-     │                       │                      │───────────────────────►│
-     │                       │                      │                        │
-     │◄════════════════════════════════════════════►│◄══════════════════════►│
-     │              Proxied IRC session                                      │
+Browser (web client / widget)               Ground Control
+     │                                           │
+     │  Connect WSS                              │
+     │  SASL ANONYMOUS (auto guest-* nick)       │
+     │──────────────────────────────────────────►│
+     │                                           │
+     │◄══════════════════════════════════════════│
+     │           IRC session (direct)            │
 ```
 
-- The web backend (running on the authorized domain) generates a short-lived JWT (1 hour TTL, renewable) containing:
-  - `sub`: a unique guest identifier (e.g., `guest-a7f3e2`)
-  - `iss`: the authorized domain (e.g., `hivecom.net`)
-  - `channels`: list of channels the guest is authorized to access
-  - `permissions`: read-only or read-write
-  - `exp`: expiration timestamp
-- The widget gateway validates the JWT signature, checks the `iss` against a domain allowlist, and proxies the connection to Ground Control under the guest nickname.
+- Guest users connect via SASL ANONYMOUS. Ergochat assigns a `guest-*` nickname automatically.
+- No account creation, no backend, no JWT, no session tokens required.
 - Guest nicknames are prefixed with `guest-` and cannot be registered via NickServ.
-
-### 6.3 Domain Authorization for Widgets
-
-- The JWT `iss` claim must match an entry in the widget gateway's domain allowlist.
-- The allowlist is a static configuration file (editable by the server operator).
-- JWTs with unrecognized `iss` claims are rejected immediately.
-- The widget gateway also validates the `Origin` header of WebSocket connections against the allowlist as a secondary check.
+- Any IRC client — including third-party web UIs — can connect the same way. This is intentional: Orbit does not gatekeep access to a standard IRC server.
 
 ## 7. Orbit Desktop Client - Tauri v2 + Svelte
 
@@ -471,22 +449,22 @@ Svelte compiles to minimal vanilla JavaScript with no Virtual DOM. It achieves m
 
 Channel names omit the `#` prefix in the URI path. The client prepends `#` when joining - this avoids URL-encoding issues with the `#` character (which is a fragment delimiter in URIs).
 
-**Satellite standalone links:**
+**Satellite standalone links (`satellite://`):**
 
 | URI                                                     | Behavior                                              |
 |---------------------------------------------------------|-------------------------------------------------------|
-| `orbit://sat/sat1.example.com/room-id`                  | Connect directly to a Satellite node and join room    |
-| `orbit://sat/node-url/room-id?name=Display+Name`       | Connect with a display name hint                      |
+| `satellite://sat1.example.com/room-id`                  | Connect directly to a Satellite node and join room    |
+| `satellite://node-url/room-id?name=Display+Name`        | Connect with a display name hint                      |
 
-The `sat/` path prefix distinguishes Satellite direct links from Ground Control links. The `node-url` is the Satellite node's hostname (e.g., `sat1.example.com`).
+The `satellite://` scheme is registered separately from `orbit://` and is dedicated exclusively to direct Satellite node connections. The host is the Satellite node's hostname (e.g., `sat1.example.com`).
 
 **Invite model:** Since Orbit is decentralized, there is no central invite service. An `orbit://` link *is* the invite - sharing the link is sharing the invite. The server operator controls access via IRC channel modes (`+i` for invite-only, `+k` for key-protected channels). The `orbit://` URI is essentially a deep link, not a magic token.
 
 **Platform registration:**
 
-- **Linux**: `.desktop` file in `~/.local/share/applications/` with `MimeType=x-scheme-handler/orbit`. Registered via `xdg-mime`.
-- **Windows**: Registry key under `HKEY_CLASSES_ROOT\orbit` pointing to the Orbit executable with `%1` argument.
-- **macOS**: `CFBundleURLTypes` entry in `Info.plist` with scheme `orbit`.
+- **Linux**: `.desktop` file in `~/.local/share/applications/` with `MimeType=x-scheme-handler/orbit;x-scheme-handler/satellite`. Registered via `xdg-mime`.
+- **Windows**: Registry key under `HKEY_CLASSES_ROOT\orbit` pointing to the Orbit executable with `%1` argument. Add a second registry key under `HKEY_CLASSES_ROOT\satellite` pointing to the same executable.
+- **macOS**: `CFBundleURLTypes` entry in `Info.plist` with scheme `orbit`. Add a second `CFBundleURLTypes` entry with scheme `satellite`.
 
 On invocation, the app launches (or focuses if already running) and routes to the specified server/channel or Satellite session. If the client is not installed, `orbit://` links are inert - there is no web fallback in the MVP (the full web client could serve as a fallback in a post-MVP update).
 
@@ -496,15 +474,13 @@ DNS is the universal discovery mechanism for all Orbit services. Users enter onl
 
 | Record                              | Purpose                              |
 |-------------------------------------|--------------------------------------|
-| `_orbit._tcp.example.com`          | Ground Control (IRC) discovery       |
 | `_satellite._tcp.example.com`      | Satellite node discovery             |
 | `_depot._tcp.example.com`          | Depot (file storage) discovery       |
 | `_transponder._tcp.example.com`    | Transponder (identity) discovery *(post-MVP)* |
 
-**Ground Control resolution order:**
-1. SRV record `_orbit._tcp.example.com` → use returned host and port.
-2. No SRV record → attempt connection to `example.com` on default port `6697` (IRC over TLS).
-3. Failure → prompt user for manual host:port entry.
+**Ground Control resolution:**
+1. Attempt connection to `example.com` on default port `6697` (IRC over TLS).
+2. Failure → prompt user for manual host:port entry.
 
 **Satellite resolution:**
 1. SRV records `_satellite._tcp.example.com` → query each node's `/info` endpoint for metadata (name, region, capacity).
@@ -560,7 +536,7 @@ Orbit deployments SHOULD enable Ergochat's always-on mode for registered users. 
 
 ### 8.1 Overview
 
-A minimal, embeddable widget that provides anonymous access to Orbit text channels and voice listen-in. Designed for embedding on community websites (initially `hivecom.net`).
+The Orbit web client is a lightweight Svelte application that can be embedded in third-party sites as a widget or deployed as a full standalone web app. It connects directly to Ground Control via WebSocket and to Satellite nodes via WebRTC — the same paths as the desktop client, with no middleware required. Guest access uses SASL ANONYMOUS; no backend or proxy needed.
 
 ### 8.2 Integration
 
@@ -585,9 +561,8 @@ Two embedding options:
 ### 8.3 Technical Details
 
 - Built as a standalone Svelte app, compiled to a single JS bundle. **Target: <50 KB gzipped.**
-- Connects to Ground Control via secure WebSocket through the widget gateway, authenticated with the JWT flow (Section 6.2).
-- No account creation required. No cookies stored. No local storage beyond the session JWT in memory.
-- Session lifetime matches the JWT TTL (1 hour default, renewable via a silent refresh if the user is still active).
+- Connects directly to Ground Control via secure WebSocket (same path as the desktop client). No backend or proxy required.
+- No account creation required for guest access. No cookies stored. No local storage.
 
 ### 8.4 Capabilities
 
@@ -601,20 +576,11 @@ Two embedding options:
 | Message history            | Limited       | Last 50 messages on load, no scroll-back                          |
 | User list                  | Yes           | Shows participants in the channel                                 |
 
-The widget gateway handles IRC proxying only. Media connections go directly from the widget to the Satellite node.
+Media connections go directly from the web client to the Satellite node.
 
 ### 8.5 Rate Limiting
 
-The widget gateway enforces per-IP rate limits for guest connections:
-
-| Limit                     | Default        |
-|---------------------------|----------------|
-| Messages per minute       | 10             |
-| Connections per IP        | 3              |
-| Session renewals per hour | 4              |
-| Max message length        | 500 characters |
-
-Operators can adjust these values in the widget gateway configuration.
+Rate limiting for guest connections is handled by Ergochat's built-in flood protection and per-IP connection limits, configured by the server operator in Ergochat's settings. No separate service or configuration is needed. The same limits apply to all connecting clients — desktop, web, or third-party IRC clients.
 
 ### 8.6 Full Web Client
 
@@ -631,14 +597,14 @@ Separate from the embeddable widget, a **full-featured Svelte web app** can prov
 
 | Capability                    | Desktop (Tauri)                              | Web Client                                              |
 |-------------------------------|----------------------------------------------|---------------------------------------------------------|
-| Custom `orbit://` URI scheme  | Registered with OS; opens/focuses the app    | Not available - browsers cannot register custom URI handlers |
+| Custom URI schemes (`orbit://`, `satellite://`) | Registered with OS; opens/focuses the app | Not available - browsers cannot register custom URI handlers |
 | System tray with badges       | Native OS system tray with unread counts     | Not available - uses browser tab title and favicon badges instead |
 | Audio device management       | Rust-side audio via `cpal` with fine control | Web Audio API (functional but less control over device selection) |
 | OS-native notifications       | Full OS notification integration             | Web Notifications API (requires permission grant; less reliable) |
 
 Everything else - text chat, channel management, voice & video sessions, file sharing, message history, user presence - works identically.
 
-**Deployment:** The web client is a separate deployment from the widget. The widget remains the lightweight (<50 KB) embed option for third-party sites with limited capabilities (see §8.4). The full web client is a complete application deployment intended for users who prefer not to install the desktop client.
+**Deployment:** The same Svelte application serves both roles — embedded as a constrained widget on third-party sites, or deployed in full as a web app for users who prefer not to install the desktop client.
 
 **MVP priority:** For the MVP, the desktop client is the primary target. The full web client is a natural fast-follow since it shares the same Svelte codebase - the main work is abstracting the Tauri-specific APIs (URI handling, tray, audio device selection) behind a platform adapter layer.
 
@@ -649,14 +615,13 @@ Everything else - text chat, channel management, voice & video sessions, file sh
 | Component                         | Technology         | Resource Target (~100 users) | Required |
 |-----------------------------------|--------------------|------------------------------|----------|
 | Ground Control (Ergochat)         | Go, single binary  | 1 vCPU, 256 MB RAM          | Yes      |
-| Satellite Node (LiveKit + token service) | Go + thin HTTP API | 1 vCPU, 512 MB RAM (scales with voice users) | No (optional) |
-| Widget Gateway                    | Rust or Go         | 1 vCPU, 128 MB RAM          | No (only for web widget) |
+| Satellite (LiveKit + token service) | Go + thin HTTP API | 1 vCPU, 512 MB RAM (scales with users) | No (optional) |
 | Depot (Object Storage)            | MinIO or S3        | Storage-dependent            | No (only for file uploads) |
 | coturn (STUN/TURN)                | C, single binary   | 1 vCPU, 128 MB RAM          | No (only for NAT traversal) |
 | **Total minimum (text-only)**     |                    | **~$5/month VPS**            |          |
 | **Total with voice**              |                    | **~$10/month VPS**           |          |
 
-A community can run Orbit text-only with just Ground Control (Ergochat). Satellite nodes, Depot, and the widget gateway are all optional components added as needed.
+A community can run Orbit text-only with just Ground Control (Ergochat). Satellite nodes and Depot are optional components added as needed.
 
 ### 9.2 TLS
 
@@ -665,15 +630,14 @@ TLS is required on every connection. No plaintext IRC, no plaintext HTTP, no exc
 - Let's Encrypt for public deployments (automated via certbot or Caddy).
 - Self-signed certificates acceptable for local/development setups only.
 - Ergochat terminates TLS for IRC connections directly.
-- A reverse proxy (Caddy or nginx) terminates TLS for WebSocket, widget gateway HTTP, Satellite token service endpoints, and Depot endpoints.
+- A reverse proxy (Caddy or nginx) terminates TLS for WebSocket, Satellite token service endpoints, and Depot endpoints.
 
 ### 9.3 DNS Configuration
 
-DNS is the primary discovery mechanism for all Orbit services. The following records should be configured for a full deployment:
+DNS is the primary discovery mechanism for all Orbit services. These records are **advertisement pointers** published under the community's domain — they tell Orbit clients which services are associated with this community, not that those services run on `example.com` directly. Each SRV record resolves to the actual host and port of the service, which may be on entirely separate infrastructure. A record's absence simply means the client won't attempt to discover that service.
 
-| Record                              | Type    | Purpose                            | Required |
+| Record                              | Type    | Purpose                            | Add when |
 |-------------------------------------|---------|------------------------------------|----------|
-| `_orbit._tcp.example.com`          | SRV     | Ground Control (IRC) discovery     | If running IRC |
 | `_satellite._tcp.example.com`      | SRV     | Satellite node discovery           | If running Satellite |
 | `_depot._tcp.example.com`          | SRV     | Depot (file storage) discovery     | If running Depot |
 | `_transponder._tcp.example.com`    | SRV     | Transponder (identity) discovery   | Post-MVP |
@@ -682,7 +646,7 @@ DNS is the primary discovery mechanism for all Orbit services. The following rec
 | `depot.example.com`                | A/AAAA  | Depot (object storage) endpoint    | If running Depot |
 | `turn.example.com`                 | A/AAAA  | TURN server                        | If running TURN |
 
-A minimal text-only deployment needs only `_orbit._tcp` and the A/AAAA record for the IRC server. A Satellite-only deployment (no IRC) needs only `_satellite._tcp` and the A/AAAA record for the Satellite node. The client adapts based on which records exist.
+A minimal text-only deployment needs only the A/AAAA record for the IRC server; the Orbit client connects to port 6697 (IRC over TLS) by default. A Satellite-only deployment (no IRC) needs only `_satellite._tcp` and the A/AAAA record for the Satellite node. The client adapts based on which records exist.
 
 Multiple `_satellite._tcp` SRV records can be configured to advertise multiple Satellite nodes. SRV priority and weight control load distribution and failover.
 
@@ -692,33 +656,37 @@ A reference `docker-compose.yml` will be provided for self-hosters that includes
 
 - Ergochat (Ground Control - with WebSocket enabled, SASL configured, history enabled)
 - LiveKit + token service (Satellite node - **optional**, can be removed for text-only deployment)
-- Widget gateway (JWT validation, guest proxying - **optional**, only needed for web widget)
 - MinIO (Depot - **optional**, only needed for file uploads)
 - coturn (STUN/TURN)
 - Caddy (reverse proxy, automatic TLS)
 
-One `docker compose up` should yield a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list, widget allowlist). Satellite node discovery is handled via DNS SRV records configured at the domain level - no IRC channel configuration is needed.
+One `docker compose up` should yield a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list). Satellite node discovery is handled via DNS SRV records configured at the domain level - no IRC channel configuration is needed.
 
 Note: Satellite is optional. You can run `docker compose up ergochat caddy` for a minimal text-only Orbit server.
 
 ## 10. Extensions
 
-Orbit intentionally does not solve custom roles, calendars, events, game integrations, advanced moderation workflows, music bots, or any other domain-specific feature. These are solved by **extensions**.
+Orbit intentionally does not solve custom roles, calendars, events, game integrations, advanced moderation workflows, or any other domain-specific feature. These are solved by two complementary mechanisms: **Orbit extensions** and **IRC bots**.
 
-An Orbit extension is any combination of:
+**Orbit Extensions**
 
-- **An IRC bot connected to Ground Control.** This works immediately with no additional infrastructure. The bot can listen to events, respond to commands, manage channel state, and communicate via the Orbit tag namespace. The entire existing IRC bot ecosystem (Limnoria, Sopel, custom bots in any language) works out of the box.
-- **A Satellite plugin.** Extends media capabilities - e.g., a music bot that streams audio into a Satellite session.
-- **An Orbit client plugin.** Adds UI for the extension's features. The client plugin API is deferred to post-MVP, but the IRC bot model works for extensions right now.
+An Orbit extension is a true application-level plugin for the Orbit client (orbit-app). Extensions are installed into the client and extend its UI and behavior. They interact with Ground Control and Satellite through the standard Orbit tag namespace and may define their own sub-namespace for custom tags (e.g., `+orbit-ext/<name>/*`). Extensions are scoped to the Orbit client — they do not run on the server, and they do not modify Satellite infrastructure.
 
-This keeps Orbit's core small, fast, and focused. It also means existing IRC bot ecosystems are first-class citizens.
+The orbit-app extension API is **deferred to post-MVP**. For the MVP, extensions are a design target, not a shipping feature.
 
-**Examples:**
+**IRC Bots**
 
-- A **permissions bot** that implements role hierarchies beyond IRC modes, storing role definitions in a database and enforcing them by setting IRC modes automatically.
-- A **calendar bot** that posts event reminders to channels on a schedule.
+IRC bots are first-class citizens of the Orbit ecosystem by virtue of Orbit being built on IRC. Any IRC bot — written in any language, using any framework (Limnoria, Sopel, a custom script) — connects to Ground Control and works out of the box. Bots handle server-side automation: posting reminders, enforcing moderation rules, managing channel state, and responding to commands. They are not Orbit extensions; they are IRC bots.
+
+**Examples of future Orbit extensions:**
+- A **calendar extension** that renders upcoming events inline in the Orbit client, sourced from custom `+orbit-ext/calendar/*` tags posted by a companion bot.
+- A **moderation dashboard extension** that adds a UI panel for reviewing flagged messages and applying IRC modes.
+- A **game status extension** that displays live match state in the sidebar using custom tags.
+
+**Examples of IRC bots (not extensions):**
+- A **permissions bot** that implements role hierarchies beyond IRC modes.
+- A **reminder bot** that posts scheduled messages to channels.
 - A **moderation bot** with auto-mod rules, word filters, and spam detection.
-- A **music bot** that streams audio to a Satellite session, controlled via IRC commands.
 
 ## 11. Tag Integrity and Client Trust Model
 
@@ -770,7 +738,7 @@ The following are **not** part of the MVP release. Each item either requires sig
 | Custom emoji / sticker packs             | Nice-to-have; not essential for launch                               |
 | Message threads / forums                 | IRC doesn't have a native threading model; needs design work         |
 | Custom role / permission system          | Use IRC modes; extend via extensions if needed                       |
-| Client plugin API                        | Extensions work via IRC bots for the MVP; client-side plugin system is post-MVP |
+| Orbit extension API (orbit-app plugins)  | Extension architecture is defined; the client-side plugin host and API surface are post-MVP |
 
 ## 13. Open Questions
 
@@ -794,6 +762,5 @@ These are genuine unresolved decisions that need resolution before or during MVP
 
 9. **Multi-node sessions**: Can a voice session span multiple Satellite nodes? Probably not for the MVP - one session, one node. But what happens if a node goes down during an active session? Should the client attempt to migrate to another node?
 
-10. **Widget gateway architecture**: Should the widget gateway be a standalone service, or can it be implemented as an Ergochat module/plugin? A standalone service is more flexible but adds a deployment component. An Ergochat plugin reduces moving parts but couples us to Ergochat's extension API.
 
 *This is a living document. It will be updated as implementation progresses and open questions are resolved. Changes are tracked in the repository's commit history.*

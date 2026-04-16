@@ -456,7 +456,7 @@ Phase this incrementally to avoid over-engineering:
 3. **Phase 2**: Build a REST API gateway that wraps common IRC commands (send message, join channel, set topic, kick user, query WHOIS) in HTTP endpoints with JSON request/response bodies.
 4. **Phase 3**: Formalize as a versioned API specification (OpenAPI). Add authentication scoping, rate limiting, and developer documentation portal.
 
-A **client plugin system** for the Orbit desktop and web clients - allowing third-party UI extensions that integrate with IRC bots and Satellite services - is considered high-value and should be designed early in the post-MVP phase. The combination of an IRC bot (server-side logic) and a client plugin (UI integration) is the Orbit equivalent of a Discord bot with slash commands and embeds. This is the path to a rich integration ecosystem without requiring Orbit itself to implement every feature.
+The **Orbit Extension API (orbit-app plugins)** — client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Ground Control via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace — is considered high-value and should be designed early in the post-MVP phase. The combination of an IRC bot (server-side logic) and an Orbit extension (UI integration) is the Orbit equivalent of a Discord bot with slash commands and embeds. This is the path to a rich integration ecosystem without requiring Orbit itself to implement every feature.
 
 ### Risks
 
@@ -519,7 +519,7 @@ The following table summarizes each track's expected impact, implementation feas
 |-------|--------|-------------|------|-----------------|
 | Bot & Integration API Phase 0 (IRC docs + examples) | High | High | Low | MVP (day-one) |
 | Bot & Integration API Phase 1+ (webhook bridge, REST API) | High | High | Low | Post-MVP (immediate) |
-| Client Plugin System | High | Medium | Low | Post-MVP (Q2) |
+| Orbit Extension API (orbit-app plugins) | High | Medium | Low | Post-MVP (Q2) |
 | Mobile Clients (Tauri Mobile) | High | Medium | Medium | Post-MVP (Q2) |
 | Layer-Shell / X11 Overlay (Tier 1) | Medium | High | Low | Post-MVP (Q2–Q3) |
 | Federation Phase 0 (Transponder) | High | High | Low | Post-MVP (immediate) |
