@@ -18,22 +18,13 @@ The deeper problem is architectural: in the MVP, identity is embedded inside Gro
 
 The entire system hinges on one configuration value: the **OIDC issuer URL**. Every Orbit component that needs to verify identity points at this URL.
 
-```
-                    OIDC Provider (Transponder role)
-                  ┌──────────────────────────────────┐
-                  │  e.g., Keycloak, Authentik, etc.  │
-                  │                                   │
-                  │  /.well-known/openid-configuration│
-                  │  /protocol/openid-connect/token   │
-                  │  /protocol/openid-connect/certs   │
-                  └──────┬───────────────────┬────────┘
-                         │                   │
-               auth-script bridge    JWT/JWKS verification
-                         │                   │
-                  ┌──────┴──────┐     ┌──────┴──────┐
-                  │Ground Control│     │  Satellite  │
-                  │  (Ergochat)  │     │  (LiveKit)  │
-                  └─────────────┘     └─────────────┘
+```mermaid
+flowchart TB
+    IDP["OIDC Provider (Transponder role)\ne.g., Keycloak, Authentik, etc.\n─────────────────────────────\n/.well-known/openid-configuration\n/protocol/openid-connect/token\n/protocol/openid-connect/certs"]
+
+    IDP -->|auth-script bridge| GC["Ground Control\n(Ergochat)"]
+    IDP -->|JWT/JWKS verification| SAT["Satellite\n(LiveKit)"]
+    IDP -->|JWT/JWKS verification| DEPOT["Depot\n(S3 API)"]
 ```
 
 ### OIDC Discovery

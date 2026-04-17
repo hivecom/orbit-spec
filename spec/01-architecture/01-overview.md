@@ -25,9 +25,9 @@ flowchart LR
 
   subgraph SERVERS["SERVER LAYER"]
     direction TB
-    SAT["SATELLITE\nLiveKit SFU\nVoice · Video"]
-    GC["GROUND CONTROL\nErgochat (IRCv3)\nText · Presence · Signaling"]
-    DEPOT["DEPOT\nS3-compatible\nFiles · Avatars"]
+    SAT["SATELLITE\nLiveKit SFU\nVoice - Video"]
+    GC["GROUND CONTROL\nErgochat (IRCv3)\nText - Presence - Signaling"]
+    DEPOT["DEPOT\nS3-compatible\nFiles - Avatars"]
   end
 
   C --> GC
