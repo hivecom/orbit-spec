@@ -12,7 +12,7 @@ This document is scoped strictly to the MVP. Advanced features - gaming overlays
 
 ## System Diagram
 
-Orbit is composed of four named services; the MVP deploys three (Ground Control, Satellite, Depot). Transponder is the first planned post-MVP addition. The Orbit client (desktop or web) is the only thing that composes them - no service depends on another at runtime.
+Orbit is composed of four named services, each operating independently. The Orbit client (desktop or web) is the only thing that composes them - no service depends on another at runtime.
 
 ```mermaid
 flowchart LR
