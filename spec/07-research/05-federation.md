@@ -1,7 +1,5 @@
 # Research: Federation
 
-**Status:** Phase 0 (Transponder) - Post-MVP immediate; Phase 1–2 - Post-MVP Q3+
-
 ## Problem
 
 The MVP is single-server. All users in a community connect to one Orbit server instance. Users on server A cannot communicate with users on server B. Communities are isolated islands.
@@ -33,9 +31,9 @@ Start with the simplest model: IRC network linking where multiple Ground Control
 
 ### Layer 2: Signed Identity Assertions (Identity Bridging)
 
-The identity bridging mechanism is **Transponder** - a standalone, optional service that signs short-lived identity tokens which Satellite nodes can independently verify. This is a minimal OIDC-like pattern, stripped down to what Orbit actually needs: no OAuth dance, no redirect flows, no token refresh complexity. Just a signed assertion. The IRC server is not modified in any way.
+The identity bridging mechanism is **Transponder** - a standalone, optional identity service with a pluggable auth backend. It signs short-lived identity tokens that Satellite nodes can independently verify, and it serves as the authentication authority that Ground Control delegates to via Ergochat’s `auth-script` mechanism. Transponder is a self-contained HTTP service - it does not connect to IRC. The IRC server is not modified beyond standard configuration.
 
-For the full specification of the Transponder component - its architecture, the IRC bot flow, the `TAGMSG`-based token issuance protocol, the Ed25519 keypair model, and the `.well-known` / DNS SRV discovery mechanism - see [Transponder](../02-components/04-transponder.md).
+For the full specification - architecture, API contract, auth backend adapters, Ground Control and Satellite integration, and key publication - see [Transponder](../02-components/04-transponder.md).
 
 ## Verified and Unverified Users
 
@@ -86,7 +84,7 @@ This is the same spectrum that email traversed with SPF/DKIM/DMARC and that Acti
 
 ## Approach
 
-1. **Phase 0 (pre-federation)**: Implement Transponder and token verification in the Satellite token service for single-server deployments. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. Transponder connects to Ground Control as an IRC bot and uses `account-tag` for identity verification - no auth backend adapters needed, works with any IRCv3 server out of the box. This is valuable even without federation - it gives Satellite nodes real identity without touching the IRC server.
+1. **Phase 0 (pre-federation)**: Implement Transponder as a standalone HTTP identity service with the internal auth backend. Configure Ergochat’s `auth-script` to delegate authentication to Transponder. Implement token verification in the Satellite token service. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. Transponder is a self-contained service - it does not connect to IRC. This is valuable even without federation - it gives Satellite nodes verified identity and centralizes auth in a pluggable service.
 2. **Phase 1 (IRC linking)**: Set up a two-server Ergo linked network. Test text federation. Both servers share the same Transponder (or run separate instances with cross-signed keys). Satellites trust both.
 3. **Phase 2 (cross-org federation)**: Independent servers with independent Transponder instances and independent keys. Implement trust store management in the Satellite. Evaluate TOFU vs. directory vs. DNS-based trust models via prototype.
 
@@ -107,7 +105,8 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 **Identity bridging (Phase 0):**
 
-- Implement Transponder: Ed25519 keypair generation, IRC bot with `account-tag` verification, TAGMSG-based token issuance, public key publication endpoint.
+- Implement Transponder: Ed25519 keypair generation, HTTP API (`/auth/verify`, `/token/issue`, `/keys`), internal auth backend, public key publication endpoint.
+- Configure Ergochat’s `auth-script` to delegate SASL verification to Transponder’s `/auth/verify` endpoint.
 - Implement token verification in the Satellite token service.
 - Verify that a user authenticated on IRC receives a verified LiveKit JWT, and that a user with only a join key receives an unverified JWT.
 - Verify that the Orbit client displays verified and unverified participants distinctly.

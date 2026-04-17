@@ -1,7 +1,5 @@
 # Research: Bot and Integration API
 
-**Status:** Phase 0 - MVP (day-one, docs only); Phase 1+ - Post-MVP immediate
-
 Cross-references:
 - [Ground Control](../02-components/01-ground-control/01-overview.md) - the IRC server bots connect to
 - [Tag Namespace](../02-components/01-ground-control/02-tags/01-namespace.md) - the `+orbit-ext/<name>/*` sub-namespace used by extension plugins

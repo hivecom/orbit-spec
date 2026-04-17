@@ -256,7 +256,7 @@ experience is reduced but functional.
 
 ## Session Limits
 
-Each Satellite session supports a maximum of **64 concurrent participants**. This limit applies per room, not per node — a single node can host multiple concurrent rooms each up to the 64-participant ceiling.
+Each Satellite session supports a maximum of **64 concurrent participants**. This limit applies per room, not per node - a single node can host multiple concurrent rooms each up to the 64-participant ceiling.
 
 This is a deliberate design constraint, not a hardware limit. Orbit is a communication tool for communities, not a broadcasting platform. The 64-participant ceiling keeps sessions intimate and avoids the complexity of large-scale media routing. Communities that need to address larger audiences should use a streaming setup (e.g., one-to-many broadcast via a separate streaming service) rather than a voice session.
 

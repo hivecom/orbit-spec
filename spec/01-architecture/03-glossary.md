@@ -26,9 +26,9 @@ Depot is the storage layer - an S3-compatible object store (MinIO, AWS S3, or eq
 
 ### Transponder
 
-Transponder is an optional standalone identity bridge. It signs short-lived identity tokens (Ed25519) that Satellite nodes can independently verify, binding a Satellite session participant's display identity to their authenticated IRC account. It operates as a thin IRC bot connected to Ground Control and an HTTP endpoint that publishes its signing public key. Transponder requires only standard IRCv3 `account-tag` support from the IRC server - no patches, no plugins, no access to auth backends. It is IRC-server-agnostic.
+Transponder is an optional standalone identity service. It provides a pluggable authentication backend and signs short-lived identity tokens (Ed25519) that Satellite nodes can independently verify. Transponder is a self-contained HTTP service - it does not connect to IRC or depend on any other Orbit component at runtime. Ground Control can delegate user authentication to Transponder via Ergochat's `auth-script` mechanism; Satellite verifies Transponder-issued tokens against its published signing key. The auth backend behind Transponder is pluggable (internal database, OIDC, LDAP, or custom), but neither Ground Control nor Satellite needs to know which backend is in use.
 
-Transponder is optional: Orbit deployments without it degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
+Transponder is optional: Orbit deployments without it use Ergochat's built-in NickServ/SASL for IRC auth and degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
 
 -> See [Transponder](../02-components/04-transponder.md) for the full specification.
 

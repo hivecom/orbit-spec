@@ -61,7 +61,7 @@ Key configuration points for an Orbit-compatible Ergochat instance:
 - **WebSocket listener**: Ergochat exposes a WebSocket endpoint on a dedicated port. In production, TLS for this endpoint is terminated by a reverse proxy (Caddy in the reference deployment) which proxies to Ergochat's internal WebSocket port. Ergochat CAN terminate TLS directly for raw IRC connections (port 6697), but the reverse proxy is required for any deployment that serves web clients or needs to host `/.well-known/orbit/services.json` for service discovery. See [Domain Discovery](../../05-infrastructure/01-domain-discovery.md) for the well-known file format.
 - **History storage**: Enabled with configurable per-channel retention (default: 7 days or 10,000
   messages, whichever comes first).
-- **SASL**: Required for registered users. SASL PLAIN and SCRAM-SHA-256 over TLS.
+- **SASL**: Required for registered users. SASL PLAIN and SCRAM-SHA-256 over TLS. For the MVP, Ergochat's built-in account database handles credential verification. Post-MVP, Ergochat can delegate SASL verification to [Transponder](../04-transponder.md) via the `auth-script` configuration option, enabling pluggable auth backends (OIDC, LDAP, etc.) without modifying the IRC server. See [Transponder](../04-transponder.md) for details.
 - **Client-only tag allowlist**: Ergochat relays all `+`-prefixed tags by default per IRCv3 spec.
   No special configuration needed, but the server should enforce maximum tag size limits.
 - **Connection limits**: Per-IP connection limits configured to prevent abuse. Browser-based web

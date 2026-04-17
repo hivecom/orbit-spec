@@ -1,7 +1,5 @@
 # Research: Leptos / WASM Frontend
 
-**Status:** R&D (evaluate after MVP)
-
 This track evaluates rewriting the Orbit desktop frontend in [Leptos](https://leptos.dev/) (Rust compiled to WebAssembly) as an alternative to the current Vue 3 + Vite stack. For the decision that led to Vue being chosen as the MVP frontend, see [ADR: Vue Alternatives](../06-decisions/02-adr-vue-alternatives.md). For the current frontend architecture, see [Desktop Client](../04-clients/01-desktop.md).
 
 ## Problem

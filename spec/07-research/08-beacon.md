@@ -1,8 +1,6 @@
 # Research: Beacon (Push Notification Relay)
 
-**Status:** Post-MVP - dependency of the [Mobile Clients](07-mobile-clients.md) track
-
-Beacon is a self-hostable push notification relay for Orbit. It is architecturally similar in spirit to [Transponder](../02-components/04-transponder.md) - both are optional, standalone components that connect to [Ground Control](../02-components/01-ground-control/01-overview.md) as IRC bots and extend Orbit's capabilities without modifying the IRC server.
+Beacon is a self-hostable push notification relay for Orbit. Like [Transponder](../02-components/04-transponder.md), it is an optional, standalone component that extends Orbit's capabilities without modifying the IRC server. Unlike Transponder (which is a pure HTTP service), Beacon connects to [Ground Control](../02-components/01-ground-control/01-overview.md) as an IRC bot because it needs real-time access to the message stream - IRC is the natural event source for detecting mentions and DMs directed at offline users.
 
 ## What is Beacon?
 
@@ -65,5 +63,5 @@ Beacon becomes necessary when native mobile apps (see [Mobile Clients](07-mobile
 ## Cross-References
 
 - [Mobile Clients](07-mobile-clients.md) - the track that Beacon unblocks
-- [Transponder](../02-components/04-transponder.md) - architectural comparison (similar IRC bot + standalone service pattern)
+- [Transponder](../02-components/04-transponder.md) - architectural comparison (both are optional standalone services; Beacon uses an IRC bot, Transponder is a pure HTTP service)
 - [Ground Control](../02-components/01-ground-control/01-overview.md) - the IRC server Beacon connects to as a bot

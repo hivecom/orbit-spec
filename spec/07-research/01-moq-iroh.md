@@ -1,7 +1,5 @@
 # Research: Media over QUIC (Iroh)
 
-**Status:** R&D (ongoing)
-
 This track explores replacing WebRTC with Media over QUIC (MoQ) using the [Iroh](https://iroh.computer/) networking stack for native desktop clients. See [Satellite](../02-components/02-satellite.md) for the current LiveKit/WebRTC baseline that this track is evaluated against.
 
 ## Problem

@@ -1,7 +1,5 @@
 # Research: Linux Gaming Overlay - Tier 2 (Vulkan Explicit Layer)
 
-**Status:** Post-MVP (Q3–Q4)
-
 This is Tier 2 of the Linux Gaming Overlay. Tier 1 ([Layer-Shell / X11 Overlay](03-linux-overlay.md)) must ship first - Tier 2 covers the exclusive-fullscreen case that Tier 1 cannot reach. Both tiers expose the same visual feature set (speaker indicator + optional webcam pip); only the rendering path differs.
 
 For the overlay scope definition and the preamble shared by both tiers, see [03-linux-overlay.md](03-linux-overlay.md).

@@ -1,7 +1,5 @@
 # Research: End-to-End Encryption
 
-**Status:** Post-MVP (Q3–Q4), high risk
-
 For the identity model that E2E encryption depends on, see [Authentication](../03-identity/01-authentication.md).
 
 ## Problem

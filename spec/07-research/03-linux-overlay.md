@@ -1,7 +1,5 @@
 # Research: Linux Gaming Overlay - Tier 1 (Layer-Shell / X11)
 
-**Status:** Post-MVP (Q2–Q3)
-
 This is Tier 1 of the Linux Gaming Overlay track. It covers windowed and borderless-fullscreen games that still go through the compositor. For exclusive-fullscreen support where the compositor is bypassed, see [Vulkan Overlay Layer (Tier 2)](04-vulkan-overlay.md).
 
 ## Overlay Scope

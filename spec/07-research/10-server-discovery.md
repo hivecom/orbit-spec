@@ -1,7 +1,5 @@
 # Research: Server Discovery and Directory
 
-**Status:** Post-MVP (Q3)
-
 ## Problem
 
 If Orbit is decentralized (anyone can run a server), how do users find communities? Discord solves this with a centralized server directory and invite links. Orbit needs something equivalent.

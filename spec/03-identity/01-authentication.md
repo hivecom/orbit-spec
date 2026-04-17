@@ -13,6 +13,14 @@ For channel-level permissions that derive from authentication state, see [Permis
 
 For Ergochat SASL configuration detail - including the WebSocket listener, nickname reservation patterns, and connection limits - see [Ground Control](../02-components/01-ground-control/01-overview.md).
 
+## Post-MVP: Transponder as Auth Backend
+
+When [Transponder](../02-components/04-transponder.md) is deployed, it becomes the authentication authority for the Orbit deployment. Ergochat delegates SASL credential verification to Transponder via the `auth-script` configuration option - a standard Ergochat feature. The client's SASL flow is unchanged; Ergochat simply verifies credentials against Transponder's `/auth/verify` endpoint instead of its internal account database.
+
+This enables pluggable auth backends (OIDC, LDAP, or custom) without modifying the IRC server or changing anything about the client connection flow. Transponder is optional - without it, Ergochat uses its built-in NickServ and internal accounts as described above.
+
+See [Transponder](../02-components/04-transponder.md) for the full identity service specification.
+
 ## Anonymous Web Widget Users
 
 The Orbit web client (whether embedded as a widget or deployed as a full web app) connects directly to Ergochat's WebSocket endpoint - the same path as the desktop client. There is no middleware proxy.

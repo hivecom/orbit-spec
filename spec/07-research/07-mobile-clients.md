@@ -1,7 +1,5 @@
 # Research: Mobile Clients
 
-**Status:** Post-MVP (Q2)
-
 Cross-references:
 - [Web App & PWA](../04-clients/02-web-app.md) - the PWA baseline that already covers mobile
 - [Desktop Client](../04-clients/01-desktop.md) - shared monorepo structure and Tauri codebase
