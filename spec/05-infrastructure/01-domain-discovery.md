@@ -27,7 +27,7 @@ DNS discovery applies to desktop clients only. Web clients skip this section ent
 |---|---|---|---|
 | `_satellite._tcp.example.com` | SRV | Satellite node discovery | If running Satellite |
 | `_depot._tcp.example.com` | SRV | Depot (file storage) discovery | If running Depot |
-| `_transponder._tcp.example.com` | SRV | Transponder (identity) discovery | Post-MVP |
+| `_transponder._tcp.example.com` | SRV | Identity provider (OIDC) discovery | Post-MVP |
 
 > **Ground Control (IRC)** does not use an SRV record. It is reached via a conventional `irc.example.com` A/AAAA record on port 6697. See [Ground Control resolution](#ground-control-resolution) below.
 
@@ -148,17 +148,16 @@ See [../02-components/02-satellite.md](../02-components/02-satellite.md) for Sat
 
 See [../02-components/03-depot.md](../02-components/03-depot.md) for Depot architecture.
 
-### Transponder Resolution (Post-MVP)
+### Identity Provider Resolution (Post-MVP)
 
-Transponder discovery uses three mechanisms in priority order:
+The Orbit client discovers the server’s OIDC identity provider (the Transponder role) through the following mechanisms in priority order:
 
-1. **SRV** - resolve `_transponder._tcp.example.com`. Use the returned host and port for identity token requests. (Desktop only.)
-2. **Well-known URL** - fetch `/.well-known/orbit/keys.json` on the domain. (All clients.)
-3. **DNS TXT record** - query `orbit._keys.example.com` for a TXT record containing the public key. (Desktop only.)
+1. **Well-known URL** - fetch `/.well-known/orbit/oidc` on the server’s domain. This returns a JSON document containing the OIDC issuer URL. The client then fetches the standard `/.well-known/openid-configuration` from that issuer to discover all endpoints. (All clients.)
+2. **DNS SRV** - resolve `_transponder._tcp.example.com`. Use the returned host and port as the OIDC issuer base URL. (Desktop only.)
 
-**If no mechanism succeeds:** all Satellite participants are treated as unverified. Voice sessions continue normally; identity verification is absent.
+**If no identity provider is discovered:** all Satellite participants are treated as unverified. Voice sessions continue normally; identity verification is absent.
 
-See [../02-components/04-transponder.md](../02-components/04-transponder.md) for Transponder architecture.
+See [../02-components/04-transponder.md](../02-components/04-transponder.md) for the full identity provider specification.
 
 ## Operator Guidance
 

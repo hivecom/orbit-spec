@@ -31,9 +31,16 @@ Start with the simplest model: IRC network linking where multiple Ground Control
 
 ### Layer 2: Signed Identity Assertions (Identity Bridging)
 
-The identity bridging mechanism is **Transponder** - a standalone, optional identity service with a pluggable auth backend. It signs short-lived identity tokens that Satellite nodes can independently verify, and it serves as the authentication authority that Ground Control delegates to via Ergochat’s `auth-script` mechanism. Transponder is a self-contained HTTP service - it does not connect to IRC. The IRC server is not modified beyond standard configuration.
+The identity bridging mechanism is **Transponder** - a role filled by any OIDC-compliant identity provider (e.g., Keycloak, Authentik, Zitadel). The provider issues signed JWTs via standard OpenID Connect flows. Each Orbit component that needs to verify identity - Ground Control, Satellite, Depot, or anything added in the future - independently verifies those JWTs against the provider's published keys (JWKS). No component contacts any other component to check identity; each one fetches the provider's JWKS endpoint and performs local cryptographic verification.
 
-For the full specification - architecture, API contract, auth backend adapters, Ground Control and Satellite integration, and key publication - see [Transponder](../02-components/04-transponder.md).
+This means identity assertions are **per-component and independent**. If an Orbit-compatible service points at an OIDC issuer URL, it can verify user identity - regardless of whether it's a Ground Control instance, a Satellite node, a Depot server, or a third-party service built on the Orbit ecosystem. There is no central broker, no token relay, and no coupling between components. The OIDC provider is the single source of truth; every consumer verifies against it directly.
+
+- **Ground Control** integrates via Ergochat's `auth-script` mechanism and a thin auth-script bridge that verifies JWTs against the provider's JWKS. The IRC server is not modified beyond standard configuration.
+- **Satellite** verifies identity tokens directly against the JWKS endpoint. No Orbit-specific code - standard JWT verification.
+- **Depot** verifies Bearer tokens against the same JWKS endpoint. Same pattern, same keys.
+- **Any future component** follows the same model: point at the OIDC issuer URL, fetch the JWKS, verify JWTs locally. That's it.
+
+For the full specification - OIDC discovery, component integration flows, auth-script bridge, and the Keycloak deployment example - see [Transponder](../02-components/04-transponder.md).
 
 ## Verified and Unverified Users
 
@@ -43,7 +50,7 @@ The Satellite token service can issue tokens in two modes:
 
 | Mode | How they authenticate | LiveKit JWT contains | Orbit UI treatment |
 |------|----------------------|---------------------|--------------------|
-| **Verified** | Signed identity token from Transponder | `account: "zealsprince"`, `server: "irc.hivecom.net"`, `verified: true` | Display name + verified indicator (e.g., checkmark, badge) |
+| **Verified** | Signed JWT from the OIDC identity provider, verified against JWKS | `account: "zealsprince"`, `server: "irc.hivecom.net"`, `verified: true` | Display name + verified indicator (e.g., checkmark, badge) |
 | **Unverified** | Join key, room password, or other node-level auth | `display_name: "some-name"`, `verified: false` | Display name shown, no verification badge, clear "unverified" indicator |
 
 This is the same pattern as Jitsi (anyone can join, some users are logged in) or Bluesky (verified domain handles vs. unverified accounts). No gatekeeping - just transparency. The Orbit client displays the distinction clearly so users can make informed trust decisions.
@@ -56,37 +63,37 @@ Unverified users:
 
 ## Graceful Degradation
 
-Transponder is **optional**. If a server operator doesn't deploy it, nothing breaks:
+An identity provider is **optional**. If a server operator doesn't deploy one, nothing breaks:
 
-| Feature | With Transponder | Without Transponder |
-|---------|-----------------|-------------------|
-| Text chat | Works (pure IRC) | Works (pure IRC) |
+| Feature | With Identity Provider | Without Identity Provider |
+|---------|----------------------|--------------------------|
+| Text chat | Works - Ergochat delegates credential verification via auth-script bridge | Works - Ergochat uses built-in NickServ/SASL |
 | Group voice / video | Works, participants verified | Works, all participants unverified |
 | BYON | Works, IRC users verified | Works, everyone unverified |
-| Web widget | Works (has its own JWT flow via widget gateway) | Works (has its own JWT flow via widget gateway) |
+| Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
 | P2P calls | Works, caller identity verified | Works, caller identity unverified |
 
-The Orbit client detects whether a Transponder is available for the current domain (via DNS SRV `_transponder._tcp`, `/.well-known/orbit/keys.json`, or DNS TXT `orbit._keys`). If none is found, the client skips the identity token step and joins Satellite sessions as an unverified participant. The UI reflects this - no verification badges for anyone, but everything functions.
+The Orbit client detects whether an identity provider is available for the current domain (via `/.well-known/orbit/oidc` or DNS SRV `_transponder._tcp`). If none is found, the client skips the identity token step and joins Satellite sessions as an unverified participant. The UI reflects this - no verification badges for anyone, but everything functions.
 
 ## Federation Trust Chain
 
 The signed identity model scales naturally to federation:
 
-- **Same-server (MVP)**: Satellite trusts one Transponder's public key. Auto-configured at deployment.
-- **Linked network**: Multiple Ground Control instances in a linked Ergo network share a Transponder (or run separate instances with cross-signed keys). All Satellites in the network trust the same key set.
-- **True federation**: Satellites maintain a trust store of public keys from federated Transponder instances. Trust establishment can follow one of several models (to be evaluated):
+- **Same-server**: All components point at one OIDC issuer URL. Each component independently fetches the JWKS and verifies tokens locally. Auto-configured at deployment.
+- **Linked network**: Multiple Ground Control instances in a linked Ergo network share an OIDC provider, or run separate providers. All Satellites in the network trust the JWKS from one or both issuers.
+- **True federation**: Components maintain a trust store of JWKS endpoints from federated identity providers. Because every component verifies independently, adding trust for a new issuer is the same operation everywhere - add the issuer URL to the trust list, fetch its JWKS. Trust establishment can follow one of several models (to be evaluated):
   - **Manual**: server operator explicitly adds keys they trust (like SSH `known_hosts`). Most secure, highest friction.
   - **TOFU (Trust On First Use)**: accept a new server's key the first time it's encountered, warn on key change. Good balance of security and usability for small-scale federation.
   - **Directory-based**: a shared directory (e.g., the discovery service from [Server Discovery](10-server-discovery.md)) vouches for key-to-server bindings. Centralizes trust but simplifies onboarding.
   - **DNS-based**: publish the public key in a DNS TXT record, verified via DNSSEC. Decentralized, leverages existing infrastructure. Analogous to DKIM for email.
 
-This is the same spectrum that email traversed with SPF/DKIM/DMARC and that ActivityPub is navigating now with HTTP Signatures.
+Because the identity layer is standard OIDC - not a custom protocol - federated trust is just "trust additional issuers." This is the same pattern used by OIDC federation in enterprise environments (multi-tenant Keycloak, Azure AD B2B, etc.) and the same spectrum that email traversed with SPF/DKIM/DMARC.
 
 ## Approach
 
-1. **Phase 0 (pre-federation)**: Implement Transponder as a standalone HTTP identity service with the internal auth backend. Configure Ergochat’s `auth-script` to delegate authentication to Transponder. Implement token verification in the Satellite token service. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. Transponder is a self-contained service - it does not connect to IRC. This is valuable even without federation - it gives Satellite nodes verified identity and centralizes auth in a pluggable service.
-2. **Phase 1 (IRC linking)**: Set up a two-server Ergo linked network. Test text federation. Both servers share the same Transponder (or run separate instances with cross-signed keys). Satellites trust both.
-3. **Phase 2 (cross-org federation)**: Independent servers with independent Transponder instances and independent keys. Implement trust store management in the Satellite. Evaluate TOFU vs. directory vs. DNS-based trust models via prototype.
+1. **Phase 0 (pre-federation)**: Deploy an OIDC-compliant identity provider (e.g., Keycloak). Configure Ergochat's `auth-script` to delegate authentication via the auth-script bridge. Point Satellite and Depot at the same OIDC issuer URL for JWT verification against the provider's JWKS. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. This is valuable even without federation - it gives every component verified identity via standard OIDC, with each component verifying independently.
+2. **Phase 1 (IRC linking)**: Set up a two-server Ergo linked network. Test text federation. Both servers share the same OIDC provider, or run separate providers. Satellites and other components trust the JWKS from both issuers.
+3. **Phase 2 (cross-org federation)**: Independent servers with independent OIDC providers and independent keys. Implement trust store management in each component that verifies identity (Satellite, Depot, etc.). Evaluate TOFU vs. directory vs. DNS-based trust models via prototype.
 
 Do not jump to Phase 2 until Phase 1 is deployed and its limitations are understood in practice.
 
@@ -105,9 +112,9 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 **Identity bridging (Phase 0):**
 
-- Implement Transponder: Ed25519 keypair generation, HTTP API (`/auth/verify`, `/token/issue`, `/keys`), internal auth backend, public key publication endpoint.
-- Configure Ergochat’s `auth-script` to delegate SASL verification to Transponder’s `/auth/verify` endpoint.
-- Implement token verification in the Satellite token service.
+- Deploy an OIDC provider (e.g., Keycloak) with an `orbit` realm/tenant, create an `orbit-client` application with Authorization Code + PKCE flow.
+- Deploy the auth-script bridge and configure Ergochat's `auth-script` to delegate SASL verification through it.
+- Configure Satellite and Depot to verify JWTs against the provider's JWKS endpoint.
 - Verify that a user authenticated on IRC receives a verified LiveKit JWT, and that a user with only a join key receives an unverified JWT.
 - Verify that the Orbit client displays verified and unverified participants distinctly.
 - Measure latency overhead of the token request flow (should be negligible - one additional round-trip).
@@ -116,13 +123,13 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 - Set up a two-server Ergo linked network. Test:
   - Text chat across the link (message delivery, ordering, latency)
-  - Media signaling relay (can a user on server A join a voice session hosted on server B's Satellite node, using server A's Transponder token?)
+  - Media signaling relay (can a user on server A join a voice session hosted on server B's Satellite node, using server A's OIDC-issued JWT?)
   - History synchronization (what happens to message history when the link drops and reconnects?)
   - Failure modes (what breaks during a netsplit? how does it recover?)
 
 **Federation trust (Phase 2):**
 
-- Test cross-server identity verification: user on server A presents a token to a Satellite that only trusts server B's key. Verify rejection. Add server A's key to the trust store. Verify acceptance.
+- Test cross-server identity verification: user on server A presents a JWT to a Satellite that only trusts server B's OIDC issuer. Verify rejection. Add server A's issuer to the trust store. Verify acceptance.
 - Evaluate TOFU, directory, and DNS-based trust establishment. Document trade-offs in operational complexity, security guarantees, and UX friction.
 
 Identify where each phase breaks and document the gaps before proceeding to the next.
@@ -130,5 +137,5 @@ Identify where each phase breaks and document the gaps before proceeding to the 
 ## Dependencies
 
 - The MVP must be stable on single-server deployments. Federation on a shaky foundation is a recipe for compounding bugs.
-- Phase 0 (Transponder) should be implemented early post-MVP - it improves single-server Satellite auth and is a prerequisite for all federation phases. It requires no IRC server changes. It is also optional - deployments without Transponder degrade gracefully to fully-unverified Satellite sessions.
+- Phase 0 (OIDC identity provider) should be deployed early post-MVP - it improves single-server Satellite auth and is a prerequisite for all federation phases. It requires no IRC server changes beyond `auth-script` configuration. It is also optional - deployments without an identity provider degrade gracefully to fully-unverified Satellite sessions.
 - Phase 2 depends on [Server Discovery](10-server-discovery.md) if directory-based trust is pursued.

@@ -1,216 +1,219 @@
 # Transponder
 
-Transponder is a standalone, optional identity service in the Orbit ecosystem. It is the single source of truth for user identity across all Orbit components. Ground Control, Satellite, and any future service that needs to verify a user's identity can plug into Transponder via its HTTP API.
+Transponder is not a service - it is a **role**. In the Orbit ecosystem, "Transponder" refers to whatever OIDC-compliant identity provider the server operator deploys. This can be [Keycloak](https://www.keycloak.org/), [Authentik](https://goauthentik.io/), [Authelia](https://www.authelia.com/), [Zitadel](https://zitadel.com/), or any other provider that implements [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html). Orbit does not ship its own identity service - it consumes standard OIDC.
 
-Transponder is not an IRC component and not a media component. It is a lightweight auth and token-signing service that any Orbit component can consume independently. Like every other Orbit component, it has no runtime dependency on any other service - it operates as a self-contained HTTP service with a pluggable authentication backend.
+The operator deploys an identity provider, points Orbit components at its issuer URL, and everything else - credential verification, token issuance, key publication - is handled by the provider. Ground Control, Satellite, Depot, and any future service all consume the same identity layer without custom adapters or glue code.
 
-Transponder is the first planned post-MVP addition to the Orbit component set. Phase 0 (single-server identity service) is high-feasibility and should follow the MVP closely.
+Transponder is **optional**. Deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
 
-## Why Transponder Is Needed
+## Why a Shared Identity Layer
 
 The MVP authenticates users within Ground Control's own boundary: SASL to Ergochat, NickServ for account management, `account-tag` for identity assertion on the IRC wire. This works for text chat, but those assertions are server-scoped - they do not travel outside the IRC connection.
 
 When a user connects to a Satellite node (a completely separate service), the Satellite has no way to verify that this person is the same authenticated user from Ground Control. The [Satellite authentication model](../02-components/02-satellite.md#satellite-authentication) in the MVP uses a public join key - anyone who presents the key gets access. That model cannot support verified identity display in voice sessions, cross-server trust, or federation.
 
-The deeper problem is architectural: in the MVP, identity is embedded inside Ground Control. There is no shared identity layer that multiple components can consume. Transponder solves this by extracting identity into its own service - a standalone authority that all components plug into equally.
+The deeper problem is architectural: in the MVP, identity is embedded inside Ground Control. There is no shared identity layer that multiple components can consume. An external OIDC provider solves this by extracting identity into a standalone authority that all components plug into equally.
 
-Transponder must be **optional**. If it is not deployed, Ground Control falls back to its built-in NickServ/SASL authentication (which works perfectly for text-only deployments), and Satellite sessions operate with unverified participants. The experience degrades gracefully, not catastrophically.
+## How It Works
 
-## Architecture
-
-Transponder is a small, standalone HTTP service deployed alongside other Orbit components (e.g., in the same `docker-compose.yml`). It has no code-level dependency on any other Orbit component.
+The entire system hinges on one configuration value: the **OIDC issuer URL**. Every Orbit component that needs to verify identity points at this URL.
 
 ```
-                   Transponder (Identity Service)
-                  ┌──────────────────────────────┐
-                  │  HTTP API                     │
-                  │  POST /auth/verify            │
-                  │  POST /token/issue            │
-                  │  GET  /keys                   │
-                  │                               │
-                  │  Backend: pluggable            │
-                  │  (internal DB, OIDC, LDAP…)   │
-                  └──────┴───────────────┴────────┘
-                         │               │
-               auth-script delegation    token verification
-                         │               │
-                  ┌──────┴──────┐  ┌─────┴──────┐
-                  │Ground Control│  │  Satellite  │
-                  │  (Ergochat)  │  │  (LiveKit)  │
-                  └─────────────┘  └────────────┘
+                    OIDC Provider (Transponder role)
+                  ┌──────────────────────────────────┐
+                  │  e.g., Keycloak, Authentik, etc.  │
+                  │                                   │
+                  │  /.well-known/openid-configuration│
+                  │  /protocol/openid-connect/token   │
+                  │  /protocol/openid-connect/certs   │
+                  └──────┬───────────────────┬────────┘
+                         │                   │
+               auth-script bridge    JWT/JWKS verification
+                         │                   │
+                  ┌──────┴──────┐     ┌──────┴──────┐
+                  │Ground Control│     │  Satellite  │
+                  │  (Ergochat)  │     │  (LiveKit)  │
+                  └─────────────┘     └─────────────┘
 ```
 
-Three components consume Transponder:
+### OIDC Discovery
 
-- **Ground Control (Ergochat)** delegates user authentication to Transponder via Ergochat's `auth-script` mechanism. Ergochat's SASL flow remains unchanged from the client's perspective - the client still sends `SASL PLAIN` or `SCRAM-SHA-256` - but Ergochat verifies credentials by calling Transponder's `/auth/verify` endpoint instead of its internal account database. The `account-tag` continues to work exactly as before: the IRC server sets it after successful authentication, regardless of which backend verified the credentials.
-- **Satellite** verifies identity tokens issued by Transponder. When a user wants to join a voice session with verified identity, the Orbit client requests a signed token from Transponder's `/token/issue` endpoint and presents it to the Satellite token service. Satellite verifies the signature against Transponder's published public key.
-- **The Orbit client** authenticates to Transponder directly via HTTP to obtain identity tokens for Satellite sessions. The client's IRC credentials are verified through the normal SASL flow (which Ergochat delegates to Transponder); for Satellite tokens, the client makes a separate HTTP request to Transponder.
+Every OIDC-compliant provider serves a discovery document at `/.well-known/openid-configuration`. This document tells any consumer where to find the provider's endpoints:
 
-## API Contract
-
-Transponder defines a minimal HTTP API. The contract is intentionally small - it covers authentication verification, token issuance, and key publication. The auth backend behind this contract is pluggable.
-
-### `POST /auth/verify`
-
-Verifies user credentials. Called by Ergochat's `auth-script` during SASL authentication.
-
-**Request:**
 ```json
 {
-  "username": "zealsprince",
-  "password": "..."
+  "issuer": "https://id.example.com/realms/orbit",
+  "authorization_endpoint": "https://id.example.com/realms/orbit/protocol/openid-connect/auth",
+  "token_endpoint": "https://id.example.com/realms/orbit/protocol/openid-connect/token",
+  "jwks_uri": "https://id.example.com/realms/orbit/protocol/openid-connect/certs",
+  "userinfo_endpoint": "https://id.example.com/realms/orbit/protocol/openid-connect/userinfo",
+  "scopes_supported": ["openid", "profile", "email"],
+  "response_types_supported": ["code"],
+  "code_challenge_methods_supported": ["S256"]
 }
 ```
 
-**Response (success):**
-```json
-{
-  "valid": true,
-  "account": "zealsprince"
-}
+No component needs to know what provider is behind this URL. They fetch the discovery document, find the endpoints they need, and proceed with standard OIDC flows.
+
+### Client Authentication Flow
+
+The Orbit client authenticates against the identity provider using the standard OIDC Authorization Code flow with PKCE (Proof Key for Code Exchange). This is the recommended flow for native/desktop applications and works with any OIDC provider.
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant O as Orbit Client
+    participant IdP as Identity Provider
+
+    O->>IdP: Fetch /.well-known/openid-configuration
+    IdP-->>O: Discovery document (endpoints, supported flows)
+
+    O->>O: Generate PKCE code_verifier + code_challenge
+    O->>IdP: Open browser: /authorize?client_id=orbit&redirect_uri=orbit://callback&response_type=code&scope=openid+profile&code_challenge=...
+    U->>IdP: Log in (username/password, SSO, passkeys - provider's choice)
+    IdP-->>O: Redirect to orbit://callback?code=XXXXX
+
+    O->>IdP: POST /token {grant_type=authorization_code, code=XXXXX, code_verifier=...}
+    IdP-->>O: {access_token, id_token, refresh_token}
+
+    Note over O: id_token is a signed JWT - verified everywhere
 ```
 
-**Response (failure):**
-```json
-{
-  "valid": false
-}
+The identity provider controls the login experience entirely. If the operator wants username/password, that's their choice. If they want Google SSO, passkeys, or MFA - that's configured in the provider, not in Orbit. The client just opens a browser to the authorization endpoint and collects the token at the end.
+
+The resulting JWT is then used across all Orbit components for the duration of the session:
+
+```mermaid
+sequenceDiagram
+    participant O as Orbit Client
+    participant GC as Ground Control (Ergochat)
+    participant S as Satellite
+    participant D as Depot
+
+    Note over O: Already authenticated - has JWT from OIDC flow
+
+    O->>GC: IRC connect + SASL PLAIN (username, JWT as password)
+    Note over GC: auth-script bridge verifies JWT against JWKS
+    GC-->>O: SASL success, account-tag = username
+
+    O->>S: POST /session/join {identity_token: JWT, room_id: "..."}
+    Note over S: Verifies JWT signature against JWKS
+    S-->>O: LiveKit JWT (verified: true, account: "username")
+
+    O->>D: PUT /upload {Authorization: Bearer JWT}
+    Note over D: Verifies JWT signature against JWKS
+    D-->>O: Upload accepted
 ```
 
-This endpoint is called by the IRC server, not by clients directly. The `account` field in the response is the canonical account name that Ergochat will use for the `account-tag` - this allows Transponder to normalize usernames (e.g., case folding) before they enter the IRC layer.
+One authentication, one JWT, verified everywhere. Each component independently verifies the token against the provider's published public keys - no component contacts any other component to check identity.
 
-### `POST /token/issue`
+## Component Integration
 
-Issues a signed identity token for use with Satellite or other services. Called by authenticated Orbit clients.
+### Ground Control (Ergochat)
 
-**Request:**
-```json
-{
-  "username": "zealsprince",
-  "password": "...",
-  "audience": "satellite"
-}
-```
+IRC predates OIDC by decades. Ergochat authenticates users via SASL - it has no native OIDC support. The integration requires a thin **auth-script bridge**: a small HTTP service or script that translates Ergochat's `auth-script` credential check into a JWT verification against the OIDC provider's JWKS endpoint.
 
-**Response:**
-```json
-{
-  "token": "<signed_jwt>"
-}
-```
+Ergochat supports `auth-script` as a standard configuration option - it delegates SASL credential verification to an external command or HTTP endpoint. This is not an Orbit-specific patch.
 
-The client authenticates directly to Transponder with the same credentials used for IRC. Transponder verifies them against its auth backend (the same backend Ergochat delegates to) and issues a signed JWT. This is a direct HTTP call - no IRC involvement, no TAGMSG, no bot.
+The flow:
 
-The `audience` field is optional and can scope the token to a specific service or session. For the initial implementation, a broad audience (e.g., `"satellite"`) is sufficient.
-
-### `GET /keys`
-
-Publishes Transponder's signing public key(s) for token verification. Called by Satellite nodes and optionally by clients.
-
-**Response:**
-```json
-{
-  "keys": [
-    {
-      "kid": "transponder-1",
-      "kty": "OKP",
-      "crv": "Ed25519",
-      "x": "<base64url-encoded public key>"
-    }
-  ]
-}
-```
-
-This follows the JWKS (JSON Web Key Set) convention. Satellite nodes fetch this endpoint at startup (or periodically) to obtain the public key(s) needed to verify identity tokens. The endpoint can also be served at `/.well-known/orbit/keys.json` via a reverse proxy for discovery convenience.
-
-## Auth Backend Adapters
-
-Transponder's auth backend is pluggable. The API contract above is the interface; the implementation behind it varies:
-
-| Backend | Use Case | How It Works |
-|---------|----------|--------------|
-| **Internal** | Small communities, simple setups | Transponder manages its own user database (accounts, password hashes). Equivalent to NickServ but external to Ergochat. |
-| **OIDC / OAuth2** | Organizations with existing identity infrastructure | Transponder delegates to an external IdP (Keycloak, Authentik, Authelia, Zitadel, etc.). The `/auth/verify` endpoint validates credentials against the IdP's token endpoint. |
-| **LDAP** | Enterprise environments | Transponder performs an LDAP bind to verify credentials. |
-| **Custom** | Anything else | Transponder's backend interface is a simple trait/interface - verify(username, password) → bool. Any backend that implements it works. |
-
-For the MVP-adjacent Phase 0 implementation, the internal backend is sufficient. OIDC and LDAP adapters are natural follow-ups that extend Transponder's reach without changing its API contract or any other component's integration.
-
-The key property: **neither Ground Control nor Satellite knows or cares which backend Transponder uses.** Ground Control sends credentials to `/auth/verify` and gets back a yes/no. Satellite sends a JWT to its token service and verifies the signature. The auth backend is Transponder's private concern.
-
-## Ground Control Integration
-
-Ergochat supports `auth-script` - a configuration option that delegates SASL credential verification to an external command or HTTP endpoint. This is a standard Ergochat feature, not an Orbit-specific patch.
-
-When Transponder is deployed, the operator configures Ergochat's `auth-script` to call Transponder's `/auth/verify` endpoint. The SASL flow from the client's perspective is unchanged:
+1. The Orbit client obtains a JWT from the OIDC provider (via the browser-based Authorization Code flow).
+2. The client connects to IRC and sends `SASL PLAIN` with the JWT as the password.
+3. Ergochat's `auth-script` calls the bridge.
+4. The bridge verifies the JWT signature against the provider's JWKS, checks expiration and claims.
+5. If valid, the bridge returns the account name. Ergochat sets the `account-tag` as usual.
 
 ```mermaid
 sequenceDiagram
     participant C as Orbit Client
     participant GC as Ground Control (Ergochat)
-    participant T as Transponder
+    participant B as Auth-Script Bridge
+    participant IdP as Identity Provider
 
-    C->>GC: SASL PLAIN (username, password)
-    GC->>T: POST /auth/verify {username, password}
-    T-->>GC: {valid: true, account: "zealsprince"}
+    C->>GC: SASL PLAIN (username, JWT)
+    GC->>B: auth-script call {username, password=JWT}
+    B->>IdP: GET /certs (JWKS - cached after first fetch)
+    IdP-->>B: Public keys
+    B->>B: Verify JWT signature, expiration, claims
+    B-->>GC: {valid: true, account: "zealsprince"}
     GC-->>C: SASL success
     GC-->>C: account-tag = zealsprince
 ```
 
-The client doesn't know Transponder exists at the IRC level. Ergochat doesn't know what backend Transponder uses. `account-tag` continues to be server-asserted and unforgeable - the trust model for the [Tag System](01-ground-control/02-tags/02-trust-model.md) is unchanged.
+The auth-script bridge is the **only Orbit-specific glue code** in the entire identity system. It is a small, stateless service (~50–100 lines) that performs local JWT verification. It does not manage users, issue tokens, or store state. The JWKS is cached after the first fetch - subsequent verifications are local cryptographic operations with no network round-trips.
 
-**Without Transponder:** Ergochat uses its built-in NickServ and internal account database for SASL authentication. This is the MVP default and requires no external service. Deploying Transponder is an upgrade, not a requirement.
+**Without an identity provider:** Ergochat uses its built-in NickServ and internal account database for SASL authentication. This is the MVP default and requires no external service.
 
-## Satellite Integration
+### NickServ and the Identity Provider
 
-The Satellite integration is straightforward:
+When an OIDC provider is configured, NickServ should be **disabled**. The two cannot coexist as dual sources of truth - if NickServ manages some accounts and the OIDC provider manages others, nickname ownership conflicts are inevitable.
 
-```mermaid
-sequenceDiagram
-    participant C as Orbit Client
-    participant T as Transponder
-    participant S as Satellite
+The clean separation:
 
-    C->>T: POST /token/issue {username, password, audience: "satellite"}
-    T-->>C: {token: "<signed_jwt>"}
+| Configuration | Account management | Credential verification | Nickname enforcement |
+|---------------|-------------------|------------------------|---------------------|
+| **No identity provider (MVP)** | NickServ handles registration, password changes, email verification | Ergochat's built-in SASL against NickServ's database | NickServ enforces registered nicknames |
+| **Identity provider configured** | OIDC provider owns all accounts - registration, password resets, MFA, etc. happen there | `auth-script` bridge verifies JWTs (and optionally plain passwords) against the provider | Ergochat still enforces registered nicknames - enforcement is tied to account login, not to NickServ specifically |
 
-    C->>S: POST /session/join {identity_token: "<signed_jwt>", room_id: "..."}
-    S-->>C: LiveKit JWT (verified: true, account: "zealsprince")
+**Migration from NickServ to an OIDC provider:**
+
+1. Import existing NickServ accounts into the OIDC provider (or connect the provider to the same backing store - e.g., if accounts already live in a database the provider can consume).
+2. Disable NickServ registration (`REGISTER` command).
+3. Configure `auth-script` to point at the auth-script bridge.
+4. Existing nickname reservations continue to work - Ergochat's enforcement mechanism is unchanged, only the credential verification path is swapped.
+
+**Legacy IRC clients:** When an identity provider is active, traditional IRC clients that don't understand OIDC can still authenticate via SASL PLAIN - the auth-script bridge accepts both JWTs and plain passwords. For plain passwords, the bridge forwards them to the OIDC provider's token endpoint (Resource Owner Password Credentials grant). This grant type is supported by most providers (Keycloak, Supabase, etc.) but is deprecated in OAuth 2.1 - operator discretion applies. If the provider does not support it, legacy clients must obtain a JWT out-of-band (e.g., via a web login page) and paste it as their SASL password.
+
+### Satellite
+
+Satellite integration requires no Orbit-specific code. The Satellite token service:
+
+1. Fetches the OIDC provider's JWKS from the `jwks_uri` in the discovery document (cached after first fetch).
+2. When a client presents an identity token with a session join request, verifies the JWT signature and expiration.
+3. If valid, issues a LiveKit JWT with `verified: true` and the authenticated account name.
+4. If invalid or absent, falls back to the unverified flow (join key, password, or open access).
+
+Token verification is a local cryptographic operation. The Satellite node does not contact the identity provider at session-join time - it only needs the public keys, fetched once and cached. This keeps the identity provider out of the media hot path.
+
+### Depot
+
+Depot (and any future Orbit service) follows the same pattern: fetch the JWKS, verify incoming JWTs locally. No adapter, no custom integration - standard Bearer token authentication.
+
+## Multi-Server Identity
+
+An Orbit user may be connected to multiple servers simultaneously, each with its own identity provider:
+
+```
+Server: HiveCom
+  IRC:          irc.hivecom.net
+  Transponder:  https://id.hivecom.net       →  Keycloak
+  JWT:          (issued by id.hivecom.net)
+
+Server: Friends Gaming
+  IRC:          irc.friends.gg
+  Transponder:  https://auth.friends.gg      →  Authentik
+  JWT:          (issued by auth.friends.gg)
+
+Server: Libera Chat
+  IRC:          irc.libera.chat
+  Transponder:  (none)
+  JWT:          (none - NickServ only)
 ```
 
-The Satellite token service:
+Each domain is its own identity domain. HiveCom's JWT means nothing to Friends Gaming, and that's correct - they are separate communities with separate user databases. Orbit maintains a JWT per domain, the same way a browser keeps separate cookies per domain.
 
-1. Receives the identity token from the client.
-2. Fetches Transponder's public key from the `/keys` endpoint (cached after first fetch).
-3. Verifies the JWT signature and expiration.
-4. If valid, issues a LiveKit JWT with `verified: true` and the authenticated account name.
-5. If invalid or absent, falls back to the unverified flow (join key, password, or open access).
+From the user's perspective: they join HiveCom, a login page opens (HiveCom's Keycloak), they sign in, done - verified everywhere on HiveCom. They join Friends Gaming, a different login page opens (Friends Gaming's Authentik), they sign in, done - verified everywhere on Friends Gaming. Two separate logins because they are two separate identities.
 
-The Satellite node does not contact Transponder at session-join time - it only needs the public key, which it fetches once and caches. Token verification is a local cryptographic operation. This keeps Transponder out of the media hot path.
+When the Orbit client knows that multiple components (IRC, Satellite, Depot) share the same identity provider for a given domain, the user authenticates once and the JWT is reused across all components. The experience is seamless - one login, verified everywhere on that domain.
 
-## Identity Token Format
+## Discovery
 
-The signed identity token is a short-lived JWT. Required claims:
+The Orbit client discovers a server's identity provider through the following mechanisms, in priority order:
 
-| Claim | Value | Description |
-|-------|-------|-------------|
-| `sub` | Account name (e.g., `zealsprince`) | Subject - the authenticated user |
-| `iss` | Transponder instance identifier (e.g., `transponder.hivecom.net`) | Issuer - the Transponder that signed the token |
-| `aud` | Target service (e.g., `satellite`) | Audience - which service this token is for |
-| `iat` | Issued-at timestamp | Token creation time |
-| `exp` | Short expiration (5 minutes is sufficient) | Token is only used to obtain a LiveKit JWT |
+1. **Well-known URL** - fetch `/.well-known/orbit/oidc` on the server's domain. This returns the OIDC issuer URL. The client then fetches the standard `/.well-known/openid-configuration` from that issuer to discover endpoints. (All clients.)
+2. **DNS SRV** - resolve `_transponder._tcp.example.com`. Use the returned host and port as the OIDC issuer base URL. (Desktop only.)
 
-The token is signed with Transponder's Ed25519 private key and verified by consumers using the corresponding public key from the `/keys` endpoint.
-
-## Key Publication
-
-Transponder publishes its signing public key via the `/keys` endpoint. For broader discovery, the key can also be published through:
-
-- **`/.well-known/orbit/keys.json`** (primary): The `/keys` endpoint response served at a well-known URL via the reverse proxy. This is the simplest mechanism for operators - a standard well-known endpoint that Satellite nodes and clients can fetch automatically without any DNS configuration.
-- **DNS TXT record**: Analogous to DKIM - an `orbit._keys.example.com` TXT record containing the public key. Decentralized; leverages existing DNS infrastructure.
-- **DNS SRV record**: `_transponder._tcp.example.com` pointing to the Transponder service, consistent with how Satellite nodes and Ground Control are discovered. See [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
-
-The primary mechanism is the `/keys` endpoint (optionally mirrored to `.well-known`). DNS records are alternatives for deployments that prefer DNS-centric service advertisement or need out-of-band key distribution.
+**If no identity provider is discovered:** all Satellite participants are treated as unverified. Voice sessions continue normally; identity verification is absent. The client hides verification UI rather than presenting a broken state.
 
 ## Verified and Unverified Users
 
@@ -218,61 +221,106 @@ The Satellite token service can issue tokens in two modes:
 
 | Mode | How they authenticate | LiveKit JWT contains | Orbit UI treatment |
 |------|----------------------|---------------------|--------------------|
-| **Verified** | Signed identity token from Transponder | `account: "zealsprince"`, `server: "hivecom.net"`, `verified: true` | Display name + verified indicator (e.g., checkmark, badge) |
+| **Verified** | Signed JWT from the OIDC provider | `account: "zealsprince"`, `server: "hivecom.net"`, `verified: true` | Display name + verified indicator (e.g., checkmark, badge) |
 | **Unverified** | Join key, room password, or node-level auth | `display_name: "some-name"`, `verified: false` | Display name shown, no badge, clear "unverified" indicator |
 
 Unverified users:
 
 - Can join voice/video sessions if the node's auth policy allows it (join key, password, or open access).
 - Have self-asserted display names. These are **not trustworthy** - the UI must never present them as equivalent to verified identities.
-- Cannot impersonate a verified user. If a verified `zealsprince` is in the session, an unverified participant claiming the same name must be visually distinguishable (e.g., suffixed with a tag, different color, or lacking the badge).
+- Cannot impersonate a verified user. If a verified user is in the session, an unverified participant claiming the same name must be visually distinguishable (e.g., suffixed with a tag, different color, or lacking the badge).
 - Are subject to the same moderation controls as anyone else in the session (mute, kick, etc.).
 
 ## Graceful Degradation
 
-Transponder is optional. If a server operator doesn't deploy it, nothing breaks:
+An identity provider is optional. If a server operator doesn't deploy one, nothing breaks:
 
-| Feature | With Transponder | Without Transponder |
-|---------|-----------------|-------------------|
-| Text chat | Works - Ergochat delegates auth to Transponder | Works - Ergochat uses built-in NickServ/SASL |
+| Feature | With Identity Provider | Without Identity Provider |
+|---------|----------------------|--------------------------|
+| Text chat | Works - Ergochat delegates credential verification via auth-script bridge | Works - Ergochat uses built-in NickServ/SASL |
 | Group voice / video | Works, participants verified | Works, all participants unverified |
 | BYON | Works, users verified | Works, everyone unverified |
 | Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
 | P2P calls | Works, caller identity verified | Works, caller identity unverified |
 
-The Orbit client detects whether a Transponder is available for the current domain (via `_transponder._tcp` DNS SRV, `/.well-known/orbit/keys.json`, or the `orbit._keys` DNS TXT record). If none is found, the client skips the identity token step and joins Satellite sessions as an unverified participant. The UI reflects this - no verification badges for anyone, but everything functions.
-
-This is the correct default for the "Orbit works on any IRCv3 server" promise. Two people running Orbit on Libera.Chat with no Transponder and no server-operated Satellite can still use BYON voice. They both show up unverified because nobody's running the service. The experience is honest, not broken.
-
 ## Federation Trust Chain
 
-The standalone identity service model scales naturally to federation - more cleanly than the previous IRC-bot design, because Transponder instances are already independent HTTP services with published keys:
+The OIDC model scales naturally to federation - more cleanly than a custom identity service, because OIDC providers are already independent HTTP services with published keys and standardized discovery:
 
-- **Same-server**: The Satellite trusts one Transponder's public key. Auto-configured at deployment - Transponder ships alongside Ground Control and the key is shared via local config or `.well-known` discovery.
-- **Linked network**: Multiple Ground Control instances in a linked Ergo network share a Transponder, or run separate instances with cross-signed keys. All Satellites in the network trust the same key set.
-- **True federation**: Satellites maintain a trust store of public keys from federated Transponder instances. Trust establishment follows one of several models: manual (operator explicitly adds keys, like SSH `known_hosts`), TOFU (Trust On First Use - accept on first contact, warn on key change), directory-based (a shared discovery service vouches for key-to-server bindings), or DNS-based (public key in a DNSSEC-verified TXT record, analogous to DKIM for email).
+- **Same-server**: All components point at one OIDC issuer URL. Auto-configured at deployment.
+- **Linked network**: Multiple Ground Control instances in a linked Ergo network share an OIDC provider, or run separate providers. Satellites trust the key set from one or both.
+- **True federation**: Satellites maintain a trust store of JWKS endpoints from federated identity providers. Trust establishment follows one of several models: manual (operator explicitly adds trusted issuers, like SSH `known_hosts`), TOFU (Trust On First Use - accept on first contact, warn on key change), directory-based (a shared discovery service vouches for issuer-to-server bindings), or DNS-based (issuer URL in a DNSSEC-verified TXT record).
 
-Because Transponder is a standalone HTTP service - not an IRC bot - federated trust is key exchange between HTTP endpoints. No IRC topology is involved. This is the same trust model used by OIDC discovery (`/.well-known/openid-configuration` + JWKS endpoints) and by DKIM (DNS TXT records for email signing keys).
+Because the identity layer is standard OIDC - not a custom protocol - federated trust is just "trust additional issuers." The same pattern used by OIDC federation in enterprise environments (multi-tenant Keycloak, Azure AD B2B, etc.).
 
 For the full federation research track, including IRC network linking, hard federation questions, and evaluation criteria, see [Research: Federation](../07-research/05-federation.md).
 
-## Implementation Phases
+## Example: Keycloak Deployment
 
-- **Phase 0 - single-server identity service**: Implement Transponder with the internal auth backend, Ed25519 keypair generation, the three HTTP endpoints (`/auth/verify`, `/token/issue`, `/keys`), and `/.well-known/orbit/keys.json` publication. Configure Ergochat's `auth-script` to delegate to Transponder. Implement token verification in the Satellite token service. This replaces the public join key model for verified users while retaining join key / password access for unverified users. Phase 0 requires no IRC server patches - only standard Ergochat configuration.
+A concrete example using Keycloak as the identity provider.
 
-- **Phase 1 - auth backend adapters**: Add OIDC and LDAP backend adapters. This extends Transponder to organizations with existing identity infrastructure without changing the API contract or any other component's integration.
+**1. Deploy Keycloak alongside Orbit:**
 
-- **Phase 2 - IRC linking**: Set up a two-server Ergo linked network. Both servers delegate auth to the same Transponder instance, or run separate instances with cross-signed keys. Satellites trust both. Test text federation, history synchronization under netsplits, and failure modes before proceeding.
+```yaml
+# docker-compose.yml (relevant services only)
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/keycloak
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: "..."
+    command: start
+    ports:
+      - "8080:8080"
 
-- **Phase 3 - cross-org federation**: Independent servers with independent Transponder instances and independent keys. Implement trust store management in the Satellite token service. Evaluate TOFU vs. directory vs. DNS-based trust models via prototype. Do not attempt Phase 3 until Phase 2 is deployed and its limitations are understood in practice.
+  auth-bridge:
+    image: orbit/auth-bridge:latest
+    environment:
+      OIDC_ISSUER: "https://id.example.com/realms/orbit"
+    ports:
+      - "9090:9090"
+```
+
+**2. Configure Keycloak:**
+
+- Create a realm (e.g., `orbit`).
+- Create a client (e.g., `orbit-client`) with Authorization Code + PKCE flow, redirect URI `orbit://callback`.
+- Add users or connect external identity sources (LDAP, Google, GitHub - Keycloak handles all of this).
+
+**3. Point Orbit components at the issuer URL:**
+
+- **Ergochat** - configure `auth-script` to call the auth-bridge service, which verifies JWTs against `https://id.example.com/realms/orbit`.
+- **Satellite** - set `OIDC_ISSUER=https://id.example.com/realms/orbit`. The token service fetches the JWKS and verifies identity tokens.
+- **Depot** - set `OIDC_ISSUER=https://id.example.com/realms/orbit`. Same JWKS verification.
+
+**4. Publish discovery:**
+
+Serve `/.well-known/orbit/oidc` on the community domain:
+
+```json
+{
+  "issuer": "https://id.example.com/realms/orbit"
+}
+```
+
+The Orbit client fetches this, discovers the Keycloak instance, and handles the rest automatically.
+
+## Implementation Notes
+
+- **Auth-script bridge**: This is the only Orbit-specific component in the identity system. It should be published as a standalone utility (container image + binary) that operators deploy alongside Ergochat. Configuration is a single environment variable: the OIDC issuer URL.
+- **JWKS caching**: All components that verify JWTs should cache the JWKS with a reasonable TTL (e.g., 1 hour) and support cache invalidation when a `kid` (key ID) in an incoming JWT doesn't match any cached key. This handles key rotation gracefully.
+- **Token lifetime**: The OIDC provider controls token lifetime. For Satellite session joins, the identity token only needs to be valid long enough to exchange for a LiveKit JWT - short-lived tokens (5–15 minutes) are ideal. Refresh tokens handle longer sessions transparently.
+- **Scope**: Orbit requires the `openid` and `profile` scopes at minimum. The `email` scope is optional and can be used for account recovery or display if the provider supports it.
 
 ## MVP Status
 
-Transponder is the first planned post-MVP addition. Phase 0 (single-server identity service) is high-feasibility and should follow the MVP closely. It improves Satellite authentication with verified identity and centralizes auth in a pluggable service. It is fully optional - deployments without Transponder use Ergochat's built-in NickServ/SASL for IRC auth and degrade to fully-unverified Satellite sessions.
+The Transponder role (external OIDC identity provider) is the first planned post-MVP addition. Deploying a standard OIDC provider (Keycloak, Authentik, etc.) alongside Orbit is high-feasibility and should follow the MVP closely. It improves Satellite authentication with verified identity and centralizes identity in a standard, pluggable layer. It is fully optional - deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade to fully-unverified Satellite sessions.
 
 ## Cross-References
 
-- [Satellite](../02-components/02-satellite.md) - Satellite authentication context and the public join key model that Transponder supersedes
+- [Satellite](../02-components/02-satellite.md) - Satellite authentication context and the public join key model that verified identity supersedes
 - [Ground Control](../02-components/01-ground-control/01-overview.md) - Ergochat configuration, `auth-script` delegation
-- [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - Transponder SRV discovery and key publication via DNS
-- [Research: Federation](../07-research/05-federation.md) - the full federation research track, including IRC network linking, hard federation questions, risks, and evaluation criteria
+- [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - identity provider discovery and DNS SRV records
+- [Research: Federation](../07-research/05-federation.md) - the full federation research track, including IRC network linking, trust models, and evaluation criteria

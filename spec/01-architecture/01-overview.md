@@ -4,7 +4,7 @@
 
 Orbit is a decentralized, open-source communication platform built by Hivecom. It targets communities, gaming groups, and privacy-conscious users who want an alternative to Discord without surrendering control of their data or infrastructure. Orbit is designed from the ground up to be self-hostable, lightweight, and built on open standards rather than proprietary protocols.
 
-The system is split into multiple named layers. **Ground Control** is the IRC layer - an Ergochat instance running IRCv3, handling text messaging, presence, channel state, and signaling. **Satellite** is the real-time media layer - independent media nodes (SFU instances) that handle voice, video, and streaming. **Depot** is the storage layer - S3-compatible object storage (MinIO, S3, or equivalent) for file uploads and avatars. **Orbit** itself is the client application (desktop and web widget) that ties these layers together into a cohesive experience. A fourth named component, **Transponder**, is an optional standalone identity service with a pluggable auth backend that both Ground Control and Satellite can consume independently - it is not part of the MVP but is designed as the first post-MVP addition.
+The system is split into multiple named layers. **Ground Control** is the IRC layer - an Ergochat instance running IRCv3, handling text messaging, presence, channel state, and signaling. **Satellite** is the real-time media layer - independent media nodes (SFU instances) that handle voice, video, and streaming. **Depot** is the storage layer - S3-compatible object storage (MinIO, S3, or equivalent) for file uploads and avatars. **Orbit** itself is the client application (desktop and web widget) that ties these layers together into a cohesive experience. A fourth named role, **Transponder**, refers to any OIDC-compliant identity provider that the operator deploys - both Ground Control and Satellite can consume it independently for identity verification. It is not part of the MVP but is designed as the first post-MVP addition.
 
 The goal of the MVP is to ship a working product - not a prototype, not a demo. That means text chat with history, group voice via Satellite nodes, an anonymous web widget for embedding on external sites, and a lightweight desktop client that doesn't eat 500 MB of RAM at idle. Every component must be functional enough for a small community to use daily.
 
@@ -46,7 +46,7 @@ Each of the four named services operates independently. Below is a brief summary
 | [Ground Control](../02-components/01-ground-control/01-overview.md) | IRC text layer (Ergochat/IRCv3) - text chat, presence, channel state, and media signaling | MVP |
 | [Satellite](../02-components/02-satellite.md) | Real-time media layer (LiveKit SFU) - voice, video, streaming, and ephemeral session chat | MVP |
 | [Depot](../02-components/03-depot.md) | Storage layer (S3-compatible) - file uploads and avatars | MVP |
-| [Transponder](../02-components/04-transponder.md) | Identity service - pluggable auth backend, signs tokens that Ground Control and Satellite verify independently | Post-MVP |
+| [Transponder](../02-components/04-transponder.md) | Identity layer (OIDC) - any OIDC-compliant provider; components verify JWTs against its published keys | Post-MVP |
 
 ## IRC Communication
 

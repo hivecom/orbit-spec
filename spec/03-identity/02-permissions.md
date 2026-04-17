@@ -9,7 +9,7 @@ Orbit uses IRC's built-in channel modes. Period.
 | IRC Mode | Role         | Capabilities                                                |
 |----------|--------------|-------------------------------------------------------------|
 | `+o`     | Operator     | Kick, ban, manage channel settings, manage messages         |
-| `+v`     | Voiced       | Speak in moderated channels, upload files                   |
+| `+v`     | Voiced       | Speak in moderated channels                                 |
 | `+b`     | Banned       | Cannot join or speak in the channel                         |
 | (none)   | Default user | Read and send messages in unmoderated channels              |
 

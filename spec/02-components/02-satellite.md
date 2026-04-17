@@ -177,24 +177,106 @@ where signaling metadata is limited to the `+orbit/sat-invite` tag visible in th
 
 ## Satellite Authentication
 
-Each Satellite node runs a token service (a small HTTP API). For the MVP:
+Each Satellite node runs a token service (a small HTTP API) that issues LiveKit-compatible JWTs scoped to a room and identity.
 
-- **Server-operated nodes**: The token service can be configured to verify identity via one of:
-  - A shared secret between Ground Control and the node (the client presents a proof obtained from
-    NickServ or SASL).
-  - A simple API key that the server operator distributes (e.g., returned by the node's metadata
-    endpoint or configured out-of-band).
-  - For the MVP, the simplest viable model: the node descriptor includes a public join key, and the
-    token service issues guest-level tokens to anyone who presents the key. Full identity
-    verification is deferred to post-MVP via [Transponder](../02-components/04-transponder.md).
+- **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](../02-components/04-transponder.md) role), the token service verifies the client's JWT against the provider's JWKS endpoint. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
 - **BYON nodes**: The node operator controls auth entirely. They issue tokens however they see fit.
-- **Password-protected sessions**: When a session is created with a password, the token service
-  stores the password hash for that room. Clients joining a protected session must include the
-  password in their `/session/join` request. The token service verifies it before issuing a JWT.
-  This is per-session, not per-node - the same node can host both open and protected sessions
-  simultaneously.
-- LiveKit's built-in JWT auth is used. The token service issues LiveKit-compatible JWTs scoped to a
-  room and identity.
+- **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-node — the same node can host both open and protected sessions simultaneously.
+- **No identity provider configured**: The token service issues tokens to anyone who can reach the node. All participants are unverified. Sessions can still be password-protected.
+
+## Session Permissions
+
+Session permissions are minimal and creator-centric. The user who creates a session is the **session admin**. The creator can delegate moderation to other verified users, but there are no role hierarchies beyond creator and moderator, and no persistent moderation state — sessions are ephemeral.
+
+**All session configuration is client-driven.** The creator's Orbit client sends the moderator list, allow-list, access mode, and lock state to the token service at session creation time (and can update them during the session). The Satellite node holds this state only for the duration of the session — when the session ends, everything is gone. No server, no node, no component persists session permissions. If the creator wants the same moderators and allow-list next time, their client provides them again. The Orbit client may store these preferences locally (e.g., "my usual moderators for #gaming"), but that is a client convenience — the server never stores it.
+
+| Role | How you get it | Capabilities |
+|------|---------------|--------------|
+| **Creator** | Called `/session/create` | Mute participants, kick participants (including moderators), set/change session password, lock/unlock session, manage allow-list, end session |
+| **Moderator** | Designated by the creator (see [Creator-Delegated Moderation](#creator-delegated-moderation)) | Mute participants, kick participants (but cannot kick the creator), lock/unlock session, admit knockers |
+| **Participant** | Joined via `/session/join` | Publish and subscribe to media, send ephemeral chat |
+
+The creator's LiveKit JWT is issued with the `roomAdmin` grant, which LiveKit enforces natively — mute and kick are built-in LiveKit operations, not custom Orbit logic.
+
+**If you don't like how a room is run, make your own.** There is no appeals process, no override mechanism, no server-operator intervention in session moderation. The creator has full authority for the duration of the session. When the session ends, all permissions disappear.
+
+### Creator-Delegated Moderation
+
+A session creator can optionally designate other verified users as **co-moderators** at session creation time or during the session. This is done by specifying a list of account identities (from the OIDC provider) that should receive `roomAdmin` grants when they join:
+
+```json
+POST /session/create
+{
+  "username": "zealsprince",
+  "channel": "#gaming",
+  "moderators": ["alice", "bob"]
+}
+```
+
+When `alice` or `bob` join with a verified identity token matching those accounts, the token service issues their LiveKit JWT with the `roomAdmin` grant. Unverified users cannot receive delegated moderation — identity must be provable.
+
+This is optional. If no `moderators` list is provided, only the creator has admin privileges.
+
+### Session Access Control
+
+The session creator controls who can join. Three access modes, configurable at creation time and adjustable during the session:
+
+| Mode | Behavior | Use case |
+|------|----------|----------|
+| **Open** | Anyone with the invite can join (default) | Casual channel voice, open hangouts |
+| **Password-protected** | Must present the correct password to join | Private meetings, restricted briefings |
+| **Allow-list** | Only specified verified identities can join | Trusted-group sessions, team calls |
+
+The creator can also **lock** a session at any time. A locked session rejects all new join requests regardless of access mode — participants already in the room stay, but nobody new gets in. The creator can unlock at any time.
+
+```json
+POST /session/create
+{
+  "username": "zealsprince",
+  "channel": "#gaming",
+  "access": "allow-list",
+  "allowed": ["alice", "bob", "charlie"]
+}
+```
+
+When `access` is `"allow-list"`, only verified users whose account identity matches an entry in `allowed` can join. Unverified users are always rejected in allow-list mode — identity must be provable.
+
+**Locking mid-session:**
+
+```json
+POST /session/lock
+{
+  "room_id": "gaming-strategy-a7f3e2",
+  "locked": true
+}
+```
+
+Only the session creator (or a co-moderator) can lock/unlock.
+
+#### Knocking
+
+When a session is locked or restricted (password-protected or allow-listed), a user who is rejected can **knock** — a request to be let in. The knock is delivered to the session creator (and co-moderators) as a LiveKit data channel message. The creator can admit or ignore the knock.
+
+```mermaid
+sequenceDiagram
+    participant K as Knocker
+    participant SAT as Satellite Node
+    participant C as Creator
+
+    K->>SAT: POST /session/knock {room_id, identity_token}
+    SAT-->>K: 202 Accepted (knock registered, no connection held)
+    SAT->>C: Data channel: knock from "dave" (verified) or "someone" (unverified)
+    C->>SAT: POST /session/admit {room_id, knock_id}
+    Note over SAT: Adds knocker's identity to allow-list
+
+    K->>SAT: POST /session/join {room_id, identity_token}
+    SAT-->>K: {token}
+    K-)SAT: Connect to SFU (WebRTC)
+```
+
+The knock is a plain HTTP request — the knocker does not hold a connection or consume any SFU resources while waiting. After knocking, the client polls or retries `/session/join` periodically. Once the creator admits the knocker (which adds their identity to the session's allow-list), the next join attempt succeeds and the knocker receives a token and connects to the SFU.
+
+Knocking is best-effort. If no one responds, the knock expires silently after a reasonable timeout (e.g., 60 seconds). There is no queue, no persistent connection, no waiting room — it's a doorbell.
 
 ## STUN/TURN
 
@@ -249,7 +331,7 @@ Use cases that do not require IRC infrastructure:
 - **BYON-only communities** where users host their own Satellite and share room links
 - **Bootstrapping new communities** before setting up a full Ground Control instance
 
-In standalone mode, all participants are unverified - there is no [Transponder](../02-components/04-transponder.md)
+In standalone mode, all participants are unverified - there is no OIDC identity provider ([Transponder](../02-components/04-transponder.md))
 or IRC identity to verify against. Ephemeral chat via LiveKit data channels is available; persistent
 chat is not (that requires Ground Control). This is an intentional, honest trade-off - the
 experience is reduced but functional.
@@ -290,5 +372,5 @@ recommended NAT traversal layer when operating at scale.
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - canonical SRV record definitions
   and client resolution algorithm
 - [Desktop Client](../04-clients/01-desktop.md) - `orbit://` and `satellite://` URI scheme registration
-- [Transponder](../02-components/04-transponder.md) - post-MVP identity verification for Satellite sessions
+- [Transponder](../02-components/04-transponder.md) - post-MVP OIDC-based identity verification for Satellite sessions
 - [Research: MoQ / Iroh](../07-research/01-moq-iroh.md) - post-MVP media transport research track
