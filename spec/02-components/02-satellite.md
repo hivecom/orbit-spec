@@ -181,14 +181,14 @@ Each Satellite node runs a token service (a small HTTP API) that issues LiveKit-
 
 - **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](../02-components/04-transponder.md) role), the token service verifies the client's JWT against the provider's JWKS endpoint. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
 - **BYON nodes**: The node operator controls auth entirely. They issue tokens however they see fit.
-- **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-node — the same node can host both open and protected sessions simultaneously.
+- **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-node - the same node can host both open and protected sessions simultaneously.
 - **No identity provider configured**: The token service issues tokens to anyone who can reach the node. All participants are unverified. Sessions can still be password-protected.
 
 ## Session Permissions
 
-Session permissions are minimal and creator-centric. The user who creates a session is the **session admin**. The creator can delegate moderation to other verified users, but there are no role hierarchies beyond creator and moderator, and no persistent moderation state — sessions are ephemeral.
+Session permissions are minimal and creator-centric. The user who creates a session is the **session admin**. The creator can delegate moderation to other verified users, but there are no role hierarchies beyond creator and moderator, and no persistent moderation state - sessions are ephemeral.
 
-**All session configuration is client-driven.** The creator's Orbit client sends the moderator list, allow-list, access mode, and lock state to the token service at session creation time (and can update them during the session). The Satellite node holds this state only for the duration of the session — when the session ends, everything is gone. No server, no node, no component persists session permissions. If the creator wants the same moderators and allow-list next time, their client provides them again. The Orbit client may store these preferences locally (e.g., "my usual moderators for #gaming"), but that is a client convenience — the server never stores it.
+**All session configuration is client-driven.** The creator's Orbit client sends the moderator list, allow-list, access mode, and lock state to the token service at session creation time (and can update them during the session). The Satellite node holds this state only for the duration of the session - when the session ends, everything is gone. No server, no node, no component persists session permissions. If the creator wants the same moderators and allow-list next time, their client provides them again. The Orbit client may store these preferences locally (e.g., "my usual moderators for #gaming"), but that is a client convenience - the server never stores it.
 
 | Role | How you get it | Capabilities |
 |------|---------------|--------------|
@@ -196,7 +196,7 @@ Session permissions are minimal and creator-centric. The user who creates a sess
 | **Moderator** | Designated by the creator (see [Creator-Delegated Moderation](#creator-delegated-moderation)) | Mute participants, kick participants (but cannot kick the creator), lock/unlock session, admit knockers |
 | **Participant** | Joined via `/session/join` | Publish and subscribe to media, send ephemeral chat |
 
-The creator's LiveKit JWT is issued with the `roomAdmin` grant, which LiveKit enforces natively — mute and kick are built-in LiveKit operations, not custom Orbit logic.
+The creator's LiveKit JWT is issued with the `roomAdmin` grant, which LiveKit enforces natively - mute and kick are built-in LiveKit operations, not custom Orbit logic.
 
 **If you don't like how a room is run, make your own.** There is no appeals process, no override mechanism, no server-operator intervention in session moderation. The creator has full authority for the duration of the session. When the session ends, all permissions disappear.
 
@@ -213,7 +213,7 @@ POST /session/create
 }
 ```
 
-When `alice` or `bob` join with a verified identity token matching those accounts, the token service issues their LiveKit JWT with the `roomAdmin` grant. Unverified users cannot receive delegated moderation — identity must be provable.
+When `alice` or `bob` join with a verified identity token matching those accounts, the token service issues their LiveKit JWT with the `roomAdmin` grant. Unverified users cannot receive delegated moderation - identity must be provable.
 
 This is optional. If no `moderators` list is provided, only the creator has admin privileges.
 
@@ -227,7 +227,7 @@ The session creator controls who can join. Three access modes, configurable at c
 | **Password-protected** | Must present the correct password to join | Private meetings, restricted briefings |
 | **Allow-list** | Only specified verified identities can join | Trusted-group sessions, team calls |
 
-The creator can also **lock** a session at any time. A locked session rejects all new join requests regardless of access mode — participants already in the room stay, but nobody new gets in. The creator can unlock at any time.
+The creator can also **lock** a session at any time. A locked session rejects all new join requests regardless of access mode - participants already in the room stay, but nobody new gets in. The creator can unlock at any time.
 
 ```json
 POST /session/create
@@ -239,7 +239,7 @@ POST /session/create
 }
 ```
 
-When `access` is `"allow-list"`, only verified users whose account identity matches an entry in `allowed` can join. Unverified users are always rejected in allow-list mode — identity must be provable.
+When `access` is `"allow-list"`, only verified users whose account identity matches an entry in `allowed` can join. Unverified users are always rejected in allow-list mode - identity must be provable.
 
 **Locking mid-session:**
 
@@ -255,7 +255,7 @@ Only the session creator (or a co-moderator) can lock/unlock.
 
 #### Knocking
 
-When a session is locked or restricted (password-protected or allow-listed), a user who is rejected can **knock** — a request to be let in. The knock is delivered to the session creator (and co-moderators) as a LiveKit data channel message. The creator can admit or ignore the knock.
+When a session is locked or restricted (password-protected or allow-listed), a user who is rejected can **knock** - a request to be let in. The knock is delivered to the session creator (and co-moderators) as a LiveKit data channel message. The creator can admit or ignore the knock.
 
 ```mermaid
 sequenceDiagram
@@ -274,9 +274,9 @@ sequenceDiagram
     K-)SAT: Connect to SFU (WebRTC)
 ```
 
-The knock is a plain HTTP request — the knocker does not hold a connection or consume any SFU resources while waiting. After knocking, the client polls or retries `/session/join` periodically. Once the creator admits the knocker (which adds their identity to the session's allow-list), the next join attempt succeeds and the knocker receives a token and connects to the SFU.
+The knock is a plain HTTP request - the knocker does not hold a connection or consume any SFU resources while waiting. After knocking, the client polls or retries `/session/join` periodically. Once the creator admits the knocker (which adds their identity to the session's allow-list), the next join attempt succeeds and the knocker receives a token and connects to the SFU.
 
-Knocking is best-effort. If no one responds, the knock expires silently after a reasonable timeout (e.g., 60 seconds). There is no queue, no persistent connection, no waiting room — it's a doorbell.
+Knocking is best-effort. If no one responds, the knock expires silently after a reasonable timeout (e.g., 60 seconds). There is no queue, no persistent connection, no waiting room - it's a doorbell.
 
 ## STUN/TURN
 
