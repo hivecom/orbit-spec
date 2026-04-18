@@ -48,8 +48,8 @@ Key constraints:
 
 ### Voice & Video
 
-- Satellite node selector: server nodes shown with verified badge, BYON nodes shown with community label.
-- Join/leave voice sessions - "Join voice" means picking a Satellite node and joining or creating a session in the current channel. See [Satellite](../02-components/02-satellite.md) for the session model.
+- Satellite selector: server Satellites shown with verified badge, BYON Satellites shown with community label.
+- Join/leave voice sessions - "Join voice" means picking a Satellite and joining or creating a session in the current channel. See [Satellite](../02-components/02-satellite.md) for the session model.
 - Visual participant list showing who is in the active session.
 - Mute/deafen controls.
 - Per-user volume adjustment.
@@ -82,10 +82,10 @@ Channel names omit the `#` prefix in the URI path. The client prepends `#` when 
 
 | URI                                                     | Behavior                                              |
 |---------------------------------------------------------|-------------------------------------------------------|
-| `satellite://sat1.example.com/room-id`                  | Connect directly to a Satellite node and join room    |
+| `satellite://sat1.example.com/room-id`                  | Connect directly to a Satellite and join room         |
 | `satellite://node-url/room-id?name=Display+Name`        | Connect with a display name hint                      |
 
-The `satellite://` scheme is registered separately from `orbit://` and is dedicated exclusively to direct Satellite node connections. The host is the Satellite node's hostname (e.g., `sat1.example.com`).
+The `satellite://` scheme is registered separately from `orbit://` and is dedicated exclusively to direct Satellite connections. The host is the Satellite's hostname (e.g., `sat1.example.com`).
 
 ### Invite Model
 

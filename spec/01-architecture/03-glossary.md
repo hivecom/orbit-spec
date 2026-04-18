@@ -12,9 +12,11 @@ Ground Control is the IRC layer of an Orbit deployment - an [Ergochat](https://e
 
 ### Satellite
 
-Satellite is the real-time media layer - independent nodes running a LiveKit SFU that handle voice, video, streaming, and ephemeral in-session chat. Satellite nodes are completely decoupled from Ground Control: they do not need to know about IRC, channels, or message history. A Satellite node consists of two co-located components: the LiveKit SFU (WebRTC media routing) and a lightweight token service (HTTP API) that issues LiveKit-compatible JWTs for session authentication.
+Satellite is the real-time media layer - a logical service that clients interact with via a single endpoint. It hosts multiple concurrent rooms for voice, video, streaming, and ephemeral in-session chat. Satellite is completely decoupled from Ground Control: it does not need to know about IRC, channels, or message history.
 
-Satellite nodes can be server-operated (discovered via DNS SRV) or user-operated (Bring Your Own Node). Satellite can also be used entirely without Ground Control via a `satellite://` direct link.
+Under the hood, a Satellite consists of one or more **nodes** (LiveKit SFU instances), each hosting multiple rooms. For the MVP, a Satellite is a single node. For scaled deployments, multiple nodes sit behind a gateway that routes requests transparently. Each node has two co-located components: the LiveKit SFU (WebRTC media routing) and a lightweight token service (HTTP API) that issues LiveKit-compatible JWTs for session authentication. In multi-node deployments, the token service role is absorbed by the gateway.
+
+Satellites can be server-operated (discovered via DNS SRV) or user-operated (Bring Your Own Satellite). Satellite can also be used entirely without Ground Control via a `satellite://` direct link.
 
 -> See [Satellite](../02-components/02-satellite.md) for the full specification.
 

@@ -4,7 +4,7 @@
 
 The MVP is single-server. All users in a community connect to one Orbit server instance. Users on server A cannot communicate with users on server B. Communities are isolated islands.
 
-A deeper problem sits underneath federation itself: **identity bridging**. IRC handles user authentication within its own protocol boundary (SASL, NickServ, `account-tag`), but those assertions are server-scoped. They don't travel outside the IRC connection. When a user connects to a Satellite node (a completely separate service), the Satellite has no native way to verify that this person is the same user who is authenticated on IRC. The MVP punts on this with a public join key model, but that model cannot support federation, cross-server trust, or even basic identity display in voice sessions.
+A deeper problem sits underneath federation itself: **identity bridging**. IRC handles user authentication within its own protocol boundary (SASL, NickServ, `account-tag`), but those assertions are server-scoped. They don't travel outside the IRC connection. When a user connects to a Satellite (a completely separate service), the Satellite has no native way to verify that this person is the same user who is authenticated on IRC. The MVP punts on this with a public join key model, but that model cannot support federation, cross-server trust, or even basic identity display in voice sessions.
 
 Critically, the solution must not require modifications to the IRC server. Orbit's design philosophy is explicit: **Orbit is a layer on top of existing IRC.** Any IRCv3 server that supports message tags can become Orbit-enabled. The identity bridging mechanism must be a standalone component that works alongside any compliant IRC server, not a patch to one specific implementation. And it must be **optional** - if the component isn't deployed, everything else still works. The experience degrades gracefully, not catastrophically.
 
@@ -13,7 +13,7 @@ Critically, the solution must not require modifications to the IRC server. Orbit
 Two layers:
 
 1. **IRC network linking** for text-layer federation (the control plane).
-2. **Signed identity assertions** for decoupling Satellite nodes from IRC while preserving verifiable identity.
+2. **Signed identity assertions** for decoupling Satellite from IRC while preserving verifiable identity.
 
 ### Layer 1: IRC Network Linking
 
@@ -23,7 +23,7 @@ However, basic IRC linking (multiple servers forming one logical network) is not
 
 - **Identity portability**: How does a user registered on server A prove their identity when interacting with server B? Federated identity is a deep problem (see: email, Matrix, ActivityPub - all have different trade-offs).
 - **Channel namespacing**: How do you distinguish `#general` on server A from `#general` on server B? IRC traditionally uses a flat namespace. Federation requires hierarchical or scoped naming.
-- **Media routing**: If users from two federated servers are in the same voice channel, which Satellite node handles the media? Do you relay between nodes? Who pays for the bandwidth?
+- **Media routing**: If users from two federated servers are in the same voice channel, which Satellite handles the media? Do you relay between Satellites? Who pays for the bandwidth?
 - **Moderation boundaries**: Who has moderation authority in a federated channel? Can server A's admins moderate users from server B? What about content policies that differ between servers?
 - **History synchronization**: Do federated servers share message history? How much? What happens when a server goes offline and comes back - does it backfill?
 
@@ -33,7 +33,7 @@ Start with the simplest model: IRC network linking where multiple Ground Control
 
 The identity bridging mechanism is **Transponder** - a role filled by any OIDC-compliant identity provider (e.g., Keycloak, Authentik, Zitadel). The provider issues signed JWTs via standard OpenID Connect flows. Each Orbit component that needs to verify identity - Ground Control, Satellite, Depot, or anything added in the future - independently verifies those JWTs against the provider's published keys (JWKS). No component contacts any other component to check identity; each one fetches the provider's JWKS endpoint and performs local cryptographic verification.
 
-This means identity assertions are **per-component and independent**. If an Orbit-compatible service points at an OIDC issuer URL, it can verify user identity - regardless of whether it's a Ground Control instance, a Satellite node, a Depot server, or a third-party service built on the Orbit ecosystem. There is no central broker, no token relay, and no coupling between components. The OIDC provider is the single source of truth; every consumer verifies against it directly.
+This means identity assertions are **per-component and independent**. If an Orbit-compatible service points at an OIDC issuer URL, it can verify user identity - regardless of whether it's a Ground Control instance, a Satellite, a Depot server, or a third-party service built on the Orbit ecosystem. There is no central broker, no token relay, and no coupling between components. The OIDC provider is the single source of truth; every consumer verifies against it directly.
 
 - **Ground Control** integrates via Ergochat's `auth-script` mechanism and a thin auth-script bridge that verifies JWTs against the provider's JWKS. The IRC server is not modified beyond standard configuration.
 - **Satellite** verifies identity tokens directly against the JWKS endpoint. No Orbit-specific code - standard JWT verification.
@@ -44,7 +44,7 @@ For the full specification - OIDC discovery, component integration flows, auth-s
 
 ## Verified and Unverified Users
 
-A Satellite node is a media server. There is no requirement that every participant be an IRC user. Legitimate use cases exist for non-IRC participants: someone shares a voice room link with a friend who doesn't have an account, a BYON node operator wants open access, a website embeds a voice widget for anonymous visitors.
+A Satellite is a media service. There is no requirement that every participant be an IRC user. Legitimate use cases exist for non-IRC participants: someone shares a voice room link with a friend who doesn't have an account, a BYON Satellite operator wants open access, a website embeds a voice widget for anonymous visitors.
 
 The Satellite token service can issue tokens in two modes:
 
@@ -100,9 +100,9 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 ## Risks
 
 - IRC server linking is historically fragile under netsplits (network partitions). When the link between servers drops and reconnects, state reconciliation (channel membership, modes, bans) can produce surprising results.
-- Media federation (routing voice/video across Satellite node boundaries) is a non-goal by design. Satellite nodes do **not** communicate with each other - there is no inter-node media routing or relay. A server operator advertises one or more Satellite nodes via DNS SRV records (e.g., regional "NA" and "EU" nodes). Users choose which node to join based on region or preference. All participants in a voice session connect to the same Satellite node. Sessions are designed for small pods: **64 concurrent participants maximum** per session. This is a communication tool for communities, not a broadcasting platform.
+- Media federation (routing voice/video across Satellite boundaries) is a non-goal by design. Satellites do **not** communicate with each other - there is no inter-Satellite media routing or relay. A server operator advertises one or more Satellites via DNS SRV records (e.g., regional "NA" and "EU" Satellites). Users choose which Satellite to join based on region or preference. All participants in a voice session connect to the same Satellite. Sessions are designed for small-to-medium groups, bounded by the node's hardware capacity. This is a communication tool for communities, not a broadcasting platform.
 
-  > **Resolved**: The session participant maximum is set at **64 concurrent participants per room**. This constraint is now established in [Satellite - Session Limits](../02-components/02-satellite.md#session-limits). Implications for capacity planning and operator guidance are covered there.
+  > **Resolved**: Session capacity is hardware-bounded with no hardcoded cap. See [Satellite - Session Limits](../02-components/02-satellite.md#session-limits) for capacity guidance.
 
 - The complexity-to-value ratio may be unfavorable. If most Orbit communities are self-contained (like most Discord servers are), federation may serve a small minority of users at significant engineering cost.
 - Key management adds operational burden. Server operators need to protect signing keys, rotate them, and handle key compromise. This is table-stakes for any cryptographic identity system, but it's still work.
@@ -123,7 +123,7 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 - Set up a two-server Ergo linked network. Test:
   - Text chat across the link (message delivery, ordering, latency)
-  - Media signaling relay (can a user on server A join a voice session hosted on server B's Satellite node, using server A's OIDC-issued JWT?)
+  - Media signaling relay (can a user on server A join a voice session hosted on server B's Satellite, using server A's OIDC-issued JWT?)
   - History synchronization (what happens to message history when the link drops and reconnects?)
   - Failure modes (what breaks during a netsplit? how does it recover?)
 

@@ -4,9 +4,9 @@
 
 Orbit is a decentralized, open-source communication platform built by Hivecom. It targets communities, gaming groups, and privacy-conscious users who want an alternative to Discord without surrendering control of their data or infrastructure. Orbit is designed from the ground up to be self-hostable, lightweight, and built on open standards rather than proprietary protocols.
 
-The system is split into multiple named layers. **Ground Control** is the IRC layer - an Ergochat instance running IRCv3, handling text messaging, presence, channel state, and signaling. **Satellite** is the real-time media layer - independent media nodes (SFU instances) that handle voice, video, and streaming. **Depot** is the storage layer - S3-compatible object storage (MinIO, S3, or equivalent) for file uploads and avatars. **Orbit** itself is the client application (desktop and web widget) that ties these layers together into a cohesive experience. A fourth named role, **Transponder**, refers to any OIDC-compliant identity provider that the operator deploys - both Ground Control and Satellite can consume it independently for identity verification. It is not part of the MVP but is designed as the first post-MVP addition.
+The system is split into multiple named layers. **Ground Control** is the IRC layer - an Ergochat instance running IRCv3, handling text messaging, presence, channel state, and signaling. **Satellite** is the real-time media layer - an independent media service (SFU-backed) that handles voice, video, and streaming. **Depot** is the storage layer - S3-compatible object storage (MinIO, S3, or equivalent) for file uploads and avatars. **Orbit** itself is the client application (desktop and web widget) that ties these layers together into a cohesive experience. A fourth named role, **Transponder**, refers to any OIDC-compliant identity provider that the operator deploys - both Ground Control and Satellite can consume it independently for identity verification. It is not part of the MVP but is designed as the first post-MVP addition.
 
-The goal of the MVP is to ship a working product - not a prototype, not a demo. That means text chat with history, group voice via Satellite nodes, an anonymous web widget for embedding on external sites, and a lightweight desktop client that doesn't eat 500 MB of RAM at idle. Every component must be functional enough for a small community to use daily.
+The goal of the MVP is to ship a working product - not a prototype, not a demo. That means text chat with history, group voice via Satellite, an anonymous web widget for embedding on external sites, and a lightweight desktop client that doesn't eat 500 MB of RAM at idle. Every component must be functional enough for a small community to use daily.
 
 This document is scoped strictly to the MVP. Advanced features - gaming overlays, Media over QUIC transport, Leptos/WASM rewrites, federation, mobile clients, and end-to-end encryption - are explicitly deferred to the research roadmap. If a feature isn't in this document, it's not in the MVP.
 
@@ -74,9 +74,9 @@ sequenceDiagram
 
 ## Satellite Session Flow
 
-[Satellite](../02-components/02-satellite.md) nodes are fully independent media servers. Ground Control carries only the invite signal - it never touches media. Clients negotiate directly with the Satellite node. Satellite can also be used **entirely without Ground Control** - a third-party app or website can connect directly via a `satellite://` link with no IRC involvement.
+[Satellite](../02-components/02-satellite.md) is a fully independent media service. Ground Control carries only the invite signal - it never touches media. Clients negotiate directly with the Satellite. Satellite can also be used **entirely without Ground Control** - a third-party app or website can connect directly via a `satellite://` link with no IRC involvement.
 
-**There is no orchestrator bot.** Satellite nodes are independent services. Clients talk to them directly. Ground Control handles text transport and signaling only.
+**There is no orchestrator bot.** Satellite is an independent service. Clients talk to them directly. Ground Control handles text transport and signaling only.
 
 ### Via Ground Control (IRC-signaled)
 
@@ -84,7 +84,7 @@ sequenceDiagram
 sequenceDiagram
     participant A as Orbit Client (A)
     participant GC as Ground Control
-    participant SAT as Satellite Node
+    participant SAT as Satellite
     participant B as Orbit Client (B)
 
     A->>SAT: POST /session/create {username, channel}
@@ -106,7 +106,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant A as Any Client (A)
-    participant SAT as Satellite Node
+    participant SAT as Satellite
     participant B as Any Client (B)
 
     note over A: Generates satellite://sat1.example.com/room-id<br/>and shares link out-of-band
@@ -128,4 +128,4 @@ In standalone mode, all participants are unverified. Ephemeral chat via LiveKit 
 
 ## Service Discovery
 
-When a client connects to a domain, it resolves DNS SRV records to find each service: `_satellite._tcp`, `_depot._tcp`, `_transponder._tcp`. Users can also configure their own Satellite node URL in settings (BYON - Bring Your Own Node). See [Domain Discovery](../05-infrastructure/01-domain-discovery.md) for the full resolution rules.
+When a client connects to a domain, it resolves DNS SRV records to find each service: `_satellite._tcp`, `_depot._tcp`, `_transponder._tcp`. Users can also configure their own Satellite URL in settings (BYON - Bring Your Own Satellite). See [Domain Discovery](../05-infrastructure/01-domain-discovery.md) for the full resolution rules.

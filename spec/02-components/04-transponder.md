@@ -10,7 +10,7 @@ Transponder is **optional**. Deployments without an identity provider use Ergoch
 
 The MVP authenticates users within Ground Control's own boundary: SASL to Ergochat, NickServ for account management, `account-tag` for identity assertion on the IRC wire. This works for text chat, but those assertions are server-scoped - they do not travel outside the IRC connection.
 
-When a user connects to a Satellite node (a completely separate service), the Satellite has no way to verify that this person is the same authenticated user from Ground Control. The [Satellite authentication model](../02-components/02-satellite.md#satellite-authentication) in the MVP uses a public join key - anyone who presents the key gets access. That model cannot support verified identity display in voice sessions, cross-server trust, or federation.
+When a user connects to a Satellite (a completely separate service), the Satellite has no way to verify that this person is the same authenticated user from Ground Control. The [Satellite authentication model](../02-components/02-satellite.md#satellite-authentication) in the MVP uses a public join key - anyone who presents the key gets access. That model cannot support verified identity display in voice sessions, cross-server trust, or federation.
 
 The deeper problem is architectural: in the MVP, identity is embedded inside Ground Control. There is no shared identity layer that multiple components can consume. An external OIDC provider solves this by extracting identity into a standalone authority that all components plug into equally.
 
@@ -164,7 +164,7 @@ Satellite integration requires no Orbit-specific code. The Satellite token servi
 3. If valid, issues a LiveKit JWT with `verified: true` and the authenticated account name.
 4. If invalid or absent, falls back to the unverified flow (join key, password, or open access).
 
-Token verification is a local cryptographic operation. The Satellite node does not contact the identity provider at session-join time - it only needs the public keys, fetched once and cached. This keeps the identity provider out of the media hot path.
+Token verification is a local cryptographic operation. The Satellite does not contact the identity provider at session-join time - it only needs the public keys, fetched once and cached. This keeps the identity provider out of the media hot path.
 
 ### Depot
 

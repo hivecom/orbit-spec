@@ -45,7 +45,7 @@ A malicious client (or IRC script) can send `+orbit/msg-edit` or `+orbit/msg-del
 
 ### Satellite Invite Spoofing
 
-A malicious user can post a `+orbit/sat-invite` tag pointing to a node they control, potentially to intercept media streams. Orbit clients mitigate this by displaying the sender's verified identity (`account-tag`) alongside the invite and by visually distinguishing server-operated nodes (verified badge via DNS SRV) from community/BYON nodes (no badge). Users are prompted with a confirmation dialog before connecting to any BYON node (see [Satellite - Node Trust Model](../../02-components/02-satellite.md#node-trust-model)). A spoofed invite from an unauthenticated sender is visually flagged as unverified.
+A malicious user can post a `+orbit/sat-invite` tag pointing to a Satellite they control, potentially to intercept media streams. Orbit clients mitigate this by displaying the sender's verified identity (`account-tag`) alongside the invite and by visually distinguishing server-operated Satellites (verified badge via DNS SRV) from community/BYON Satellites (no badge). Users are prompted with a confirmation dialog before connecting to any BYON Satellite (see [Satellite - Trust Model](../../02-components/02-satellite.md#trust-model)). A spoofed invite from an unauthenticated sender is visually flagged as unverified.
 
 ### Tag Flooding
 

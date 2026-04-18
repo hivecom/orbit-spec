@@ -12,12 +12,12 @@ These are genuine unresolved decisions that need resolution before or during MVP
 
 5. **Message history retention** - What's the default retention period? Should it be configurable per-channel? If a server operator sets unlimited retention, what are the storage implications for Ergochat's internal database?
 
-6. **Satellite metadata endpoint** - What should the Satellite node `/info` metadata endpoint return? The spec proposes name, region, capacity, and version. Should it also include supported codecs, maximum participants, or TURN server hints? How much metadata is useful for client-side node selection vs. unnecessary complexity?
+6. **Satellite metadata endpoint** - What should the Satellite `/info` metadata endpoint return? The spec proposes name, region, capacity, and version. Should it also include supported codecs, maximum participants, or TURN server hints? How much metadata is useful for client-side Satellite selection vs. unnecessary complexity?
 
-7. **Satellite node trust** - When a user posts a BYON invite, should Orbit prompt other users with a confirmation dialog ("This voice session is hosted on a community node at `sat.user.com` - connect?")? Or is that too much friction? The spec currently says yes (SSH host key model), but this needs UX validation.
+7. **Satellite trust** - When a user posts a BYON invite, should Orbit prompt other users with a confirmation dialog ("This voice session is hosted on a community Satellite at `sat.user.com` - connect?")? Or is that too much friction? The spec currently says yes (SSH host key model), but this needs UX validation.
 
-8. **Satellite token bootstrapping** - For server-operated nodes, what's the identity verification flow between the Orbit client and the token service? A public join key in the node descriptor is simple but means anyone who can read the channel topic can get a token. Is that acceptable for the MVP? (It probably is - the same trust model as a public TeamSpeak or Mumble server.) See [../02-components/02-satellite.md](../02-components/02-satellite.md) for the Satellite token flow.
+8. **Satellite token bootstrapping** - For server-operated Satellites, what's the identity verification flow between the Orbit client and the token service? A public join key in the Satellite descriptor is simple but means anyone who can read the channel topic can get a token. Is that acceptable for the MVP? (It probably is - the same trust model as a public TeamSpeak or Mumble server.) See [../02-components/02-satellite.md](../02-components/02-satellite.md) for the Satellite token flow.
 
-9. **Multi-node sessions** - Can a voice session span multiple Satellite nodes? Probably not for the MVP - one session, one node. But what happens if a node goes down during an active session? Should the client attempt to migrate to another node?
+9. **Multi-node sessions** - Can a voice session span multiple nodes? Probably not for the MVP - one session, one node. But what happens if a node goes down during an active session? Should the client attempt to migrate to another node?
 
 *This document is updated as questions are resolved. Changes are tracked in the repository commit history.*

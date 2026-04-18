@@ -25,7 +25,7 @@ DNS discovery applies to desktop clients only. Web clients skip this section ent
 
 | Record | Type | Purpose | Add when |
 |---|---|---|---|
-| `_satellite._tcp.example.com` | SRV | Satellite node discovery | If running Satellite |
+| `_satellite._tcp.example.com` | SRV | Satellite discovery | If running Satellite |
 | `_depot._tcp.example.com` | SRV | Depot (file storage) discovery | If running Depot |
 | `_transponder._tcp.example.com` | SRV | Identity provider (OIDC) discovery | Post-MVP |
 
@@ -36,7 +36,7 @@ DNS discovery applies to desktop clients only. Web clients skip this section ent
 | Record | Purpose | Add when |
 |---|---|---|
 | `irc.example.com` | Ground Control (IRC + WebSocket) endpoint | If running IRC |
-| `sat.example.com` | Satellite node endpoint | If running Satellite |
+| `sat.example.com` | Satellite endpoint | If running Satellite |
 | `depot.example.com` | Depot (object storage) endpoint | If running Depot |
 | `turn.example.com` | TURN server | If running TURN |
 
@@ -79,10 +79,10 @@ This mechanism is **optional but RECOMMENDED** for any community that wants web 
 | `irc.host` | string | Ground Control hostname |
 | `irc.port` | number | IRC over TLS port (typically 6697) |
 | `irc.ws_port` | number | WebSocket port for web clients (typically 6698) |
-| `satellite` | array | One object per Satellite node, in priority order |
-| `satellite[].host` | string | Satellite node hostname |
-| `satellite[].port` | number | Satellite node port |
-| `satellite[].name` | string | Human-readable node label (e.g., region name) |
+| `satellite` | array | One object per Satellite, in priority order |
+| `satellite[].host` | string | Satellite hostname |
+| `satellite[].port` | number | Satellite port |
+| `satellite[].name` | string | Human-readable label (e.g., region name) |
 | `depot.host` | string | Depot hostname |
 | `depot.port` | number | Depot port |
 
@@ -126,7 +126,7 @@ See [../02-components/01-ground-control/01-overview.md](../02-components/01-grou
 2. For each entry, query `GET /info` to retrieve node metadata and verify availability.
 3. If no well-known file is available, prompt the user for manual entry.
 
-**If no Satellite nodes are discovered by any applicable mechanism:** Voice features degrade gracefully - P2P calls still work (no Satellite node is required for P2P), and BYON nodes remain available, but group voice via server nodes is unavailable. The client hides server-node selection UI rather than showing an error.
+**If no Satellites are discovered by any applicable mechanism:** Voice features degrade gracefully - P2P calls still work (no Satellite is required for P2P), and BYON Satellites remain available, but group voice via server-operated Satellites is unavailable. The client hides Satellite selection UI rather than showing an error.
 
 **Multiple nodes** may be advertised via multiple SRV records (desktop) or multiple entries in the `satellite` array (all clients). Priority order follows SRV priority/weight for DNS, and array index for well-known discovery.
 

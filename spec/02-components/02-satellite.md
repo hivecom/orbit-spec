@@ -1,96 +1,100 @@
 # Satellite
 
-Satellite is the real-time media component of an Orbit deployment. It handles voice, video, screen
-sharing, and ephemeral in-session chat. Satellite nodes are completely decoupled from Ground Control
-- they have no dependency on IRC, channels, or message history. A Satellite node can be used
-standalone, without any Ground Control instance.
+Satellite is the real-time media component of an Orbit deployment. It handles voice, video, screen sharing, and ephemeral in-session chat. Satellite is completely decoupled from Ground Control - it has no dependency on IRC, channels, or message history. A Satellite can be used standalone, without any Ground Control instance.
 
-Satellite is an optional component. An Orbit deployment without Satellite is a fully functional
-IRC-based text chat server. When Satellite is present, it extends the experience with real-time
-media capabilities.
+Satellite is an optional component. An Orbit deployment without Satellite is a fully functional IRC-based text chat server. When Satellite is present, it extends the experience with real-time media capabilities.
 
-## What Is a Satellite Node
+## Architecture
 
-A Satellite node is an independent real-time service that handles voice, video, streaming, and
-ephemeral chat. Under the hood, it is an SFU (LiveKit for the MVP) with a lightweight token service
-for authentication. Satellite nodes are completely decoupled from Ground Control - they don't need
-to know about IRC, channels, or message history. They handle real-time sessions only.
+A Satellite deployment has two layers:
 
-Satellite sessions include built-in ephemeral text chat via LiveKit's data channels. This chat is
-**not persisted** - when the session ends, the messages are gone. It exists for in-session
-coordination: quick callouts during a voice call, links shared during a screen share, reactions
-during a stream. Persistent, searchable, historical chat lives in Ground Control (IRC). Ephemeral,
-throwaway chat lives in Satellite. The two are architecturally distinct and intentionally so.
+- **Satellite** - the logical service that clients interact with. Discovered via DNS SRV, queried via `/info`, addressed in `+orbit/sat-invite` tags. From the client's perspective, a Satellite is a single endpoint that hosts rooms.
+- **Nodes** - individual LiveKit SFU instances within a Satellite. Each node hosts multiple concurrent rooms sharing the same resource pool. Nodes are an infrastructure detail - clients never address nodes directly.
 
-A Satellite node consists of two components:
+For the MVP, a Satellite is a single node: one LiveKit process and one token service, deployed as a Docker container pair. This is analogous to a TeamSpeak or Mumble server - one process, many rooms.
 
-- **SFU (LiveKit)**: Handles WebRTC media - audio/video forwarding, bandwidth adaptation,
-  STUN/TURN integration - and data channels for ephemeral session chat.
-- **Token service**: A small HTTP API co-located with the SFU that issues LiveKit-compatible JWTs
-  for session authentication.
+For scaled deployments, a Satellite is multiple nodes behind a **gateway** - a thin routing layer that sits in front of the node pool. The gateway exposes the same API surface (`/info`, `/session/create`, `/session/join`) and routes requests to the appropriate node. Clients don't know or care how many nodes are behind the gateway.
 
-## Node Discovery
+A node consists of two co-located components:
 
-DNS is the primary discovery mechanism for Satellite nodes. This is an intentional architectural
+- **SFU (LiveKit)**: Handles WebRTC media - audio/video forwarding, bandwidth adaptation, STUN/TURN integration - and data channels for ephemeral session chat.
+- **Token service**: A small HTTP API that issues LiveKit-compatible JWTs for session authentication. In a single-node deployment, this is the entry point. In a multi-node deployment, this role is absorbed by the gateway.
+
+Satellite sessions include built-in ephemeral text chat via LiveKit's data channels. This chat is **not persisted** - when the session ends, the messages are gone. It exists for in-session coordination: quick callouts during a voice call, links shared during a screen share, reactions during a stream. Persistent, searchable, historical chat lives in Ground Control (IRC). Ephemeral, throwaway chat lives in Satellite. The two are architecturally distinct and intentionally so.
+
+## Discovery
+
+DNS is the primary discovery mechanism for Satellites. This is an intentional architectural
 choice: DNS works independently of any running service, requires no modification to the IRC server,
-and allows domains without Ground Control to still advertise Satellite nodes.
+and allows domains without Ground Control to still advertise Satellites.
 
 **DNS SRV discovery.** The client resolves `_satellite._tcp.example.com` SRV records. Each record
-points to a Satellite node's host and port. The client then queries each discovered node's metadata
+points to a Satellite's host and port. The client then queries the Satellite's metadata
 endpoint (`GET /info`) to retrieve:
 
 ```json
 {
   "name": "US East",
   "region": "us-east",
-  "capacity": { "current": 12, "max": 64 },
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "participants": 8,
+  "rooms": [
+    {
+      "room_id": "gaming-strategy-a7f3e2",
+      "participants": 5,
+      "locked": false,
+      "protected": false,
+      "created_at": "2025-01-15T20:30:00Z",
+      "initiator": "alice"
+    },
+    {
+      "room_id": "dev-standup-b8c1d4",
+      "participants": 3,
+      "locked": true,
+      "protected": true,
+      "created_at": "2025-01-15T21:00:00Z",
+      "initiator": "bob"
+    }
+  ]
 }
 ```
 
 SRV record priority and weight are respected for load balancing and failover. Multiple SRV records
-can advertise multiple nodes under the same domain.
+can advertise multiple Satellites under the same domain.
 
-Nodes discovered via DNS are shown as "Server Nodes" with a verified badge - the domain's DNS
-records are the operator's assertion that these nodes are official.
+Satellites discovered via DNS are shown with a verified badge - the domain's DNS
+records are the operator's assertion that these Satellites are official.
 
 **Fallback: no DNS records.** If no `_satellite._tcp` SRV records exist for the domain, no
-server-operated Satellite nodes are available. Voice features degrade gracefully - P2P calls still
-work (they don't need a Satellite node), and BYON nodes can still be used, but group voice via
-server nodes is unavailable.
+server-operated Satellites are available. Voice features degrade gracefully - P2P calls still
+work (they don't need a Satellite), and BYON Satellites can still be used, but group voice via
+server Satellites is unavailable.
 
 **Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit.satellites`) with
-node descriptors in the topic. DNS is preferred because: (1) it doesn't require creating or
-configuring anything on the IRC server, (2) it works for domains that run Satellite nodes without
+descriptors in the topic. DNS is preferred because: (1) it doesn't require creating or
+configuring anything on the IRC server, (2) it works for domains that run Satellites without
 IRC, and (3) DNS changes propagate without touching the IRC server, keeping all Orbit service
 advertisement in one authoritative place.
 
 For the canonical DNS SRV record definitions and the full client resolution algorithm, see
 [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
 
-## Bring Your Own Node (BYON)
+## Bring Your Own Satellite (BYON)
 
-Users can add their own Satellite node URL in Orbit's settings. When starting a session, they choose
-their own node instead of a server-advertised one. The `+orbit/sat-invite` posted to the channel
-includes the node URL, so other participants connect to the user's node.
+Users can add their own Satellite URL in Orbit's settings. When starting a session, they choose their own Satellite instead of a server-advertised one. The `+orbit/sat-invite` posted to the channel includes the Satellite URL, so other participants connect to the user's Satellite.
 
-- BYON nodes appear in the UI as "Community Node" or "User Node" (no verified badge).
-- The server operator cannot block BYON usage - Orbit clients can always choose their own node.
-  The IRC server just passes the tags.
-- This enables voice in communities where the server operator hasn't set up any Satellite
-  infrastructure. Two users on any IRCv3 server with message tags can use voice if one of them
-  hosts a Satellite node.
+- BYON Satellites appear in the UI as "Community" (no verified badge).
+- The server operator cannot block BYON usage - Orbit clients can always choose their own Satellite. The IRC server just passes the tags.
+- This enables voice in communities where the server operator hasn't set up any Satellite infrastructure. Two users on any IRCv3 server with message tags can use voice if one of them hosts a Satellite.
 
-## Node Trust Model
+## Trust Model
 
-| Node Type           | Discovery                      | UI Treatment                         | Trust Level      |
+| Type                | Discovery                      | UI Treatment                         | Trust Level      |
 |---------------------|--------------------------------|--------------------------------------|------------------|
-| Server Node         | DNS SRV (`_satellite._tcp`)    | Verified badge, shown by default     | Operator-trusted |
-| User/Community Node | BYON, posted via invite        | "Community" label, no badge          | User-discretion  |
+| Server Satellite    | DNS SRV (`_satellite._tcp`)    | Verified badge, shown by default     | Operator-trusted |
+| Community Satellite | BYON, posted via invite        | "Community" label, no badge          | User-discretion  |
 
-Orbit clients display a clear indicator when joining a non-server node. The user must confirm before
-connecting to an unknown node for the first time - similar to SSH host key confirmation. Once a user
-has accepted a BYON node, the client remembers that decision.
+Orbit clients display a clear indicator when joining a community Satellite. The user must confirm before connecting to an unknown Satellite for the first time - similar to SSH host key confirmation. Once a user has accepted a BYON Satellite, the client remembers that decision.
 
 ## Voice Session Flow - Group
 
@@ -98,10 +102,10 @@ has accepted a BYON node, the client remembers that decision.
 sequenceDiagram
     participant A as User A
     participant GC as Ground Control (IRC)
-    participant SAT as Satellite Node
+    participant SAT as Satellite
     participant B as User B
 
-    note over A: Pick Satellite node<br/>(from discovery or BYON settings)
+    note over A: Pick Satellite<br/>(from discovery or BYON settings)
 
     A->>SAT: POST /session/create (username, channel)
     SAT-->>A: {token, room_id}
@@ -130,7 +134,7 @@ The `+orbit/sat-invite` payload is a base64-encoded JSON object:
 ```
 
 When `"protected": true`, the session is password-protected. The Orbit client displays a password
-prompt before attempting to join. The password is sent to the Satellite node's token service in the
+prompt before attempting to join. The password is sent to the Satellite's token service in the
 `/session/join` request - if it matches, a token is issued; if not, the join is rejected. The
 password is never sent over IRC.
 
@@ -141,17 +145,17 @@ external chat, etc.).
 
 ### Error Handling and Edge Cases
 
-- **Unreachable node**: If the Satellite node in a `+orbit/sat-invite` is unreachable, the client
-  displays an error ("Voice node unavailable") and does not join. The invite remains visible in the
-  channel with a "node offline" indicator.
+- **Unreachable Satellite**: If the Satellite in a `+orbit/sat-invite` is unreachable, the client
+  displays an error ("Satellite unavailable") and does not join. The invite remains visible in the
+  channel with an "offline" indicator.
 - **Token rejection**: If the token service rejects a join request (invalid key, session full,
   password wrong), the client shows the specific error reason returned by the token service.
-- **Node crash during session**: If a Satellite node goes down during an active session, all
+- **Satellite crash during session**: If a Satellite goes down during an active session, all
   participants are disconnected. The client shows "Voice session ended unexpectedly." There is no
-  automatic migration to another node in the MVP - the session initiator (or any participant) must
-  start a new session on a different node and post a new `+orbit/sat-invite`.
+  automatic migration in the MVP - the session initiator (or any participant) must
+  start a new session and post a new `+orbit/sat-invite`.
 - **Competing invites**: If multiple users post `+orbit/sat-invite` for the same channel
-  simultaneously (different nodes or different rooms), the Orbit client displays all active sessions.
+  simultaneously (different Satellites or different rooms), the Orbit client displays all active sessions.
   Users choose which to join. There is no "one active session per channel" constraint - multiple
   concurrent voice sessions in the same channel are valid (e.g., different sub-groups).
 
@@ -205,7 +209,7 @@ If direct connectivity fails (both peers behind symmetric NATs), the connection 
 
 ### Privacy Note
 
-P2P handshake signaling is relayed through Ground Control (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content. Post-handshake, the operator sees nothing - all media and further signaling flows directly between peers. Users who do not trust the server operator with connection metadata should use a Satellite node for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
+P2P handshake signaling is relayed through Ground Control (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content. Post-handshake, the operator sees nothing - all media and further signaling flows directly between peers. Users who do not trust the server operator with connection metadata should use a Satellite for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
 
 ### No SDP over IRC
 
@@ -213,18 +217,18 @@ Earlier iterations of this design sent full SDP offers over IRC tags. SDPs are l
 
 ## Satellite Authentication
 
-Each Satellite node runs a token service (a small HTTP API) that issues LiveKit-compatible JWTs scoped to a room and identity.
+Each Satellite runs a token service (or gateway, in multi-node deployments) - a small HTTP API that issues LiveKit-compatible JWTs scoped to a room and identity.
 
-- **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](../02-components/04-transponder.md) role), the token service verifies the client's JWT against the provider's JWKS endpoint. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
-- **BYON nodes**: The node operator controls auth entirely. They issue tokens however they see fit.
-- **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-node - the same node can host both open and protected sessions simultaneously.
-- **No identity provider configured**: The token service issues tokens to anyone who can reach the node. All participants are unverified. Sessions can still be password-protected.
+- **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](04-transponder.md) role), the token service verifies the client's JWT against the provider's JWKS endpoint. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
+- **BYON Satellites**: The operator controls auth entirely. They issue tokens however they see fit.
+- **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-Satellite - the same Satellite can host both open and protected sessions simultaneously.
+- **No identity provider configured**: The token service issues tokens to anyone who can reach the Satellite. All participants are unverified. Sessions can still be password-protected.
 
 ## Session Permissions
 
 Session permissions are minimal and creator-centric. The user who creates a session is the **session admin**. The creator can delegate moderation to other verified users, but there are no role hierarchies beyond creator and moderator, and no persistent moderation state - sessions are ephemeral.
 
-**All session configuration is client-driven.** The creator's Orbit client sends the moderator list, allow-list, access mode, and lock state to the token service at session creation time (and can update them during the session). The Satellite node holds this state only for the duration of the session - when the session ends, everything is gone. No server, no node, no component persists session permissions. If the creator wants the same moderators and allow-list next time, their client provides them again. The Orbit client may store these preferences locally (e.g., "my usual moderators for #gaming"), but that is a client convenience - the server never stores it.
+**All session configuration is client-driven.** The creator's Orbit client sends the moderator list, allow-list, access mode, and lock state to the token service at session creation time (and can update them during the session). The Satellite holds this state only for the duration of the session - when the session ends, everything is gone. No server, no component persists session permissions. If the creator wants the same moderators and allow-list next time, their client provides them again. The Orbit client may store these preferences locally (e.g., "my usual moderators for #gaming"), but that is a client convenience - the server never stores it.
 
 | Role | How you get it | Capabilities |
 |------|---------------|--------------|
@@ -296,7 +300,7 @@ When a session is locked or restricted (password-protected or allow-listed), a u
 ```mermaid
 sequenceDiagram
     participant K as Knocker
-    participant SAT as Satellite Node
+    participant SAT as Satellite
     participant C as Creator
 
     K->>SAT: POST /session/knock {room_id, identity_token}
@@ -341,8 +345,8 @@ tracked in [Research: MoQ / Iroh](../07-research/01-moq-iroh.md).
 
 ## Standalone Satellite Usage
 
-Satellite nodes are fully independent services. They can be used without Ground Control (IRC)
-entirely. Two users can connect to a Satellite node for voice, video, and ephemeral chat without any
+Satellites are fully independent services. They can be used without Ground Control (IRC)
+entirely. Two users can connect to a Satellite for voice, video, and ephemeral chat without any
 IRC server involvement.
 
 The bootstrapping mechanism is a direct link:
@@ -356,43 +360,43 @@ registered separately from `orbit://`. URI scheme registration details (platform
 entries, `.desktop` files, `Info.plist` entries) are covered in
 [Desktop Client - Custom URI Scheme](../04-clients/01-desktop.md#custom-uri-scheme).
 
-User A creates a session on a Satellite node, generates a shareable link, and sends it out-of-band
+User A creates a session on a Satellite, generates a shareable link, and sends it out-of-band
 (text message, email, another chat platform). User B opens the link, the Orbit client connects
 directly to the Satellite's token service, obtains a JWT, and joins the session.
 
 Use cases that do not require IRC infrastructure:
 
 - **Quick voice calls** between friends who share a Satellite link
-- **Embedded voice** on websites using only a Satellite node (no IRC backend)
+- **Embedded voice** on websites using only a Satellite (no IRC backend)
 - **BYON-only communities** where users host their own Satellite and share room links
 - **Bootstrapping new communities** before setting up a full Ground Control instance
 
-In standalone mode, all participants are unverified - there is no OIDC identity provider ([Transponder](../02-components/04-transponder.md))
+In standalone mode, all participants are unverified - there is no OIDC identity provider ([Transponder](04-transponder.md))
 or IRC identity to verify against. Ephemeral chat via LiveKit data channels is available; persistent
 chat is not (that requires Ground Control). This is an intentional, honest trade-off - the
 experience is reduced but functional.
 
 ### Standalone Authentication
 
-When a user opens a `satellite://` link, the Satellite node operates without Ground Control - but identity verification is still possible if the node's domain has a discoverable identity provider.
+When a user opens a `satellite://` link, the Satellite operates without Ground Control - but identity verification is still possible if the Satellite's domain has a discoverable identity provider.
 
 The client-side flow:
 
 1. User opens `satellite://sat.example.com/room-id`.
 2. The client extracts the domain (`example.com`) and attempts service discovery - checking `/.well-known/orbit/services.json` or `_transponder._tcp.example.com` for an identity provider endpoint.
 3. If a Transponder is discovered, the client offers the user the option to authenticate via the OIDC provider's Authorization Code flow.
-4. If the user authenticates, the client presents the resulting JWT to the Satellite token service alongside the `/session/join` request. The token service verifies the JWT against the provider's JWKS and issues a LiveKit token with `verified: true` and the authenticated account name.
+4. If the user authenticates, the client presents the resulting JWT to the Satellite's token service alongside the `/session/join` request. The token service verifies the JWT against the provider's JWKS and issues a LiveKit token with `verified: true` and the authenticated account name.
 5. If the user declines authentication or no Transponder is discovered, the client falls back to the unverified join flow (display name only, no identity badge).
 
-This means standalone Satellite sessions can have a mix of verified and unverified participants - the same model as IRC-signaled sessions. The Satellite node itself doesn't need to know about Ground Control; it only needs the OIDC provider's JWKS endpoint to verify tokens, which it fetches and caches independently.
+This means standalone Satellite sessions can have a mix of verified and unverified participants - the same model as IRC-signaled sessions. The Satellite itself doesn't need to know about Ground Control; it only needs the OIDC provider's JWKS endpoint to verify tokens, which it fetches and caches independently.
 
-The identity provider used for standalone authentication is always the one associated with the **Satellite node's domain**, not the user's home domain. Cross-domain identity verification is a federation concern and is out of scope (see [Research: Federation](../07-research/05-federation.md)).
+The identity provider used for standalone authentication is always the one associated with the **Satellite's domain**, not the user's home domain. Cross-domain identity verification is a federation concern and is out of scope (see [Research: Federation](../07-research/05-federation.md)).
 
 ## Session Limits
 
-Satellite does not impose a hardcoded participant cap. Session capacity is bounded by the node's hardware resources - primarily network bandwidth, then CPU - and by the operator's configuration.
+Satellite does not impose a hardcoded participant cap. Session capacity is bounded by the underlying node hardware - primarily network bandwidth, then CPU.
 
-LiveKit (the MVP SFU) has no built-in participant limit per room. A single LiveKit instance hosts multiple concurrent rooms, each drawing from the same resource pool. The practical ceiling for a single node depends on the session profile:
+LiveKit (the MVP SFU) has no built-in participant limit per room. A single node hosts multiple concurrent rooms, each drawing from the same resource pool. The practical ceiling for a single node depends on the session profile:
 
 | Session profile | Approximate capacity (single node, 1 Gbps link) |
 |---|---|
@@ -400,38 +404,33 @@ LiveKit (the MVP SFU) has no built-in participant limit per room. A single LiveK
 | Mixed audio + video (360p, ~500 kbps/participant) | ~50 participants |
 | Mixed audio + video (720p, ~1.5 Mbps/participant) | ~20–30 participants |
 
-These are rough estimates based on aggregate bandwidth. Actual capacity depends on the server's NIC throughput, CPU (for SRTP encryption), and LiveKit's simulcast configuration. Audio-only sessions are dramatically cheaper than video sessions.
+These are rough estimates based on aggregate bandwidth. Actual capacity depends on the node's NIC throughput, CPU (for SRTP encryption), and LiveKit's simulcast configuration. Audio-only sessions are dramatically cheaper than video sessions.
 
-The token service exposes a configurable `max_participants` setting, reflected in the node's `/info` metadata endpoint as `capacity.max` (see [Node Discovery](#node-discovery)). The token service MUST reject `/session/join` requests for rooms that have reached the configured limit and return an appropriate error. The Orbit client displays a "Session full" message in this case.
+When a node cannot accept more participants (resource exhaustion or operator-configured limit), the token service rejects `/session/join` requests with an appropriate error. In a multi-node deployment, the gateway routes new sessions to nodes with available capacity rather than rejecting outright.
 
-**Recommended defaults:** Operators should set `max_participants` based on their expected use case. A conservative starting point for mixed audio/video on modest hardware (1 vCPU, 1 Gbps) is 50 participants per room. Audio-only deployments can safely set higher limits. The `/info` endpoint allows clients to display remaining capacity before users attempt to join.
-
-Communities that need to address audiences larger than a single node can support should use a one-to-many streaming setup rather than a voice session - Satellite is a communication tool, not a broadcasting platform.
+Communities that need to address audiences larger than a single Satellite can support should use a one-to-many streaming setup rather than a voice session - Satellite is a communication tool, not a broadcasting platform.
 
 ## Scaling
 
-A single Satellite node (LiveKit + token service) scales vertically to a meaningful ceiling -
-LiveKit is designed to handle hundreds of concurrent participants per instance on modest hardware.
-For the MVP, a single node per region is sufficient.
+**MVP: single node.** A Satellite is one LiveKit instance and one token service, deployed as Docker containers. It hosts multiple concurrent rooms up to its hardware ceiling. The DNS SRV record points to it. This is sufficient for small to mid-sized communities.
 
-**For the MVP:** A single node per deployment. Session capacity is bounded by the operator-configured `max_participants` limit per room (see [Session Limits](#session-limits)); a node can host multiple concurrent rooms up to its hardware ceiling. The DNS SRV record points to it. Operators who need more capacity run a second node under a second SRV record - clients see two nodes and users pick one
-when starting a session. Room affinity is enforced naturally because the `+orbit/sat-invite` tag
-embeds the specific node URL.
+**Scaling up: multi-node with gateway.** When a single node isn't enough, the operator deploys additional LiveKit instances behind a gateway. The gateway is a thin routing layer that:
 
-**Post-MVP horizontal scaling** requires solving session routing - when a client hits the token
-service to create or join a room, it needs to land on the node actually hosting that room. The
-approaches in order of complexity are: DNS round-robin (simple, no room affinity), sticky sessions
-via DNS weight (predictable primary, still no room affinity), token service as router (room affinity
-guaranteed, coordination point), and a full LiveKit self-hosted cluster (best long-term, higher
-operational complexity). Detailed evaluation of these approaches is tracked as post-MVP research.
+1. Exposes the same API surface (`/info`, `/session/create`, `/session/join`) as a single-node deployment - clients see no difference.
+2. Routes `/session/create` to the least-loaded node.
+3. Routes `/session/join` to the node hosting the target room.
+4. Aggregates room and participant data for the `/info` endpoint.
 
-For Kubernetes deployments specifically, STUNner (see [STUN/TURN](#stunturn) above) is the
-recommended NAT traversal layer when operating at scale.
+Room affinity is inherent - a room lives on one node for its entire lifetime. The gateway tracks which rooms are on which nodes.
+
+**Scaling down: drain and retire.** When load decreases, the gateway stops routing new sessions to the least-busy nodes. Once all rooms on a node have naturally ended (all participants left), the node is retired. At least one node always remains active. This model works naturally with Kubernetes pod autoscaling - scale up by adding pods, scale down by draining and terminating idle pods.
+
+**Kubernetes.** K8s is the recommended deployment model for multi-node Satellites. It provides pod autoscaling, health-based routing, and graceful drain on scale-down. STUNner (see [STUN/TURN](#stunturn)) is the recommended NAT traversal layer for K8s deployments. Single-node deployments do not require K8s - Docker Compose is sufficient.
 
 ## Cross-References
 
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - canonical SRV record definitions
   and client resolution algorithm
 - [Desktop Client](../04-clients/01-desktop.md) - `orbit://` and `satellite://` URI scheme registration
-- [Transponder](../02-components/04-transponder.md) - post-MVP OIDC-based identity verification for Satellite sessions
+- [Transponder](04-transponder.md) - post-MVP OIDC-based identity verification for Satellite sessions
 - [Research: MoQ / Iroh](../07-research/01-moq-iroh.md) - post-MVP media transport research track
