@@ -175,7 +175,7 @@ Depot (and any future Orbit service) follows the same pattern: fetch the JWKS, v
 An Orbit user may be connected to multiple servers simultaneously, each with its own identity provider:
 
 ```
-Server: HiveCom
+Server: Hivecom
   IRC:          irc.hivecom.net
   Transponder:  https://id.hivecom.net       ->  Keycloak
   JWT:          (issued by id.hivecom.net)
@@ -191,9 +191,9 @@ Server: Libera Chat
   JWT:          (none - NickServ only)
 ```
 
-Each domain is its own identity domain. HiveCom's JWT means nothing to Friends Gaming, and that's correct - they are separate communities with separate user databases. Orbit maintains a JWT per domain, the same way a browser keeps separate cookies per domain.
+Each domain is its own identity domain. Hivecom's JWT means nothing to Friends Gaming, and that's correct - they are separate communities with separate user databases. Orbit maintains a JWT per domain, the same way a browser keeps separate cookies per domain.
 
-From the user's perspective: they join HiveCom, a login page opens (HiveCom's Keycloak), they sign in, done - verified everywhere on HiveCom. They join Friends Gaming, a different login page opens (Friends Gaming's Authentik), they sign in, done - verified everywhere on Friends Gaming. Two separate logins because they are two separate identities.
+From the user's perspective: they join Hivecom, a login page opens (Hivecom's Keycloak), they sign in, done - verified everywhere on Hivecom. They join Friends Gaming, a different login page opens (Friends Gaming's Authentik), they sign in, done - verified everywhere on Friends Gaming. Two separate logins because they are two separate identities.
 
 When the Orbit client knows that multiple components (IRC, Satellite, Depot) share the same identity provider for a given domain, the user authenticates once and the JWT is reused across all components. The experience is seamless - one login, verified everywhere on that domain.
 
