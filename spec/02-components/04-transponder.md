@@ -177,12 +177,12 @@ An Orbit user may be connected to multiple servers simultaneously, each with its
 ```
 Server: Hivecom
   IRC:          irc.hivecom.net
-  Transponder:  https://id.hivecom.net       ->  Keycloak
+  Transponder:  https://camqocmuyolpjjbnbcha.supabase.co/auth/v1/.well-known/openid-configuration  ->  Supabase
   JWT:          (issued by id.hivecom.net)
 
 Server: Friends Gaming
   IRC:          irc.friends.gg
-  Transponder:  https://auth.friends.gg      ->  Authentik
+  Transponder:  https://auth.friends.gg ->  Keycloak
   JWT:          (issued by auth.friends.gg)
 
 Server: Libera Chat
