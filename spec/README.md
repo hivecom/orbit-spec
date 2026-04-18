@@ -56,4 +56,4 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Beacon](07-research/08-beacon.md) - Push notification relay component (post-MVP)
 - [Bot API](07-research/09-bot-api.md) - Bot and Integration API: IRC bots, webhooks, REST gateway
 - [Server Discovery](07-research/10-server-discovery.md) - Public server directory and community discovery
-- [Prioritization](07-research/11-prioritization.md) - Prioritization matrix, track lifecycle process, revision history
+- [Satellite Gateway](07-research/11-satellite-gateway.md) - Multi-node Satellite routing and autoscaling

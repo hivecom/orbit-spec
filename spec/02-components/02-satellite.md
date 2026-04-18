@@ -434,3 +434,4 @@ Room affinity is inherent - a room lives on one node for its entire lifetime. Th
 - [Desktop Client](../04-clients/01-desktop.md) - `orbit://` and `satellite://` URI scheme registration
 - [Transponder](04-transponder.md) - post-MVP OIDC-based identity verification for Satellite sessions
 - [Research: MoQ / Iroh](../07-research/01-moq-iroh.md) - post-MVP media transport research track
+- [Research: Satellite Gateway](../07-research/11-satellite-gateway.md) - multi-node routing, autoscaling, and drain coordination

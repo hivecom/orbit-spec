@@ -74,14 +74,14 @@ Disabling NickServ means:
 - **Nickname enforcement** still works. Ergochat's nick reservation is tied to account login, not to NickServ specifically. Once `auth-script` confirms an account name, Ergochat enforces that account's reserved nicknames exactly as before.
 - **Existing NickServ accounts** should be migrated into the identity provider before switchover. The provider becomes the canonical user database; NickServ's internal database is retired.
 
-The rule is simple: **identity provider configured → NickServ is disabled, the provider owns accounts. No provider → NickServ handles everything.** No hybrid mode, no two-source-of-truth ambiguity.
+The rule is simple: **identity provider configured -> NickServ is disabled, the provider owns accounts. No provider -> NickServ handles everything.** No hybrid mode, no two-source-of-truth ambiguity.
 
 ## Legacy IRC Clients
 
 Traditional IRC clients that cannot perform an OIDC browser flow can still authenticate if the identity provider supports the Resource Owner Password Credentials grant (direct username/password to token endpoint). The auth-script bridge handles both cases transparently:
 
-1. If the SASL password is a valid JWT → verify it directly against the JWKS.
-2. If the SASL password is a plain password → forward it to the provider's token endpoint via the Resource Owner Password Credentials grant.
+1. If the SASL password is a valid JWT -> verify it directly against the JWKS.
+2. If the SASL password is a plain password -> forward it to the provider's token endpoint via the Resource Owner Password Credentials grant.
 
 Either way, the same user database is consulted. From Ergochat's perspective, the result is identical - a verified account name.
 
