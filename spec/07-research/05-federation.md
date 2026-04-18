@@ -17,9 +17,11 @@ Two layers:
 
 ### Layer 1: IRC Network Linking
 
-Leverage IRC's native server linking. IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. [Ergo](https://ergo.chat/) (Ground Control's IRC server) supports server-to-server linking out of the box.
+IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. However, [Ergo](https://ergo.chat/) (Ground Control's IRC server) **does not currently support server-to-server linking**. Per the Ergo manual: *"Ergo does not currently support server-to-server linking (federation), meaning that all clients must connect to the same instance."* Horizontal scalability is on the Ergo roadmap but is not scheduled for development in the near term.
 
-However, basic IRC linking (multiple servers forming one logical network) is not the same as true federation (independent organizations running independent servers that interoperate as peers). True federation raises hard questions:
+This means Layer 1 - IRC network linking - is not currently achievable with Ergo and cannot be used as a federation stepping stone without either switching IRC servers or waiting for Ergo to implement it. The approach below is therefore forward-looking, contingent on Ergo gaining this capability or an alternative IRC server being used.
+
+Basic IRC linking (multiple servers forming one logical network) is not the same as true federation (independent organizations running independent servers that interoperate as peers). True federation raises hard questions:
 
 - **Identity portability**: How does a user registered on server A prove their identity when interacting with server B? Federated identity is a deep problem (see: email, Matrix, ActivityPub - all have different trade-offs).
 - **Channel namespacing**: How do you distinguish `#general` on server A from `#general` on server B? IRC traditionally uses a flat namespace. Federation requires hierarchical or scoped naming.
@@ -27,7 +29,9 @@ However, basic IRC linking (multiple servers forming one logical network) is not
 - **Moderation boundaries**: Who has moderation authority in a federated channel? Can server A's admins moderate users from server B? What about content policies that differ between servers?
 - **History synchronization**: Do federated servers share message history? How much? What happens when a server goes offline and comes back - does it backfill?
 
-Start with the simplest model: IRC network linking where multiple Ground Control (Ergo) instances form a single logical network under shared administration. This is well-understood IRC infrastructure with decades of operational experience. True cross-organization federation (more analogous to email or Matrix) is a separate, later problem. Do not attempt to design a general federation protocol until the simpler model is deployed and its limitations are understood in practice.
+The target simplest model remains: IRC network linking where multiple Ground Control instances form a single logical network under shared administration. This is well-understood IRC infrastructure with decades of operational experience. True cross-organization federation (more analogous to email or Matrix) is a separate, later problem. Do not attempt to design a general federation protocol until the simpler model is deployed and its limitations are understood in practice.
+
+Until Ergo gains server-to-server linking support, the MVP remains single-instance Ergo. Ergo does scale vertically across multiple CPU cores and supports high-availability deployment via Kubernetes (shared volume, load balancer), which mitigates the single-instance constraint for reliability - but not for geographic distribution or organizational federation.
 
 ### Layer 2: Signed Identity Assertions (Identity Bridging)
 
@@ -92,7 +96,7 @@ Because the identity layer is standard OIDC - not a custom protocol - federated 
 ## Approach
 
 1. **Phase 0 (pre-federation)**: Deploy an OIDC-compliant identity provider (e.g., Keycloak). Configure Ergochat's `auth-script` to delegate authentication via the auth-script bridge. Point Satellite and Depot at the same OIDC issuer URL for JWT verification against the provider's JWKS. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. This is valuable even without federation - it gives every component verified identity via standard OIDC, with each component verifying independently.
-2. **Phase 1 (IRC linking)**: Set up a two-server Ergo linked network. Test text federation. Both servers share the same OIDC provider, or run separate providers. Satellites and other components trust the JWKS from both issuers.
+2. **Phase 1 (IRC linking)**: Set up a two-server linked network once Ergo supports server-to-server linking (or evaluate an alternative IRC server if Ergo support remains distant). Test text federation. Both servers share the same OIDC provider, or run separate providers. Satellites and other components trust the JWKS from both issuers.
 3. **Phase 2 (cross-org federation)**: Independent servers with independent OIDC providers and independent keys. Implement trust store management in each component that verifies identity (Satellite, Depot, etc.). Evaluate TOFU vs. directory vs. DNS-based trust models via prototype.
 
 Do not jump to Phase 2 until Phase 1 is deployed and its limitations are understood in practice.
@@ -121,7 +125,9 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 **IRC linking (Phase 1):**
 
-- Set up a two-server Ergo linked network. Test:
+> **Blocked**: Ergo does not currently support server-to-server linking. Phase 1 cannot be evaluated until this changes. Monitor [Ergo's roadmap](https://github.com/ergochat/ergo) for updates, or evaluate alternative IRCd implementations (e.g. UnrealIRCd, InspIRCd) that support linking if this becomes a priority.
+
+- Set up a two-server linked network. Test:
   - Text chat across the link (message delivery, ordering, latency)
   - Media signaling relay (can a user on server A join a voice session hosted on server B's Satellite, using server A's OIDC-issued JWT?)
   - History synchronization (what happens to message history when the link drops and reconnects?)
