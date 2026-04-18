@@ -13,15 +13,11 @@ For Ergochat's tag relay configuration, see [Ground Control](../01-overview.md).
 | Tag                        | Payload                                          | Direction          |
 |----------------------------|--------------------------------------------------|--------------------|
 | `+orbit/sat-invite`        | Node URL + room ID + metadata (base64 JSON)      | Client -> Channel   |
-| `+orbit/sat-leave`         | Room ID                                          | Client -> Channel   |
-| `+orbit/sat-status`        | Node health/capacity (base64 JSON)               | Client -> Channel   |
 | `+orbit/p2p-offer`         | P2P handshake: intent + ICE credentials + DTLS fingerprint + candidate (base64 JSON) | Client -> Client    |
 | `+orbit/p2p-answer`        | P2P handshake response: ICE credentials + DTLS fingerprint + candidate (base64 JSON) | Client -> Client    |
 | `+orbit/msg-edit`          | `target-msgid` + new content                     | Client -> Channel   |
 | `+orbit/msg-delete`        | `target-msgid`                                   | Client -> Channel   |
-| `+orbit/file-name`         | Original filename                                | Client -> Channel   |
-| `+orbit/file-size`         | File size in bytes                               | Client -> Channel   |
-| `+orbit/file-type`         | MIME type                                        | Client -> Channel   |
+| `+orbit/file`                | File metadata: name, size, type (base64 JSON)    | Client -> Channel   |
 
 ## Encoding
 

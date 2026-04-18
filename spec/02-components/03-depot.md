@@ -36,8 +36,8 @@ For DNS-based discovery of a domain's Depot instance, see
    does not pass through the Depot API.
 4. On successful upload, the client posts a `PRIVMSG` to the channel containing the public file
    URL as the message body.
-5. The client attaches file metadata as message tags on the same `PRIVMSG`: `+orbit/file-name`,
-   `+orbit/file-size`, `+orbit/file-type`.
+5. The client attaches file metadata as a single `+orbit/file` tag (base64-encoded JSON containing
+   name, size, and type) on the same `PRIVMSG`.
 6. The Orbit client renders an inline preview (images, audio, video) or a download card. Pure IRC
    clients see a plain URL.
 
@@ -56,7 +56,7 @@ sequenceDiagram
     S3-->>U: 200 OK
 
     U->>GC: PRIVMSG #channel :https://depot.example.com/uploads/...
-    Note over U: Attaches +orbit/file-name, +orbit/file-size, +orbit/file-type tags
+    Note over U: Attaches +orbit/file tag (base64 JSON: name, size, type)
 ```
 
 ## The Depot API
@@ -267,23 +267,30 @@ The periodic cleanup job reconciles this automatically.
 
 There is no client-facing delete API in open mode. Without identity, ownership cannot be proven.
 
-## File Metadata Tags
+## File Metadata Tag
 
-When a file is shared in a channel, the client attaches the following tags to the `PRIVMSG`:
+When a file is shared in a channel, the client attaches a single `+orbit/file` tag to the
+`PRIVMSG`. The tag value is a base64-encoded JSON payload:
 
-| Tag                 | Content                                      |
-|---------------------|----------------------------------------------|
-| `+orbit/file-name`  | Original filename (e.g., `screenshot.png`)   |
-| `+orbit/file-size`  | File size in bytes                           |
-| `+orbit/file-type`  | MIME type (e.g., `image/png`)                |
+```json
+{
+  "name": "screenshot.png",
+  "size": 245760,
+  "type": "image/png"
+}
+```
 
-These tags are defined in the [Orbit Tag Namespace](01-ground-control/02-tags/01-namespace.md).
+| Field  | Content                                      |
+|--------|----------------------------------------------|
+| `name` | Original filename (e.g., `screenshot.png`)   |
+| `size` | File size in bytes                           |
+| `type` | MIME type (e.g., `image/png`)                |
 
-**These are client-asserted metadata.** The tags are set by the sending client and can contain any
-value - they are not validated by the IRC server. Orbit clients SHOULD verify file metadata
-independently by checking HTTP response headers on download, rather than trusting the tags blindly.
-For the full verification rules governing client-asserted tags, see
-[Tag Integrity and Trust Model](01-ground-control/02-tags/02-trust-model.md).
+This tag is defined in the [Orbit Tag Namespace](01-ground-control/02-tags/01-namespace.md).
+
+This metadata is client-asserted and informational. Orbit clients SHOULD verify file metadata
+independently by checking HTTP response headers (`Content-Type`, `Content-Length`) on download.
+See [Tag Trust Model](../01-ground-control/02-tags/02-trust-model.md) for enforcement rules.
 
 ## Service Discovery
 

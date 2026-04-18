@@ -17,7 +17,7 @@ For the full list of `+orbit/*` tags and their payloads, see [Tag Namespace](01-
 | `+orbit/msg-delete`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/sat-invite`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/p2p-offer`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
-| `+orbit/file-*`       | Set by the sending client                                     | Client-asserted    | Yes                                     |
+| `+orbit/file`         | Set by the sending client                                     | Client-asserted    | Yes                                     |
 
 For how `account-tag` is configured and required on the server side, see [Ground Control](../01-overview.md).
 
@@ -29,7 +29,7 @@ Orbit clients MUST enforce the following rules using the server-asserted `accoun
 2. **Message deletes**: Accept a `+orbit/msg-delete` only if the sender's `account-tag` matches the original message's `account-tag`, OR the sender is a channel operator (`+o`). See [Permissions](../../../03-identity/02-permissions.md) for channel operator rules.
 3. **Satellite invites**: Display the sender's verified identity (via `account-tag`) alongside the invite. Users should know who is inviting them to a node before connecting.
 4. **P2P connections**: Verify the sender's identity (`account-tag`) before accepting a `+orbit/p2p-offer`. Display the sender's verified identity and the connection intent (call, video, chat, file) in the acceptance prompt. Do not auto-accept offers from unverified senders.
-5. **File metadata**: The `+orbit/file-*` tags (name, size, type) are informational. The client SHOULD verify file metadata independently (e.g., by checking HTTP headers on download) rather than trusting the tags blindly.
+5. **File metadata**: The `+orbit/file` tag (name, size, type) is informational. The client SHOULD verify file metadata independently (e.g., by checking HTTP headers on download) rather than trusting the tag blindly.
 
 ## Unverified Senders
 
