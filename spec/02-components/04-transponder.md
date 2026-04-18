@@ -300,10 +300,41 @@ The Orbit client fetches this, discovers the Keycloak instance, and handles the 
 
 ## Implementation Notes
 
-- **Auth-script bridge**: This is the only Orbit-specific component in the identity system. It should be published as a standalone utility (container image + binary) that operators deploy alongside Ergochat. Configuration is a single environment variable: the OIDC issuer URL.
-- **JWKS caching**: All components that verify JWTs should cache the JWKS with a reasonable TTL (e.g., 1 hour) and support cache invalidation when a `kid` (key ID) in an incoming JWT doesn't match any cached key. This handles key rotation gracefully.
-- **Token lifetime**: The OIDC provider controls token lifetime. For Satellite session joins, the identity token only needs to be valid long enough to exchange for a LiveKit JWT - short-lived tokens (5–15 minutes) are ideal. Refresh tokens handle longer sessions transparently.
-- **Scope**: Orbit requires the `openid` and `profile` scopes at minimum. The `email` scope is optional and can be used for account recovery or display if the provider supports it.
+### Auth-Script Bridge
+
+The auth-script bridge is the only Orbit-specific component in the identity system and sits in the authentication critical path for every IRC connection when an OIDC provider is configured. Despite its small scope (~50–100 lines of JWT verification logic), it is a **production dependency** and should be treated as such.
+
+The bridge should be published as a standalone container image and binary that operators deploy alongside Ergochat. Configuration is a single environment variable: the OIDC issuer URL (`OIDC_ISSUER`).
+
+**Requirements:**
+
+- **Health checks**: The bridge MUST expose a health endpoint (e.g., `/healthz`) that verifies it can reach the OIDC provider's JWKS endpoint. Container orchestrators and monitoring should use this to detect failures.
+- **Structured logging**: All authentication attempts (successes and failures) MUST be logged with structured fields (timestamp, account name, failure reason). This is the operator's primary audit trail for identity-related issues.
+- **Startup validation**: On startup, the bridge MUST fetch the OIDC discovery document and JWKS at least once. If the provider is unreachable at startup, the bridge should fail loudly rather than start in a degraded state.
+
+### JWKS Caching and Key Rotation
+
+All components that verify JWTs (auth-script bridge, Satellite token service, Depot) MUST cache the JWKS with a reasonable TTL (default: 1 hour). When an incoming JWT contains a `kid` (key ID) that doesn't match any cached key, the component MUST re-fetch the JWKS immediately. This handles key rotation gracefully - keys can be rotated at the provider without restarting any Orbit component.
+
+If the JWKS re-fetch fails (provider temporarily unreachable), the component should continue using the cached keyset and log a warning. JWTs signed with an unknown `kid` are rejected, but JWTs matching a cached key continue to verify successfully. This provides resilience against transient provider outages.
+
+### OIDC Provider Downtime
+
+If the OIDC provider is unreachable and the cached JWKS has expired:
+
+- **Auth-script bridge**: Returns a clear authentication failure to Ergochat. Ergochat rejects the SASL attempt with a standard error. The client displays "Authentication failed" - not a silent hang. Already-connected IRC sessions are unaffected (SASL is only checked at connection time).
+- **Satellite token service**: Falls back to the unverified join flow. Users can still join sessions but appear as unverified participants.
+- **Depot**: Rejects authenticated upload requests. Users see a clear error. Downloads (which are public/unauthenticated) are unaffected.
+
+### Token Lifetime and Clock Skew
+
+The OIDC provider controls token lifetime. For IRC connections, the JWT only needs to be valid at SASL authentication time - once the IRC session is established, it persists independently of the token's expiry. Short-lived tokens (5–15 minutes) are ideal for security; refresh tokens handle longer client sessions transparently.
+
+All JWT verification MUST apply a clock skew tolerance of ±30 seconds to account for time drift between the provider and verifying components. This is standard practice in JWT libraries.
+
+### Scope
+
+Orbit requires the `openid` and `profile` scopes at minimum. The `email` scope is optional and can be used for account recovery or display if the provider supports it.
 
 ## MVP Status
 

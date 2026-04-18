@@ -157,23 +157,59 @@ external chat, etc.).
 
 ## 1-on-1 Calls - P2P
 
-Private calls between two users bypass Satellite entirely:
+Private connections between two users bypass Satellite entirely. The Orbit client establishes a direct WebRTC connection using IRC only for the initial handshake - a single message in each direction. All further negotiation happens over the WebRTC data channel, independent of Ground Control.
 
-1. Caller sends `+orbit/sdp-offer` via `TAGMSG` to the callee's nickname.
-2. Callee responds with `+orbit/sdp-answer`.
-3. ICE candidates are exchanged via `+orbit/ice-candidate` tags.
-4. A direct P2P WebRTC connection is established.
-5. If P2P fails (symmetric NAT), fall back to a TURN relay.
+### Handshake
 
-No server processes media for 1-on-1 calls. The only server involvement is signaling relay through
-Ground Control.
+The initiator sends a `TAGMSG` to the recipient's nickname with a `+orbit/p2p-offer` tag containing a compact handshake payload:
 
-**Privacy note:** P2P call signaling is relayed through Ground Control (IRC). The IRC server
-operator can observe who is calling whom, ICE candidates (which may reveal IP addresses including
-local/private IPs), and SDP content (codec preferences, media capabilities). This is consistent with
-the trust model for text chat - the server operator can already read message content. Users who do
-not trust the server operator with call metadata should use a Satellite node for group calls instead,
-where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
+```json
+{
+  "intent": "call",
+  "ice_ufrag": "abcd",
+  "ice_pwd": "longRandomString",
+  "dtls_fingerprint": "sha-256 AA:BB:CC:...",
+  "dtls_role": "actpass",
+  "candidate": "candidate:1 1 udp 2122260223 203.0.113.5 54321 typ host"
+}
+```
+
+The recipient's client displays the incoming request based on the `intent` field - "Alice wants to start a voice call" or "Bob wants to send you a file." If accepted, the recipient responds with a `+orbit/p2p-answer` tag containing the same fields (their own ICE credentials, DTLS fingerprint, and a candidate). That's it - two IRC messages total, ~300–400 bytes each. Ground Control's involvement ends here.
+
+### Intent
+
+The `intent` field declares the purpose of the connection and determines the client UX:
+
+| Intent | Initial UI | Can escalate to | Session ends when |
+|--------|-----------|-----------------|-------------------|
+| `call` | Voice call | + video, + screen share, + chat, + file transfer | Either party hangs up |
+| `video` | Video call | + screen share, + chat, + file transfer | Either party hangs up |
+| `chat` | Ephemeral DM chat window | + call, + video, + file transfer | Either party closes the window |
+| `file` | File transfer dialog | Nothing - single purpose | Transfer completes or is cancelled |
+
+The intent sets the **starting state**, not a permanent constraint. A voice call can escalate to video, add screen sharing, or open a side chat - all negotiated over the WebRTC data channel. A file transfer is transactional: it completes and the connection tears down.
+
+### Post-Handshake Negotiation
+
+Once the WebRTC data channel is open, all further signaling happens over the direct connection:
+
+- **Media negotiation**: Codec selection (Opus for audio, VP9 for video), adding/removing tracks, changing resolution - standard WebRTC renegotiation via SDP offer/answer exchanged over the data channel.
+- **ICE trickling**: Additional ICE candidates are exchanged over the data channel, not IRC. If the initial candidate doesn't work (e.g., symmetric NAT), TURN relay candidates are sent through the data channel to establish a relayed path.
+- **Escalation**: Adding video to a voice call, starting a screen share, or opening a file transfer - all negotiated over the data channel.
+
+This design means that after the initial two-message handshake, the P2P connection is **fully self-sufficient**. Ground Control can go down, the entire Orbit infrastructure can be offline - the session continues. The only thing that requires IRC is starting a *new* connection.
+
+### TURN Fallback
+
+If direct connectivity fails (both peers behind symmetric NATs), the connection falls back to a TURN relay. Unlike the direct P2P case, a TURN-relayed session depends on the TURN server remaining available - if the TURN server goes down, the call drops. However, ICE restart candidates can be exchanged over the data channel to attempt a new path without re-involving IRC.
+
+### Privacy Note
+
+P2P handshake signaling is relayed through Ground Control (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content. Post-handshake, the operator sees nothing - all media and further signaling flows directly between peers. Users who do not trust the server operator with connection metadata should use a Satellite node for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
+
+### No SDP over IRC
+
+Earlier iterations of this design sent full SDP offers over IRC tags. SDPs are large (~2–3 KB for audio+video) due to exhaustive codec enumeration, which created pressure on the IRCv3 tag budget (4,094 bytes for client tags) and Ergochat's flood protection. The handshake-first model eliminates this entirely - the IRC payload contains only connection credentials (~300 bytes), and full SDP negotiation happens over the data channel where there are no size constraints.
 
 ## Satellite Authentication
 
@@ -336,15 +372,41 @@ or IRC identity to verify against. Ephemeral chat via LiveKit data channels is a
 chat is not (that requires Ground Control). This is an intentional, honest trade-off - the
 experience is reduced but functional.
 
+### Standalone Authentication
+
+When a user opens a `satellite://` link, the Satellite node operates without Ground Control - but identity verification is still possible if the node's domain has a discoverable identity provider.
+
+The client-side flow:
+
+1. User opens `satellite://sat.example.com/room-id`.
+2. The client extracts the domain (`example.com`) and attempts service discovery - checking `/.well-known/orbit/services.json` or `_transponder._tcp.example.com` for an identity provider endpoint.
+3. If a Transponder is discovered, the client offers the user the option to authenticate via the OIDC provider's Authorization Code flow.
+4. If the user authenticates, the client presents the resulting JWT to the Satellite token service alongside the `/session/join` request. The token service verifies the JWT against the provider's JWKS and issues a LiveKit token with `verified: true` and the authenticated account name.
+5. If the user declines authentication or no Transponder is discovered, the client falls back to the unverified join flow (display name only, no identity badge).
+
+This means standalone Satellite sessions can have a mix of verified and unverified participants - the same model as IRC-signaled sessions. The Satellite node itself doesn't need to know about Ground Control; it only needs the OIDC provider's JWKS endpoint to verify tokens, which it fetches and caches independently.
+
+The identity provider used for standalone authentication is always the one associated with the **Satellite node's domain**, not the user's home domain. Cross-domain identity verification is a federation concern and is out of scope (see [Research: Federation](../07-research/05-federation.md)).
+
 ## Session Limits
 
-Each Satellite session supports a maximum of **64 concurrent participants**. This limit applies per room, not per node - a single node can host multiple concurrent rooms each up to the 64-participant ceiling.
+Satellite does not impose a hardcoded participant cap. Session capacity is bounded by the node's hardware resources - primarily network bandwidth, then CPU - and by the operator's configuration.
 
-This is a deliberate design constraint, not a hardware limit. Orbit is a communication tool for communities, not a broadcasting platform. The 64-participant ceiling keeps sessions intimate and avoids the complexity of large-scale media routing. Communities that need to address larger audiences should use a streaming setup (e.g., one-to-many broadcast via a separate streaming service) rather than a voice session.
+LiveKit (the MVP SFU) has no built-in participant limit per room. A single LiveKit instance hosts multiple concurrent rooms, each drawing from the same resource pool. The practical ceiling for a single node depends on the session profile:
 
-The token service MUST reject `/session/join` requests for rooms that have reached the participant limit and return an appropriate error. The Orbit client displays a “Session full” message in this case.
+| Session profile | Approximate capacity (single node, 1 Gbps link) |
+|---|---|
+| Audio-only (Opus, ~50 kbps/participant) | ~200–500 participants |
+| Mixed audio + video (360p, ~500 kbps/participant) | ~50 participants |
+| Mixed audio + video (720p, ~1.5 Mbps/participant) | ~20–30 participants |
 
-The session limit is reflected in the node `/info` metadata endpoint as `capacity.max` (see [Node Discovery](#node-discovery)). Clients SHOULD check this field before displaying a join option.
+These are rough estimates based on aggregate bandwidth. Actual capacity depends on the server's NIC throughput, CPU (for SRTP encryption), and LiveKit's simulcast configuration. Audio-only sessions are dramatically cheaper than video sessions.
+
+The token service exposes a configurable `max_participants` setting, reflected in the node's `/info` metadata endpoint as `capacity.max` (see [Node Discovery](#node-discovery)). The token service MUST reject `/session/join` requests for rooms that have reached the configured limit and return an appropriate error. The Orbit client displays a "Session full" message in this case.
+
+**Recommended defaults:** Operators should set `max_participants` based on their expected use case. A conservative starting point for mixed audio/video on modest hardware (1 vCPU, 1 Gbps) is 50 participants per room. Audio-only deployments can safely set higher limits. The `/info` endpoint allows clients to display remaining capacity before users attempt to join.
+
+Communities that need to address audiences larger than a single node can support should use a one-to-many streaming setup rather than a voice session - Satellite is a communication tool, not a broadcasting platform.
 
 ## Scaling
 
@@ -352,8 +414,7 @@ A single Satellite node (LiveKit + token service) scales vertically to a meaning
 LiveKit is designed to handle hundreds of concurrent participants per instance on modest hardware.
 For the MVP, a single node per region is sufficient.
 
-**For the MVP:** A single node per deployment. Session capacity is bounded at 64 participants per room (see [Session Limits](#session-limits)); a node can host multiple concurrent rooms up to its hardware ceiling. The DNS SRV record points to it. Operators who need
-more capacity run a second node under a second SRV record - clients see two nodes and users pick one
+**For the MVP:** A single node per deployment. Session capacity is bounded by the operator-configured `max_participants` limit per room (see [Session Limits](#session-limits)); a node can host multiple concurrent rooms up to its hardware ceiling. The DNS SRV record points to it. Operators who need more capacity run a second node under a second SRV record - clients see two nodes and users pick one
 when starting a session. Room affinity is enforced naturally because the `+orbit/sat-invite` tag
 embeds the specific node URL.
 

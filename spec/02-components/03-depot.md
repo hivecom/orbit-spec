@@ -52,7 +52,7 @@ sequenceDiagram
     Note over D: Verify auth (if OIDC)<br/>Check rate limit<br/>Check file size<br/>Check quota (if OIDC)<br/>Write metadata row (if OIDC)
     D-->>U: {upload_url, object_key, expires_in}
 
-    U->>S3: PUT (pre-signed URL) — file bytes
+    U->>S3: PUT (pre-signed URL) - file bytes
     S3-->>U: 200 OK
 
     U->>GC: PRIVMSG #channel :https://depot.example.com/uploads/...

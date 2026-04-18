@@ -12,11 +12,39 @@ The Orbit desktop client is built with **Tauri v2** (Rust backend + OS-native We
 ### Text Chat
 
 - IRC connection management: connect, auto-reconnect with exponential backoff, TLS required.
-- Channel list presented as a flat list. No hierarchy parsing - channels are displayed as-is.
+- Channel list with optional hierarchical rendering (see [Channel Organization](#channel-organization) below).
 - Message history fetched via IRCv3 `chathistory` on channel join.
 - Rich rendering: inline link previews, image thumbnails, emoji (Unicode + custom per-server), basic Markdown (bold, italic, code, strikethrough).
 - Message editing and deletion (rendered from `+orbit/msg-edit` and `+orbit/msg-delete` tags).
 - Unread indicators and mention highlights.
+
+### Channel Organization
+
+IRC channels are flat. There is no server-side hierarchy, no folder concept, no metadata. Orbit keeps it that way - but uses **dot notation** as a client-side rendering convention to give communities hierarchical organization for free.
+
+If a channel name contains dots (e.g., `#dev.frontend`, `#dev.backend`), the client interprets dots as directory separators and renders the channels in a collapsible tree structure in the sidebar. Channels without dots remain at the top level.
+
+Example rendering for a server with channels `#general`, `#announcements`, `#dev.frontend`, `#dev.backend`, `#dev.infrastructure`, `#gaming.lfg`, `#gaming.strategy`, `#gaming.clips`:
+
+```
+# general
+# announcements
+> dev
+  # frontend
+  # backend
+  # infrastructure
+> gaming
+  # lfg
+  # strategy
+  # clips
+```
+
+Key constraints:
+
+- **No protocol change.** The IRC server sees flat channel names as always. `#dev.frontend` is just a channel name with a dot in it.
+- **No server-side enforcement.** No metadata is stored, no configuration is required. The hierarchy exists only in the client's rendering logic.
+- **Opt-in by naming convention.** Communities that don't use dots see a flat channel list. Communities that adopt dot notation get automatic folder grouping. Operators create the hierarchy simply by naming channels with dot-separated prefixes.
+- **Nesting depth is unbounded but discouraged.** `#dev.frontend.react` would render as a nested subfolder. More than two levels deep is a smell - keep it shallow.
 
 ### Voice & Video
 
