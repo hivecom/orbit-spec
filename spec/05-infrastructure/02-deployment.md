@@ -12,6 +12,7 @@ For the full client-side DNS resolution algorithm and per-service discovery beha
 | Satellite | Go + thin HTTP API | 1 vCPU, 512 MB RAM (scales with users) | No (optional) |
 | Depot (Object Storage) | MinIO or S3 | Storage-dependent | No (only for file uploads) |
 | coturn (STUN/TURN) | C, single binary | 1 vCPU, 128 MB RAM | No (only for NAT traversal) |
+| Auth-script bridge | Rust or Go, single binary | Negligible (stateless JWT verification) | No (only with OIDC identity provider) |
 | **Total minimum (text-only)** | | **~$5/month VPS** | |
 | **Total with voice** | | **~$10/month VPS** | |
 
@@ -63,8 +64,19 @@ A reference `docker-compose.yml` is provided for self-hosters. It includes:
 - **LiveKit + token service** (Satellite) - **optional**; can be removed for text-only deployments.
 - **MinIO** (Depot) - **optional**; only required if file uploads are needed.
 - **coturn** (STUN/TURN) - for NAT traversal.
+- **Auth-script bridge** (Transponder integration) - **optional (post-MVP)**; required only when an OIDC identity provider is configured. Verifies JWTs for Ergochat's `auth-script` SASL delegation. See [Transponder](../02-components/04-transponder.md).
 - **Caddy** (reverse proxy) - terminates TLS via Let's Encrypt, routes WebSocket and API requests to Ergochat and Satellite, and serves `/.well-known/orbit/services.json` as a static file for web client service discovery.
 
 One `docker compose up` produces a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list). Satellite discovery is handled via DNS SRV records configured at the domain level - no IRC channel configuration is needed.
 
 Satellite is optional. Running `docker compose up ergochat caddy` produces a minimal text-only Orbit server.
+
+## CORS Configuration
+
+The web app and widget connect to Ground Control (WebSocket), Satellite (HTTP + WebRTC), and Depot (HTTP) endpoints - potentially on different origins. The reverse proxy (Caddy) MUST be configured to set appropriate CORS headers on all API endpoints that web clients access:
+
+- **Ground Control (WebSocket)**: WebSocket connections are not subject to CORS preflight, but the `Origin` header SHOULD be validated by the reverse proxy to reject connections from unexpected origins.
+- **Satellite (token service)**: The `/session/create`, `/session/join`, `/session/knock`, `/session/admit`, `/session/lock`, and `/info` endpoints MUST return `Access-Control-Allow-Origin` headers matching the web app's origin. Preflight (`OPTIONS`) requests MUST be handled.
+- **Depot (upload API)**: The presign endpoint MUST return appropriate CORS headers. S3 pre-signed upload URLs also require CORS configuration on the S3 bucket itself (MinIO or AWS S3 bucket CORS policy).
+
+In the reference Caddy deployment, CORS headers are configured per-route in the Caddyfile. For development, a permissive `Access-Control-Allow-Origin: *` is acceptable; for production, restrict to the specific web app origin(s).

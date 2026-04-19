@@ -20,4 +20,6 @@ These are genuine unresolved decisions that need resolution before or during MVP
 
 9. **Multi-node sessions** - Can a voice session span multiple nodes? Probably not for the MVP - one session, one node. But what happens if a node goes down during an active session? Should the client attempt to migrate to another node?
 
+10. ~~**Reaction semantics**~~ *Moved to out-of-scope*: Reactions require aggregated per-message state that IRC's append-only history model cannot provide reliably. Partial history loads produce incorrect reaction counts, and toggle semantics require full history replay. Reactions are deferred until a dedicated message enrichment service can store and serve aggregated reaction state with proper identity verification. See [Out of Scope](04-out-of-scope.md).
+
 *This document is updated as questions are resolved. Changes are tracked in the repository commit history.*

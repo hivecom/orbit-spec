@@ -13,8 +13,9 @@ For the full list of `+orbit/*` tags and their payloads, see [Tag Namespace](01-
 | `account-tag`         | Set by the IRC server based on SASL authentication            | Server-asserted    | No - the server is authoritative        |
 | `msgid`               | Assigned by the IRC server                                    | Server-asserted    | No                                      |
 | `server-time`         | Set by the IRC server                                         | Server-asserted    | No                                      |
-| `+orbit/msg-edit`     | Set by the sending client                                     | Client-asserted    | Yes - any client can send this tag      |
-| `+orbit/msg-delete`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
+| `+orbit/msg-amend`     | Set by the sending client                                     | Client-asserted    | Yes - any client can send this tag      |
+| `+orbit/msg-retract`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
+| `+orbit/msg-reply`    | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/sat-invite`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/p2p-offer`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/file`         | Set by the sending client                                     | Client-asserted    | Yes                                     |
@@ -25,23 +26,24 @@ For how `account-tag` is configured and required on the server side, see [Ground
 
 Orbit clients MUST enforce the following rules using the server-asserted `account-tag` as the authoritative source of identity:
 
-1. **Message edits**: Accept a `+orbit/msg-edit` only if the sender's `account-tag` matches the `account-tag` of the original message being edited.
-2. **Message deletes**: Accept a `+orbit/msg-delete` only if the sender's `account-tag` matches the original message's `account-tag`, OR the sender is a channel operator (`+o`). See [Permissions](../../../03-identity/02-permissions.md) for channel operator rules.
+1. **Message edits**: Accept a `+orbit/msg-amend` only if the sender's `account-tag` matches the `account-tag` of the original message being amended.
+2. **Message retracts**: Accept a `+orbit/msg-retract` only if the sender's `account-tag` matches the original message's `account-tag`, OR the sender is a channel operator (`+o`). See [Permissions](../../../03-identity/02-permissions.md) for channel operator rules.
 3. **Satellite invites**: Display the sender's verified identity (via `account-tag`) alongside the invite. Users should know who is inviting them to a node before connecting.
 4. **P2P connections**: Verify the sender's identity (`account-tag`) before accepting a `+orbit/p2p-offer`. Display the sender's verified identity and the connection intent (call, video, chat, file) in the acceptance prompt. Do not auto-accept offers from unverified senders.
 5. **File metadata**: The `+orbit/file` tag (name, size, type) is informational. The client SHOULD verify file metadata independently (e.g., by checking HTTP headers on download) rather than trusting the tag blindly.
+6. **Message replies**: A `+orbit/msg-reply` tag references a `target-msgid`. The client SHOULD display the reply with an excerpt of the original message (if available in the local buffer) and a link to navigate to it. No identity verification is required beyond what the server already provides via `account-tag` on the reply message itself. If the target message is not in the client's buffer, the reply is displayed without the excerpt.
 
 ## Unverified Senders
 
-Messages from users without an `account-tag` (unauthenticated users) that carry `+orbit/msg-edit` or `+orbit/msg-delete` tags MUST be silently ignored. Unverified users cannot edit or delete messages.
+Messages from users without an `account-tag` (unauthenticated users) that carry `+orbit/msg-amend` or `+orbit/msg-retract` tags MUST be silently ignored. Unverified users cannot amend or retract messages. Replies (`+orbit/msg-reply`) from unauthenticated users are permitted - a reply is a new message, not a modification of an existing one.
 
 ## Abuse Vectors and Mitigations
 
 This section addresses known attack surfaces in the client-asserted tag model and how they are mitigated.
 
-### Edit/Delete Spoofing
+### Amend/Retract Spoofing
 
-A malicious client (or IRC script) can send `+orbit/msg-edit` or `+orbit/msg-delete` tags targeting another user's messages. This is a non-issue: compliant Orbit clients verify the sender's `account-tag` against the original message's `account-tag` before accepting the operation. If they don't match, the tag is silently dropped. Unauthenticated senders (no `account-tag`) carrying edit or delete tags are also silently ignored. The spoofed tag is relayed by the server but has no effect on any compliant client.
+A malicious client (or IRC script) can send `+orbit/msg-amend` or `+orbit/msg-retract` tags targeting another user's messages. This is a non-issue: compliant Orbit clients verify the sender's `account-tag` against the original message's `account-tag` before accepting the operation. If they don't match, the tag is silently dropped. Unauthenticated senders (no `account-tag`) carrying amend or retract tags are also silently ignored. The spoofed tag is relayed by the server but has no effect on any compliant client.
 
 ### Satellite Invite Spoofing
 

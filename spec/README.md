@@ -57,3 +57,4 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Bot API](07-research/09-bot-api.md) - Bot and Integration API: IRC bots, webhooks, REST gateway
 - [Server Discovery](07-research/10-server-discovery.md) - Public server directory and community discovery
 - [Satellite Gateway](07-research/11-satellite-gateway.md) - Multi-node Satellite routing and autoscaling
+- [Reaction Service](07-research/12-reaction-service.md) - Pluggable reaction service (Reactor): aggregated state, custom emoji, sticker packs

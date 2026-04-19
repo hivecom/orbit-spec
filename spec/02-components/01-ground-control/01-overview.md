@@ -41,7 +41,7 @@ The following extensions MUST be enabled on any Ergochat instance serving as Gro
 | `server-time`      | Accurate timestamps on all messages                                                                                             |
 | `labeled-response` | Correlate requests with responses for async client operations                                                                   |
 | `sasl`             | Authentication (PLAIN and SCRAM over TLS)                                                                                       |
-| `message-ids`      | Unique message identifiers for edits, deletes, and reactions                                                                    |
+| `message-ids`      | Unique message identifiers for amendments, retractions, and replies                                                                      |
 | `WebSocket`        | Native WebSocket transport on Ergochat's listener                                                                               |
 | `account-tag`      | Server-asserted account identity; used by clients for authorship verification and identity display - cannot be forged by clients |
 | `echo-message`     | Client receives its own messages back from the server with server-applied tags (`server-time`, `msgid`)                         |
@@ -87,27 +87,44 @@ This is intentionally separate from IRC: ephemeral messages are not persisted, n
 not visible to IRC clients. Persistent, historical chat belongs in Ground Control. Throwaway,
 in-session chat belongs in Satellite.
 
-## Message Editing and Deletion
+## Message Amending, Retracting, and Replies
 
 Each message has a unique ID assigned by Ergochat via the `message-ids` extension. The
 `echo-message` extension ensures the sending client receives this server-assigned ID for its own
 messages.
 
-**To edit a message:** The client sends a `PRIVMSG` with a `+orbit/msg-edit` tag referencing the
+**To amend a message:** The client sends a `PRIVMSG` with a `+orbit/msg-amend` tag referencing the
 original `msgid`, with the replacement content as the message body.
 
-**To delete a message:** The client sends a `TAGMSG` with a `+orbit/msg-delete` tag referencing
+**To retract a message:** The client sends a `TAGMSG` with a `+orbit/msg-retract` tag referencing
 the original `msgid`. No message body is required.
+
+**To reply to a message:** The client sends a `PRIVMSG` with a `+orbit/msg-reply` tag referencing
+the original `msgid`, with the reply content as the message body. The Orbit client renders the reply
+with an inline excerpt of the original message (if available in the local buffer) and a clickable
+link to navigate to the original. If the original message is not in the buffer, the reply is
+displayed without the excerpt. Pure IRC clients see reply messages as a normal `PRIVMSG` - the
+reply context is invisible to them but the reply text is fully readable.
 
 **Client rendering:**
 
-- Orbit clients render edits inline with an "edited" indicator and remove deleted messages,
-  replacing them with a tombstone for moderator audit.
-- Pure IRC clients see edit messages as a new `PRIVMSG` prefixed with `[edit]` and delete
-  notifications as `[deleted message <id>]`. Not ideal, but functional - these clients continue to
+- Orbit clients render amendments inline with an "amended" indicator and replace retracted messages
+  with a tombstone for moderator audit.
+- Pure IRC clients amend messages as a new `PRIVMSG` prefixed with `(amended)` and retract
+  notifications as `(retracted message <id>)`. Not ideal, but functional - these clients continue to
   work without understanding the tags.
 
-For client-side enforcement rules governing who may send edits and deletes, see
+For client-side enforcement rules governing who may send amendments and retractions, see
 [Tag Integrity and Trust Model](02-tags/02-trust-model.md).
 
 For file uploads posted as messages in channels, see [Depot](../03-depot.md).
+
+### Interaction with Chat History
+
+When a client fetches messages via `chathistory`, it receives messages in chronological order - including amendment and retraction operations as separate messages. The server does not collapse edits or remove deleted messages from the history stream. This means:
+
+- An **amended message** appears in history as two entries: the original `PRIVMSG` and the subsequent `PRIVMSG` carrying the `+orbit/msg-amend` tag. The client reconstructs the final state by applying amendments to their target messages (matched via `msgid`).
+- A **retracted message** appears in history as two entries: the original `PRIVMSG` and the subsequent `TAGMSG` carrying the `+orbit/msg-retract` tag. The client applies the retraction by replacing the original message with a tombstone.
+- A **reply** appears in history as a `PRIVMSG` carrying a `+orbit/msg-reply` tag referencing the target `msgid`. If the target message is within the loaded history, the client renders the reply with an inline excerpt. If the target is outside the loaded window, the reply is displayed without the excerpt - the reply text is always self-contained and readable on its own.
+
+Orbit clients MUST process `chathistory` results in order and apply all amendment and retraction operations before rendering. If an amendment or retraction references a `msgid` the client has not yet seen (e.g., the target message was outside the requested history window), the operation is silently discarded.

@@ -36,7 +36,7 @@ The identity provider controls the login experience. If the operator wants usern
 
 Once the client has a JWT, it is reused across all Orbit components for the current domain - the domain whose `/.well-known/orbit/oidc` or DNS SRV records pointed to the identity provider:
 
-- **Ground Control (Ergochat)** - the client sends the JWT as the SASL PLAIN password. Ergochat's `auth-script` calls the auth-script bridge, which verifies the JWT against the provider's JWKS. On success, Ergochat sets the `account-tag` as usual.
+- **Ground Control (Ergochat)** - the client sends the JWT as the SASL PLAIN password. Ergochat's `auth-script` calls the auth-script bridge, which verifies the JWT against the provider's JWKS. On success, the bridge returns the `preferred_username` claim as the account name, and Ergochat sets the `account-tag` accordingly.
 - **Satellite** - the client presents the JWT with its session join request. The Satellite token service verifies the JWT against the provider's JWKS and issues a LiveKit JWT with `verified: true`.
 - **Depot** - the client sends the JWT as a Bearer token. Depot verifies it against the same JWKS.
 

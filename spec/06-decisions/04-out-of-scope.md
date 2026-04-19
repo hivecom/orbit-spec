@@ -19,4 +19,5 @@ Items are deferred because they require significant research, have unresolved de
 | Custom emoji / sticker packs | Nice-to-have; not essential for launch | - |
 | Message threads / forums | IRC doesn't have a native threading model; needs design work | - |
 | Custom role / permission system | Use IRC modes; extend via extensions if needed | - |
+| Message reactions | Reactions require a dedicated service (Reactor) for aggregated state, custom emoji, and sticker packs; IRC's append-only history cannot serve counts reliably | [12-reaction-service.md](../07-research/12-reaction-service.md) |
 | Orbit extension API (orbit-app plugins) | Extension architecture is defined; the client-side plugin host and API surface are post-MVP | [09-bot-api.md](../07-research/09-bot-api.md) |

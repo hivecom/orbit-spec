@@ -47,6 +47,7 @@ Each of the four named services operates independently. Below is a brief summary
 | [Satellite](../02-components/02-satellite.md) | Real-time media layer (LiveKit SFU) - voice, video, streaming, and ephemeral session chat | MVP |
 | [Depot](../02-components/03-depot.md) | Storage layer (S3-compatible) - file uploads and avatars | MVP |
 | [Transponder](../02-components/04-transponder.md) | Identity layer (OIDC) - any OIDC-compliant provider; components verify JWTs against its published keys | Post-MVP |
+| [Beacon](../07-research/08-beacon.md) | Push notification relay - monitors Ground Control for mentions/DMs targeting offline users and dispatches via FCM, APNs, or UnifiedPush | Post-MVP |
 
 ## IRC Communication
 

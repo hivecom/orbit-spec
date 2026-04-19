@@ -15,13 +15,23 @@ For Ergochat's tag relay configuration, see [Ground Control](../01-overview.md).
 | `+orbit/sat-invite`        | Node URL + room ID + metadata (base64 JSON)      | Client -> Channel   |
 | `+orbit/p2p-offer`         | P2P handshake: intent + ICE credentials + DTLS fingerprint + candidate (base64 JSON) | Client -> Client    |
 | `+orbit/p2p-answer`        | P2P handshake response: ICE credentials + DTLS fingerprint + candidate (base64 JSON) | Client -> Client    |
-| `+orbit/msg-edit`          | `target-msgid` + new content                     | Client -> Channel   |
-| `+orbit/msg-delete`        | `target-msgid`                                   | Client -> Channel   |
+| `+orbit/msg-amend`          | `target-msgid` + new content                     | Client -> Channel   |
+| `+orbit/msg-retract`        | `target-msgid`                                   | Client -> Channel   |
+| `+orbit/msg-react`         | `target-msgid`                                   | Client -> Channel   |
+| `+orbit/msg-reply`         | `target-msgid`                                   | Client -> Channel   |
 | `+orbit/file`                | File metadata: name, size, type (base64 JSON)    | Client -> Channel   |
+
+> **Note on `+orbit/msg-react`**: This tag is a cache invalidation signal only. When a client receives it, the correct response is to refetch reaction state for the referenced `target-msgid` from Reactor. The tag carries no reaction content — no key, no account, no count. Clients MUST NOT attempt to reconstruct reaction state from IRC history. The [Reaction Service](../../../07-research/12-reaction-service.md) (Reactor, post-MVP) is the sole authoritative source of reaction state.
 
 ## Encoding
 
 Base64 encoding is used because IRC message tags have restricted character sets. IRC message tags have a budget of up to 8191 bytes per the IRCv3 message-tags spec. The message body has a separate limit (512 bytes classic, or server-configured). Payloads exceeding the tag budget are split across a `batch`.
+
+## Versioning
+
+The `+orbit/*` tag namespace has no version field. Orbit clients MUST ignore unknown tags and unknown fields within known tag payloads. This is the forward-compatibility rule: a client that does not understand a tag silently skips it, and a client that receives a known tag with extra fields ignores the fields it does not recognize. This allows the tag namespace to evolve without breaking older clients.
+
+If a future change alters the semantics of an existing tag in a backward-incompatible way, a new tag name MUST be introduced rather than redefining the existing tag. This ensures that older clients continue to behave correctly (by ignoring the new tag) rather than misinterpreting a changed payload format.
 
 ## Extensions
 

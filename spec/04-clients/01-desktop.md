@@ -15,7 +15,7 @@ The Orbit desktop client is built with **Tauri v2** (Rust backend + OS-native We
 - Channel list with optional hierarchical rendering (see [Channel Organization](#channel-organization) below).
 - Message history fetched via IRCv3 `chathistory` on channel join.
 - Rich rendering: inline link previews, image thumbnails, emoji (Unicode + custom per-server), basic Markdown (bold, italic, code, strikethrough).
-- Message editing and deletion (rendered from `+orbit/msg-edit` and `+orbit/msg-delete` tags).
+- Message amending and retracting (rendered from `+orbit/msg-amend` and `+orbit/msg-retract` tags).
 - Unread indicators and mention highlights.
 
 ### Channel Organization

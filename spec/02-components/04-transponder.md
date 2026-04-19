@@ -133,6 +133,9 @@ sequenceDiagram
 
 The auth-script bridge is the **only Orbit-specific glue code** in the entire identity system. It is a small, stateless service (~50–100 lines) that performs local JWT verification. It does not manage users, issue tokens, or store state. The JWKS is cached after the first fetch - subsequent verifications are local cryptographic operations with no network round-trips.
 
+
+**Account name mapping:** The auth-script bridge extracts the IRC account name from the JWT's `preferred_username` claim (standard OIDC `profile` scope). This claim MUST be present and MUST be a valid IRC nickname. The OIDC provider is responsible for ensuring that `preferred_username` values are unique and conform to IRC nickname rules (no spaces, no leading digits, within length limits). If the `preferred_username` claim is absent, the bridge MUST reject the authentication attempt. The `sub` claim (which is often an opaque UUID in providers like Keycloak) is NOT used for the IRC account name.
+
 **Without an identity provider:** Ergochat uses its built-in NickServ and internal account database for SASL authentication. This is the MVP default and requires no external service.
 
 ### NickServ and the Identity Provider

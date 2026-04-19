@@ -62,7 +62,8 @@ Web clients (and desktop clients as a convenience shortcut, bypassing DNS) fetch
   "satellite": [
     { "host": "sat.example.com", "port": 7880, "name": "US East" }
   ],
-  "depot": { "host": "depot.example.com", "port": 3000 }
+  "depot": { "host": "depot.example.com", "port": 3000 },
+  "reactor": { "host": "reactor.example.com", "port": 4000 }
 }
 ```
 
@@ -85,6 +86,8 @@ This mechanism is **optional but RECOMMENDED** for any community that wants web 
 | `satellite[].name` | string | Human-readable label (e.g., region name) |
 | `depot.host` | string | Depot hostname |
 | `depot.port` | number | Depot port |
+| `reactor.host` | string | Reactor (reaction service) hostname |
+| `reactor.port` | number | Reactor port |
 
 ## Per-Service Resolution
 
@@ -96,18 +99,17 @@ Resolution behaviour differs by client type.
 
 **Desktop clients** resolve Ground Control in this order:
 
-1. **SRV lookup** - query `_irc._tcp.example.com`. If a record exists, use the returned host and port.
-2. **Well-known URL** - fetch `/.well-known/orbit/services.json` and use the `irc.host` and `irc.port` values if present.
-3. **Conventional subdomain** - attempt `irc.example.com` on port `6697` (IRC over TLS). This is the expected path for well-configured deployments.
-4. **Bare domain fallback** - attempt `example.com` on port `6697` as a last resort (covers operators who skipped the subdomain entirely).
-5. **Manual entry** - if all automatic attempts fail, prompt the user to enter a host:port manually.
+1. **Well-known URL** - fetch `/.well-known/orbit/services.json` and use the `irc.host` and `irc.port` values if present.
+2. **Conventional subdomain** - attempt `irc.example.com` on port `6697` (IRC over TLS). This is the expected path for well-configured deployments.
+3. **Bare domain fallback** - attempt `example.com` on port `6697` as a last resort (covers operators who skipped the subdomain entirely).
+4. **Manual entry** - if all automatic attempts fail, prompt the user to enter a host:port manually.
 
 **Web clients** resolve Ground Control in this order:
 
 1. **Well-known URL** - fetch `/.well-known/orbit/services.json` and use the `irc.host` and `irc.ws_port` values if present. Web clients MUST connect via WebSocket using `ws_port`, not the raw IRC port.
 2. **Manual entry** - if the well-known URL is absent or does not contain `irc`, prompt the user to enter a host manually.
 
-Operators SHOULD publish an `irc.example.com` A/AAAA record. The bare domain fallback (desktop step 4) exists only as a defensive measure and SHOULD NOT be relied upon.
+Operators SHOULD publish an `irc.example.com` A/AAAA record. The bare domain fallback (desktop step 3) exists only as a defensive measure and SHOULD NOT be relied upon.
 
 See [../02-components/01-ground-control/01-overview.md](../02-components/01-ground-control/01-overview.md) for Ground Control architecture.
 

@@ -19,7 +19,7 @@ orbit-app
   lib/
     core/             # Shared Vue components, Pinia stores, composables, IRC logic
     platform/         # Platform adapter (tauri.ts + web.ts)
-  package.json        # Workspace root (pnpm workspaces)
+  package.json        # Workspace root (npm workspaces)
 ```
 
 > **Naming note:** The directory tree above is canonical. The original spec prose referenced `packages/core` and `packages/platform`; those references are incorrect. The correct paths are `lib/core` and `lib/platform`.
