@@ -16,6 +16,7 @@ For the full list of `+orbit/*` tags and their payloads, see [Tag Namespace](01-
 | `+orbit/msg-amend`     | Set by the sending client                                     | Client-asserted    | Yes - any client can send this tag      |
 | `+orbit/msg-retract`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/msg-reply`    | Set by the sending client                                     | Client-asserted    | Yes                                     |
+| `+orbit/msg-thread`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/sat-invite`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/p2p-offer`   | Set by the sending client                                     | Client-asserted    | Yes                                     |
 | `+orbit/file`         | Set by the sending client                                     | Client-asserted    | Yes                                     |
@@ -32,6 +33,7 @@ Orbit clients MUST enforce the following rules using the server-asserted `accoun
 4. **P2P connections**: Verify the sender's identity (`account-tag`) before accepting a `+orbit/p2p-offer`. Display the sender's verified identity and the connection intent (call, video, chat, file) in the acceptance prompt. Do not auto-accept offers from unverified senders.
 5. **File metadata**: The `+orbit/file` tag (name, size, type) is informational. The client SHOULD verify file metadata independently (e.g., by checking HTTP headers on download) rather than trusting the tag blindly.
 6. **Message replies**: A `+orbit/msg-reply` tag references a `target-msgid`. The client SHOULD display the reply with an excerpt of the original message (if available in the local buffer) and a link to navigate to it. No identity verification is required beyond what the server already provides via `account-tag` on the reply message itself. If the target message is not in the client's buffer, the reply is displayed without the excerpt.
+7. **Thread signals**: Accept a `+orbit/msg-thread` TAGMSG as a thread activity signal for the referenced `parent_msgid`. No identity verification is required beyond what the server already provides via `account-tag`. Thread signals are informational - they notify other clients that a thread channel exists or has new activity. They are not modifications to existing messages and carry no trust consequence beyond this. Unverified senders (no `account-tag`) MAY post thread signals - starting or replying to a thread does not require a registered account.
 
 ## Unverified Senders
 

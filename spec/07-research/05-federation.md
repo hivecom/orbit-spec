@@ -17,9 +17,9 @@ Two layers:
 
 ### Layer 1: IRC Network Linking
 
-IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. However, [Ergo](https://ergo.chat/) (Ground Control's IRC server) **does not currently support server-to-server linking**. Per the Ergo manual: *"Ergo does not currently support server-to-server linking (federation), meaning that all clients must connect to the same instance."* Horizontal scalability is on the Ergo roadmap but is not scheduled for development in the near term.
+IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. However, [Ergo](https://ergo.chat/) (Ground Control's current IRC server) **does not currently support server-to-server linking**. Per the Ergo manual: *"Ergo does not currently support server-to-server linking (federation), meaning that all clients must connect to the same instance."* Horizontal scalability is on the Ergo roadmap but is not scheduled for development in the near term.
 
-This means Layer 1 - IRC network linking - is not currently achievable with Ergo and cannot be used as a federation stepping stone without either switching IRC servers or waiting for Ergo to implement it. The approach below is therefore forward-looking, contingent on Ergo gaining this capability or an alternative IRC server being used.
+Layer 1 is therefore not achievable with stock Ergo today. The resolution path is the **Ground Control fork** described in the [Design Philosophy](../01-architecture/02-philosophy.md). A purpose-built Ground Control IRCd, forked from Ergo, will implement server-to-server linking on Orbit's timeline rather than Ergo upstream's. This removes the blocking dependency entirely. The approach below is forward-looking against that fork, not against stock Ergo.
 
 Basic IRC linking (multiple servers forming one logical network) is not the same as true federation (independent organizations running independent servers that interoperate as peers). True federation raises hard questions:
 
@@ -31,7 +31,7 @@ Basic IRC linking (multiple servers forming one logical network) is not the same
 
 The target simplest model remains: IRC network linking where multiple Ground Control instances form a single logical network under shared administration. This is well-understood IRC infrastructure with decades of operational experience. True cross-organization federation (more analogous to email or Matrix) is a separate, later problem. Do not attempt to design a general federation protocol until the simpler model is deployed and its limitations are understood in practice.
 
-Until Ergo gains server-to-server linking support, the MVP remains single-instance Ergo. Ergo does scale vertically across multiple CPU cores and supports high-availability deployment via Kubernetes (shared volume, load balancer), which mitigates the single-instance constraint for reliability - but not for geographic distribution or organizational federation.
+For the MVP, Ground Control is single-instance Ergo. Ergo scales vertically across multiple CPU cores and supports high-availability deployment via Kubernetes (shared volume, load balancer), which mitigates the single-instance constraint for reliability - but not for geographic distribution or organizational federation. Server-to-server linking is a Ground Control fork milestone, not an MVP requirement.
 
 ### Layer 2: Signed Identity Assertions (Identity Bridging)
 
@@ -125,7 +125,7 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 **IRC linking (Phase 1):**
 
-> **Blocked**: Ergo does not currently support server-to-server linking. Phase 1 cannot be evaluated until this changes. Monitor [Ergo's roadmap](https://github.com/ergochat/ergo) for updates, or evaluate alternative IRCd implementations (e.g. UnrealIRCd, InspIRCd) that support linking if this becomes a priority.
+> **Unblocked by the Ground Control fork.** Server-to-server linking will be implemented in the Ground Control IRCd fork. Phase 1 evaluation proceeds once the fork has a working link protocol. See [Design Philosophy - The Long-Term Path](../01-architecture/02-philosophy.md#the-long-term-path-ground-control-as-a-true-ircd) for the fork rationale and roadmap context.
 
 - Set up a two-server linked network. Test:
   - Text chat across the link (message delivery, ordering, latency)

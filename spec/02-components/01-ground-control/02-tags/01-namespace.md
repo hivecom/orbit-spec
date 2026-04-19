@@ -15,6 +15,7 @@ For Ergochat's tag relay configuration, see [Ground Control](../01-overview.md).
 | `+orbit/sat-invite`        | Node URL + room ID + metadata (base64 JSON)      | Client -> Channel   |
 | `+orbit/p2p-offer`         | P2P handshake: intent + ICE credentials + DTLS fingerprint + candidate (base64 JSON) | Client -> Client    |
 | `+orbit/p2p-answer`        | P2P handshake response: ICE credentials + DTLS fingerprint + candidate (base64 JSON) | Client -> Client    |
+| `+orbit/msg-thread`        | `parent_msgid` + thread channel name (base64 JSON) | Client -> Channel   |
 | `+orbit/msg-amend`          | `target-msgid` + new content                     | Client -> Channel   |
 | `+orbit/msg-retract`        | `target-msgid`                                   | Client -> Channel   |
 | `+orbit/msg-react`         | `target-msgid`                                   | Client -> Channel   |
@@ -22,6 +23,18 @@ For Ergochat's tag relay configuration, see [Ground Control](../01-overview.md).
 | `+orbit/file`                | File metadata: name, size, type (base64 JSON)    | Client -> Channel   |
 
 > **Note on `+orbit/msg-react`**: This tag is a cache invalidation signal only. When a client receives it, the correct response is to refetch reaction state for the referenced `target-msgid` from Reactor. The tag carries no reaction content - no key, no account, no count. Clients MUST NOT attempt to reconstruct reaction state from IRC history. The [Reaction Service](../../../07-research/12-reaction-service.md) (Reactor, post-MVP) is the sole authoritative source of reaction state.
+
+> **Note on `+orbit/msg-thread`**: This tag serves a dual role as both a **creation signal** and an **activity signal**. It is sent to the parent channel - not the thread channel - when a thread is first created AND on every subsequent reply. The payload identifies the thread channel by name so receiving clients can discover and join it. Clients MUST NOT attempt to reconstruct thread reply counts solely from the number of TAGMSGs received - a client that was offline may have missed signals. The authoritative reply list is always the `chathistory` of the thread channel itself.
+>
+> On thread creation only, the client also sends a plain `PRIVMSG` to the parent channel alongside this TAGMSG:
+>
+> ```
+> ↳ Thread started by alice in #dev.t-abc123
+> ```
+>
+> This PRIVMSG is visible to all IRC clients and allows them to follow the thread by joining the named channel directly. Orbit clients suppress it from the chat view and render the thread indicator instead. Subsequent replies do NOT send a PRIVMSG to the parent channel - only the TAGMSG activity signal is sent on each reply.
+>
+> See [Ground Control - Threads](../01-overview.md#threads) for the full thread design.
 
 ## Encoding
 
