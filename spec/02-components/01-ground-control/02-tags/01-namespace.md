@@ -21,7 +21,7 @@ For Ergochat's tag relay configuration, see [Ground Control](../01-overview.md).
 | `+orbit/msg-reply`         | `target-msgid`                                   | Client -> Channel   |
 | `+orbit/file`                | File metadata: name, size, type (base64 JSON)    | Client -> Channel   |
 
-> **Note on `+orbit/msg-react`**: This tag is a cache invalidation signal only. When a client receives it, the correct response is to refetch reaction state for the referenced `target-msgid` from Reactor. The tag carries no reaction content — no key, no account, no count. Clients MUST NOT attempt to reconstruct reaction state from IRC history. The [Reaction Service](../../../07-research/12-reaction-service.md) (Reactor, post-MVP) is the sole authoritative source of reaction state.
+> **Note on `+orbit/msg-react`**: This tag is a cache invalidation signal only. When a client receives it, the correct response is to refetch reaction state for the referenced `target-msgid` from Reactor. The tag carries no reaction content - no key, no account, no count. Clients MUST NOT attempt to reconstruct reaction state from IRC history. The [Reaction Service](../../../07-research/12-reaction-service.md) (Reactor, post-MVP) is the sole authoritative source of reaction state.
 
 ## Encoding
 

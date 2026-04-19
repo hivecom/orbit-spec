@@ -46,6 +46,20 @@ Key constraints:
 - **Opt-in by naming convention.** Communities that don't use dots see a flat channel list. Communities that adopt dot notation get automatic folder grouping. Operators create the hierarchy simply by naming channels with dot-separated prefixes.
 - **Nesting depth is unbounded but discouraged.** `#dev.frontend.react` would render as a nested subfolder. More than two levels deep is a smell - keep it shallow.
 
+### Edge Cases
+
+The following channel name patterns have defined rendering behavior:
+
+| Channel name | Rendering | Rationale |
+|---|---|---|
+| `#.hidden` | Top-level channel named `.hidden` | Leading dot produces an empty prefix; the empty prefix is discarded and the channel is treated as top-level |
+| `#dev.` | Top-level channel named `dev.` | Trailing dot produces an empty suffix; the channel is treated as top-level with no children |
+| `#dev..frontend` | Rendered as `dev > frontend` | Consecutive dots are collapsed to a single separator |
+| `#general` | Top-level channel | No dot, no grouping |
+| `#dev.frontend.react` | Rendered as `dev > frontend > react` | Three levels deep; valid but discouraged |
+
+These are client-side rendering decisions only. The IRC server sees the channel names as-is. No channel name is rejected or modified by the client - only its position in the rendered tree changes.
+
 ### Voice & Video
 
 - Satellite selector: server Satellites shown with verified badge, BYON Satellites shown with community label.
@@ -97,7 +111,20 @@ Since Orbit is decentralized, there is no central invite service. An `orbit://` 
 - **Windows**: Registry key under `HKEY_CLASSES_ROOT\orbit` pointing to the Orbit executable with `%1` argument. Add a second registry key under `HKEY_CLASSES_ROOT\satellite` pointing to the same executable.
 - **macOS**: `CFBundleURLTypes` entry in `Info.plist` with scheme `orbit`. Add a second `CFBundleURLTypes` entry with scheme `satellite`.
 
-On invocation, the app launches (or focuses if already running) and routes to the specified server/channel or Satellite session. If the client is not installed, `orbit://` links are inert - there is no web fallback in the MVP (the full web client could serve as a fallback in a post-MVP update).
+On invocation, the app launches (or focuses if already running) and routes to the specified server/channel or Satellite session.
+
+### Web Fallback for `orbit://` Links
+
+If the Orbit client is not installed, `orbit://` links are inert in most browsers. To avoid dead links when sharing publicly, operators SHOULD publish equivalent `https://` links alongside `orbit://` links. The Orbit web app accepts the same parameters as URL query strings and serves as a full fallback:
+
+| `orbit://` link | `https://` equivalent |
+|---|---|
+| `orbit://irc.example.com/general` | `https://app.example.com/?server=irc.example.com&channel=general` |
+| `orbit://irc.example.com/general?voice=true` | `https://app.example.com/?server=irc.example.com&channel=general&voice=true` |
+
+The web app handles these parameters on startup identically to how the desktop client handles the `orbit://` URI. Users who open the `https://` link and don't have the desktop client installed get the full web app experience. Users who do have the desktop client installed can use the "Open in Desktop" link shown in the web app to switch over.
+
+Sharing the `https://` link is the recommended approach for public-facing community promotion (websites, social media, README files). The `orbit://` link is more appropriate for in-app sharing between users who are expected to have the client installed.
 
 ## DNS SRV Resolution
 

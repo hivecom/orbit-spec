@@ -94,6 +94,18 @@ Downloads are public. Anyone with the file URL can fetch the file directly from 
 URL is the access control - if you don't want someone to access a file, don't share the URL. This
 is the same model as Imgur, public S3 buckets, or paste services.
 
+This model is appropriate for files shared in public channels. For files shared in private contexts
+- direct messages or private channels - the URL leaking to a third party would grant them access.
+The mitigation for this case is end-to-end encryption: when E2E encryption is active for a DM (see
+[Research: E2E Encryption](../07-research/06-e2e-encryption.md)), the file is encrypted
+client-side before upload. The Depot URL points to ciphertext - useless without the decryption key,
+which never leaves the participants' clients. In this model, Depot remains a dumb object store and
+the security guarantee comes from the encryption layer, not from access control on the URL.
+
+For the MVP, E2E encryption is not implemented. Operators running private communities should be
+aware that Depot URLs are permanently accessible to anyone who obtains them, and should communicate
+this to their users.
+
 ## Authentication
 
 Depot operates in one of two modes, chosen by the server operator at deployment time.

@@ -80,3 +80,34 @@ The web app and widget connect to Ground Control (WebSocket), Satellite (HTTP + 
 - **Depot (upload API)**: The presign endpoint MUST return appropriate CORS headers. S3 pre-signed upload URLs also require CORS configuration on the S3 bucket itself (MinIO or AWS S3 bucket CORS policy).
 
 In the reference Caddy deployment, CORS headers are configured per-route in the Caddyfile. For development, a permissive `Access-Control-Allow-Origin: *` is acceptable; for production, restrict to the specific web app origin(s).
+
+## Backups
+
+Operators are responsible for backing up their own data. The following components produce state that must be backed up:
+
+| Component | What to back up | Notes |
+|---|---|---|
+| Ground Control (Ergochat) | Ergochat's SQLite database (`ircd.db`) | Contains all user accounts, channel registrations, and message history. Location is configurable; default is the Ergochat data directory. |
+| Depot (MinIO) | MinIO bucket contents + Depot API metadata database | Back up the S3 bucket via `mc mirror` (MinIO Client) or equivalent. Back up the Depot API's SQLite/Postgres database separately. |
+| Configuration | `.env` file, `orbit.toml`, Caddyfile, `docker-compose.yml` | Store in version control. Do not commit secrets - use a secrets manager or encrypted store. |
+| Auth-script bridge | No state to back up | Stateless service; configuration is in the `.env` file. |
+
+Ergochat's always-on mode (recommended for registered users) means the database grows continuously with channel history. Operators should schedule regular backups and set a retention policy appropriate to their storage budget.
+
+A simple backup approach for the reference Docker Compose deployment is a daily cron job that copies the Ergochat data directory and MinIO data directory to an off-site location (S3, rsync to a remote host, etc.).
+
+## Monitoring and Health Checks
+
+Each Orbit service exposes a health endpoint suitable for use with monitoring tools (Uptime Kuma, Prometheus, a simple `curl` cron job, etc.):
+
+| Component | Health endpoint | What it checks |
+|---|---|---|
+| Ground Control (Ergochat) | IRC connect on port 6697 (or WebSocket on 6698) | TCP connectivity; Ergochat does not expose an HTTP health endpoint by default |
+| Satellite (token service) | `GET /health` | Token service reachability; optionally checks LiveKit connectivity |
+| Depot API | `GET /health` | Depot API reachability and S3 backend connectivity |
+| Auth-script bridge | `GET /healthz` | Bridge reachability and OIDC provider JWKS reachability |
+| Caddy | `GET /` on the admin API (default port 2019) | Reverse proxy health |
+
+**Recommended approach for self-hosters:** deploy [Uptime Kuma](https://github.com/louislam/uptime-kuma) alongside Orbit. It requires no configuration beyond pointing it at the health endpoints above, and provides a status page and alerting (email, Telegram, etc.) out of the box.
+
+**Logging:** Ergochat writes structured logs to stdout by default; redirect to a file or a log aggregator. The auth-script bridge MUST emit structured logs for all authentication attempts (as specified in [Transponder - Auth-Script Bridge](../02-components/04-transponder.md#auth-script-bridge)). LiveKit and MinIO both produce structured JSON logs. In the reference Docker Compose deployment, all logs are available via `docker compose logs`.

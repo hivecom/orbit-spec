@@ -59,6 +59,8 @@ endpoint (`GET /info`) to retrieve:
 }
 ```
 
+> **The `/info` endpoint is intentionally unauthenticated.** Unauthenticated clients - including the web widget and anonymous users - need to be able to discover and display available voice sessions without authenticating first. This is consistent with the public nature of IRC channels: anyone connected to the server can see what channels exist. Operators who want to restrict session visibility entirely can do so at the network level (firewall, VPN), but the Satellite itself does not gate `/info` behind authentication. If a deployment requires fully private session metadata, the operator should not run a publicly reachable Satellite.
+
 SRV record priority and weight are respected for load balancing and failover. Multiple SRV records
 can advertise multiple Satellites under the same domain.
 
@@ -314,9 +316,21 @@ sequenceDiagram
     K-)SAT: Connect to SFU (WebRTC)
 ```
 
-The knock is a plain HTTP request - the knocker does not hold a connection or consume any SFU resources while waiting. After knocking, the client polls or retries `/session/join` periodically. Once the creator admits the knocker (which adds their identity to the session's allow-list), the next join attempt succeeds and the knocker receives a token and connects to the SFU.
+After knocking, the client opens a **Server-Sent Events** connection to `GET /session/knock/status/:knock_id`. The Satellite holds this connection open and pushes a single event when the knock is admitted, rejected, or times out, then closes the stream. The knocker consumes no SFU resources while waiting - the SSE connection is a lightweight HTTP long-poll on the token service, not a media connection.
 
-Knocking is best-effort. If no one responds, the knock expires silently after a reasonable timeout (e.g., 60 seconds). There is no queue, no persistent connection, no waiting room - it's a doorbell.
+```
+GET /session/knock/status/:knock_id
+Accept: text/event-stream
+
+← event: admitted
+← data: {}
+
+(stream closes)
+```
+
+On receiving an `admitted` event, the client immediately retries `POST /session/join`. On a `rejected` or `timeout` event, the client shows an appropriate message and closes the SSE connection.
+
+Knocking is best-effort. If no one responds within a reasonable timeout (e.g., 60 seconds), the Satellite pushes a `timeout` event and closes the stream. There is no queue, no waiting room, no persistent state beyond the knock's TTL - it's a doorbell with a brief ring.
 
 ## STUN/TURN
 

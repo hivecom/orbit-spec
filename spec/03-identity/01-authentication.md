@@ -64,6 +64,22 @@ sequenceDiagram
     D-->>O: Upload accepted
 ```
 
+## Token Refresh
+
+The OIDC authorization flow returns three tokens: `access_token`, `id_token`, and `refresh_token`. The `access_token` and `id_token` are short-lived (typically 5–15 minutes, controlled by the identity provider). The `refresh_token` is long-lived and used to silently obtain new tokens without requiring the user to log in again.
+
+The Orbit client manages token refresh transparently:
+
+1. On startup, the client checks the stored `id_token` expiry. If it is within 60 seconds of expiry (or already expired), the client immediately performs a silent refresh before attempting to connect to any component.
+2. During a session, the client tracks the token expiry and schedules a background refresh before expiry. The refresh uses the `refresh_token` against the provider's token endpoint (`grant_type=refresh_token`). No user interaction is required.
+3. On refresh success, the client stores the new tokens and uses the new `id_token` for any subsequent component requests (new Depot uploads, new Satellite session joins). Already-established connections are unaffected:
+   - **Ground Control (IRC)**: SASL authentication only happens at connect time. An already-connected IRC session persists independently of token expiry. The refreshed token is used on the next reconnect.
+   - **Satellite**: The LiveKit session JWT issued at join time has its own lifetime, independent of the OIDC token. An active voice session is unaffected by OIDC token refresh.
+   - **Depot**: Each upload request presents the current token. If the token was refreshed since the last upload, the new token is used automatically.
+4. If the refresh token is expired or revoked (e.g., the user's account was suspended), the refresh fails. The client displays a re-authentication prompt. The user must log in again to continue using authenticated features.
+
+The refresh token lifetime is set by the identity provider. Operators should configure a refresh token lifetime appropriate to their community (e.g., 7–30 days for persistent logins, shorter for higher-security deployments).
+
 ## NickServ Disablement
 
 When an identity provider is configured, **NickServ must be disabled**. The OIDC provider is the single source of truth for accounts - running NickServ alongside it creates two competing account databases and a namespace conflict (a user could register the same nickname via NickServ and the OIDC provider as two different people).

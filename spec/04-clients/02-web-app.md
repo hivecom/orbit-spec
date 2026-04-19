@@ -63,14 +63,6 @@ VitePWA({
   workbox: {
     // Precache the app shell; runtime-cache API responses separately
     globPatterns: ['**/*.{js,css,html,woff2,svg,png}'],
-    runtimeCaching: [
-      {
-        urlPattern: /^wss?:\/\/.*/,   // WebSocket - not cached, always live
-        // Note: service workers cannot intercept WebSocket connections.
-        // This rule is documentary only and has no runtime effect.
-        handler: 'NetworkOnly',
-      },
-    ],
   },
 })
 ```
