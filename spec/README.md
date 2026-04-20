@@ -8,6 +8,7 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Philosophy](01-architecture/02-philosophy.md) - Core design principles and opinionated choices
 - [Glossary](01-architecture/03-glossary.md) - Definitions for all named components (Uplink, Satellite, Depot, Transponder)
 - [IRC Compatibility Profile](01-architecture/04-compatibility-profile.md) - What IRC clients see on an Uplink server
+- [Platform Comparison](01-architecture/05-platform-comparison.md) - Honest gap assessment vs Discord, Slack, and Teams
 
 ## Components
 

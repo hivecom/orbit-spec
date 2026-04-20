@@ -4,11 +4,46 @@
 >
 > For full details on any item, follow the spec link in the rightmost column.
 
+## Context
+
+Discord, Slack, and Teams are the platforms most people use as a reference point when evaluating Orbit. The honest answer is: Orbit covers a large portion of what those platforms do, some things differently by design, and a handful of things not yet or not at all.
+
+A full sober assessment - category by category, with explicit gap calls - is in the [Platform Comparison](spec/01-architecture/05-platform-comparison.md) document. Read that first if your primary question is "how does this stack up against what we use today."
+
+The short version:
+
+| | Orbit MVP | Orbit + Fork |
+|---|---|---|
+| Text chat, DMs, history | + | + |
+| Replies, threads, retractions | + | + |
+| Message editing | - | + |
+| Message reactions | - | + |
+| Full-text search | - | + |
+| Group voice, video, screen share | + | + |
+| P2P 1:1 calls | + | + |
+| Files and inline media | + | + |
+| Presence and rich status | + | + |
+| Desktop + web + PWA | + | + |
+| Embeddable widget | + | + |
+| Mobile native app | - | + |
+| Push notifications | - | + |
+| OIDC / SSO / MFA | + | + |
+| Anonymous guest access | + | + |
+| IRC bot ecosystem | + | + |
+| Webhook / REST integration API | - | + |
+| Self-hosting, open protocol | + | + |
+| Federation | - | + |
+| Role hierarchies | * | * |
+| Enterprise compliance tools | - | - |
+| Application platform | - | - |
+
+**Legend:** + supported · - not yet or not planned · * model difference (covered differently by design)
+
+The two `- -` rows at the bottom are not gaps - they are explicit decisions. See [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md) for the reasoning.
+
 ## Legend
 
 Each section heading indicates the scope - **MVP**, **NEXT**, or **Research**. Items that cross scope boundaries are noted inline with a parenthetical. Open questions are prefixed with `OPEN`.
-
----
 
 ## MVP
 
@@ -125,8 +160,6 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 
 > Full compatibility profile: [04-compatibility-profile](spec/01-architecture/04-compatibility-profile.md)
 
----
-
 ## NEXT
 
 Features planned for post-MVP releases, roughly ordered by expected priority.
@@ -208,8 +241,6 @@ Features planned for post-MVP releases, roughly ordered by expected priority.
 | E2E encrypted file uploads | Client-side encryption before Depot upload | [03-depot](spec/02-components/03-depot.md) |
 | Richer presence | Presence history (last online), structured status states, server-managed avatars | [01-uplink/04-presence](spec/02-components/01-uplink/04-presence.md) |
 
----
-
 ## Research
 
 Active research tracks with no ship commitment. Each requires a standalone prototype and benchmark before any decision is made.
@@ -250,8 +281,6 @@ Active research tracks with no ship commitment. Each requires a standalone proto
 
 **Blockers:** Multi-driver compatibility (AMD RADV/AMDVLK, NVIDIA proprietary, Intel ANV); DXVK/VKD3D-Proton interop; webcam video texture upload; crashing layer = crashing game (zero tolerance). **Depends on Tier 1 shipping first.**
 
----
-
 ## Open Questions
 
 Decisions still pending that affect scope or design. See [03-open-questions](spec/0A-decisions/03-open-questions.md) for full context.
@@ -266,8 +295,6 @@ Decisions still pending that affect scope or design. See [03-open-questions](spe
 | Satellite token bootstrapping | Is a public join key sufficient for MVP? (Probably yes - same trust model as public TeamSpeak/Mumble.) |
 | Multi-node sessions | Can a voice session span multiple LiveKit nodes? Probably not in MVP. What happens on node failure? |
 
----
-
 ## Architecture Decisions
 
 Key decisions already made. See [0A-decisions](spec/0A-decisions/) for full ADRs.
@@ -281,8 +308,6 @@ Key decisions already made. See [0A-decisions](spec/0A-decisions/) for full ADRs
 | Identity provider | **Any OIDC-compliant provider** (Keycloak, Authentik, etc.) - Transponder is a role, not a service | [04-transponder](spec/02-components/04-transponder.md) |
 | E2E boundary | **1:1 only** - if a server mediates, no E2E. Channels and group voice explicitly excluded | [02-philosophy](spec/01-architecture/02-philosophy.md) |
 | Mobile strategy | **PWA first**, Tauri v2 Mobile second, native Swift/Kotlin left to community | [06-next/02-mobile](spec/06-next/02-mobile-clients.md) |
-
----
 
 ## Explicitly Out of Scope
 
