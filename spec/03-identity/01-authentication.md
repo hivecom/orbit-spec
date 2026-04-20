@@ -1,6 +1,6 @@
 # Authentication
 
-Authentication in Orbit is built on standard OIDC (OpenID Connect). The Orbit client authenticates against the server's identity provider using the Authorization Code flow with PKCE, obtains a signed JWT, and uses that JWT across all Orbit components - Ground Control (IRC), Satellite (voice/video), and Depot (file storage). One login, verified everywhere.
+Authentication in Orbit is built on standard OIDC (OpenID Connect). The Orbit client authenticates against the server's identity provider using the Authorization Code flow with PKCE, obtains a signed JWT, and uses that JWT across all Orbit components - Uplink (IRC), Satellite (voice/video), and Depot (file storage). One login, verified everywhere.
 
 For deployments without an identity provider, Ergochat's built-in NickServ/SASL provides a fallback authentication path for IRC - but identity verification on Satellite and Depot is unavailable. See [Graceful Degradation](#graceful-degradation) below.
 
@@ -36,7 +36,7 @@ The identity provider controls the login experience. If the operator wants usern
 
 Once the client has a JWT, it is reused across all Orbit components for the current domain - the domain whose `/.well-known/orbit/oidc` or DNS SRV records pointed to the identity provider:
 
-- **Ground Control (Ergochat)** - the client sends the JWT as the SASL PLAIN password. Ergochat's `auth-script` calls the auth-script bridge, which verifies the JWT against the provider's JWKS. On success, the bridge returns the `preferred_username` claim as the account name, and Ergochat sets the `account-tag` accordingly.
+- **Uplink (Ergochat)** - the client sends the JWT as the SASL PLAIN password. Ergochat's `auth-script` calls the auth-script bridge, which verifies the JWT against the provider's JWKS. On success, the bridge returns the `preferred_username` claim as the account name, and Ergochat sets the `account-tag` accordingly.
 - **Satellite** - the client presents the JWT with its session join request. The Satellite token service verifies the JWT against the provider's JWKS and issues a LiveKit JWT with `verified: true`.
 - **Depot** - the client sends the JWT as a Bearer token. Depot verifies it against the same JWKS.
 
@@ -45,7 +45,7 @@ Each component verifies independently against the provider's published keys. No 
 ```mermaid
 sequenceDiagram
     participant O as Orbit Client
-    participant GC as Ground Control (Ergochat)
+    participant GC as Uplink (Ergochat)
     participant S as Satellite
     participant D as Depot
 
@@ -73,7 +73,7 @@ The Orbit client manages token refresh transparently:
 1. On startup, the client checks the stored `id_token` expiry. If it is within 60 seconds of expiry (or already expired), the client immediately performs a silent refresh before attempting to connect to any component.
 2. During a session, the client tracks the token expiry and schedules a background refresh before expiry. The refresh uses the `refresh_token` against the provider's token endpoint (`grant_type=refresh_token`). No user interaction is required.
 3. On refresh success, the client stores the new tokens and uses the new `id_token` for any subsequent component requests (new Depot uploads, new Satellite session joins). Already-established connections are unaffected:
-   - **Ground Control (IRC)**: SASL authentication only happens at connect time. An already-connected IRC session persists independently of token expiry. The refreshed token is used on the next reconnect.
+   - **Uplink (IRC)**: SASL authentication only happens at connect time. An already-connected IRC session persists independently of token expiry. The refreshed token is used on the next reconnect.
    - **Satellite**: The LiveKit session JWT issued at join time has its own lifetime, independent of the OIDC token. An active voice session is unaffected by OIDC token refresh.
    - **Depot**: Each upload request presents the current token. If the token was refreshed since the last upload, the new token is used automatically.
 4. If the refresh token is expired or revoked (e.g., the user's account was suspended), the refresh fails. The client displays a re-authentication prompt. The user must log in again to continue using authenticated features.
@@ -110,7 +110,7 @@ The Orbit web client (whether embedded as a widget or deployed as a full web app
 ```mermaid
 sequenceDiagram
     participant BR as Browser (web client / widget)
-    participant GC as Ground Control
+    participant GC as Uplink
 
     BR->>GC: Connect WSS
     BR->>GC: SASL ANONYMOUS (auto guest-* nick)

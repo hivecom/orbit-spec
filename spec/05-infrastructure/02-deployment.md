@@ -8,7 +8,7 @@ For the full client-side DNS resolution algorithm and per-service discovery beha
 
 | Component | Technology | Resource target (~100 users) | Required |
 |---|---|---|---|
-| Ground Control (Ergochat) | Go, single binary | 1 vCPU, 256 MB RAM | Yes |
+| Uplink (Ergochat) | Go, single binary | 1 vCPU, 256 MB RAM | Yes |
 | Satellite | Go + thin HTTP API | 1 vCPU, 512 MB RAM (scales with users) | No (optional) |
 | Depot (Object Storage) | MinIO or S3 | Storage-dependent | No (only for file uploads) |
 | coturn (STUN/TURN) | C, single binary | 1 vCPU, 128 MB RAM | No (only for NAT traversal) |
@@ -16,9 +16,9 @@ For the full client-side DNS resolution algorithm and per-service discovery beha
 | **Total minimum (text-only)** | | **~$5/month VPS** | |
 | **Total with voice** | | **~$10/month VPS** | |
 
-A community can run Orbit text-only with just Ground Control (Ergochat). Satellite and Depot are optional components added as needed.
+A community can run Orbit text-only with just Uplink (Ergochat). Satellite and Depot are optional components added as needed.
 
-See [../02-components/01-ground-control/01-overview.md](../02-components/01-ground-control/01-overview.md), [../02-components/02-satellite.md](../02-components/02-satellite.md), and [../02-components/03-depot.md](../02-components/03-depot.md) for per-component architecture detail.
+See [../02-components/01-uplink/01-overview.md](../02-components/01-uplink/01-overview.md), [../02-components/02-satellite.md](../02-components/02-satellite.md), and [../02-components/03-depot.md](../02-components/03-depot.md) for per-component architecture detail.
 
 ## TLS
 
@@ -45,7 +45,7 @@ DNS is the primary discovery mechanism for all Orbit services. These records are
 
 | Record | Purpose | Add when |
 |---|---|---|
-| `irc.example.com` | Ground Control (IRC + WebSocket) endpoint | If running IRC |
+| `irc.example.com` | Uplink (IRC + WebSocket) endpoint | If running IRC |
 | `sat.example.com` | Satellite endpoint | If running Satellite |
 | `depot.example.com` | Depot (object storage) endpoint | If running Depot |
 | `turn.example.com` | TURN server | If running TURN |
@@ -60,7 +60,7 @@ For the full client-side resolution algorithm and service discovery behaviour, s
 
 A reference `docker-compose.yml` is provided for self-hosters. It includes:
 
-- **Ergochat** (Ground Control) - with WebSocket enabled, SASL configured, and chat history enabled.
+- **Ergochat** - the MVP implementation of Uplink - with WebSocket enabled, SASL configured, and chat history enabled.
 - **LiveKit + token service** (Satellite) - **optional**; can be removed for text-only deployments.
 - **MinIO** (Depot) - **optional**; only required if file uploads are needed.
 - **coturn** (STUN/TURN) - for NAT traversal.
@@ -73,9 +73,9 @@ Satellite is optional. Running `docker compose up ergochat caddy` produces a min
 
 ## CORS Configuration
 
-The web app and widget connect to Ground Control (WebSocket), Satellite (HTTP + WebRTC), and Depot (HTTP) endpoints - potentially on different origins. The reverse proxy (Caddy) MUST be configured to set appropriate CORS headers on all API endpoints that web clients access:
+The web app and widget connect to Uplink (WebSocket), Satellite (HTTP + WebRTC), and Depot (HTTP) endpoints - potentially on different origins. The reverse proxy (Caddy) MUST be configured to set appropriate CORS headers on all API endpoints that web clients access:
 
-- **Ground Control (WebSocket)**: WebSocket connections are not subject to CORS preflight, but the `Origin` header SHOULD be validated by the reverse proxy to reject connections from unexpected origins.
+- **Uplink (WebSocket)**: WebSocket connections are not subject to CORS preflight, but the `Origin` header SHOULD be validated by the reverse proxy to reject connections from unexpected origins.
 - **Satellite (token service)**: The `/session/create`, `/session/join`, `/session/knock`, `/session/admit`, `/session/lock`, and `/info` endpoints MUST return `Access-Control-Allow-Origin` headers matching the web app's origin. Preflight (`OPTIONS`) requests MUST be handled.
 - **Depot (upload API)**: The presign endpoint MUST return appropriate CORS headers. S3 pre-signed upload URLs also require CORS configuration on the S3 bucket itself (MinIO or AWS S3 bucket CORS policy).
 
@@ -87,12 +87,12 @@ Operators are responsible for backing up their own data. The following component
 
 | Component | What to back up | Notes |
 |---|---|---|
-| Ground Control (Ergochat) | Ergochat's SQLite database (`ircd.db`) | Contains all user accounts, channel registrations, and message history. Location is configurable; default is the Ergochat data directory. |
+| Uplink (Ergochat) | Ergochat's SQLite database (`ircd.db`) | Contains all user accounts, channel registrations, and message history. Location is configurable; default is the Ergochat data directory. |
 | Depot (MinIO) | MinIO bucket contents + Depot API metadata database | Back up the S3 bucket via `mc mirror` (MinIO Client) or equivalent. Back up the Depot API's SQLite/Postgres database separately. |
 | Configuration | `.env` file, `orbit.toml`, Caddyfile, `docker-compose.yml` | Store in version control. Do not commit secrets - use a secrets manager or encrypted store. |
 | Auth-script bridge | No state to back up | Stateless service; configuration is in the `.env` file. |
 
-Ergochat's always-on mode (recommended for registered users) means the database grows continuously with channel history. Operators should schedule regular backups and set a retention policy appropriate to their storage budget.
+Ergochat's always-on mode (required for registered users) means the database grows continuously with channel history. Operators should schedule regular backups and set a retention policy appropriate to their storage budget.
 
 A simple backup approach for the reference Docker Compose deployment is a daily cron job that copies the Ergochat data directory and MinIO data directory to an off-site location (S3, rsync to a remote host, etc.).
 
@@ -102,7 +102,7 @@ Each Orbit service exposes a health endpoint suitable for use with monitoring to
 
 | Component | Health endpoint | What it checks |
 |---|---|---|
-| Ground Control (Ergochat) | IRC connect on port 6697 (or WebSocket on 6698) | TCP connectivity; Ergochat does not expose an HTTP health endpoint by default |
+| Uplink (Ergochat) | IRC connect on port 6697 (or WebSocket on 6698) | TCP connectivity; Ergochat does not expose an HTTP health endpoint by default |
 | Satellite (token service) | `GET /health` | Token service reachability; optionally checks LiveKit connectivity |
 | Depot API | `GET /health` | Depot API reachability and S3 backend connectivity |
 | Auth-script bridge | `GET /healthz` | Bridge reachability and OIDC provider JWKS reachability |

@@ -18,7 +18,7 @@ When `mode=widget` is active:
 
 Voice and video work normally in the widget. The iframe just needs `allow="microphone; camera"` from the embedder. No special configuration is required beyond the standard iframe permission attributes.
 
-> **Note**: Whether guest users should ever be allowed to speak in voice channels (rather than receive-only) is an unresolved decision. See [Open Questions](../06-decisions/03-open-questions.md#widget-voice-permissions).
+> **Note**: Whether guest users should ever be allowed to speak in voice channels (rather than receive-only) is an unresolved decision. See [Open Questions](../0A-decisions/03-open-questions.md#widget-voice-permissions).
 
 ## Embedding
 

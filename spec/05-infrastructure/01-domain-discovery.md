@@ -29,13 +29,13 @@ DNS discovery applies to desktop clients only. Web clients skip this section ent
 | `_depot._tcp.example.com` | SRV | Depot (file storage) discovery | If running Depot |
 | `_transponder._tcp.example.com` | SRV | Identity provider (OIDC) discovery | Post-MVP |
 
-> **Ground Control (IRC)** does not use an SRV record. It is reached via a conventional `irc.example.com` A/AAAA record on port 6697. See [Ground Control resolution](#ground-control-resolution) below.
+> **Uplink (IRC)** does not use an SRV record. It is reached via a conventional `irc.example.com` A/AAAA record on port 6697. See [Uplink Resolution](#uplink-resolution) below.
 
 ### A / AAAA Records
 
 | Record | Purpose | Add when |
 |---|---|---|
-| `irc.example.com` | Ground Control (IRC + WebSocket) endpoint | If running IRC |
+| `irc.example.com` | Uplink (IRC + WebSocket) endpoint | If running IRC |
 | `sat.example.com` | Satellite endpoint | If running Satellite |
 | `depot.example.com` | Depot (object storage) endpoint | If running Depot |
 | `turn.example.com` | TURN server | If running TURN |
@@ -62,8 +62,7 @@ Web clients (and desktop clients as a convenience shortcut, bypassing DNS) fetch
   "satellite": [
     { "host": "sat.example.com", "port": 7880, "name": "US East" }
   ],
-  "depot": { "host": "depot.example.com", "port": 3000 },
-  "reactor": { "host": "reactor.example.com", "port": 4000 }
+  "depot": { "host": "depot.example.com", "port": 3000 }
 }
 ```
 
@@ -77,7 +76,7 @@ This mechanism is **optional but RECOMMENDED** for any community that wants web 
 
 | Key | Type | Description |
 |---|---|---|
-| `irc.host` | string | Ground Control hostname |
+| `irc.host` | string | Uplink hostname |
 | `irc.port` | number | IRC over TLS port (typically 6697) |
 | `irc.ws_port` | number | WebSocket port for web clients (typically 6698) |
 | `satellite` | array | One object per Satellite, in priority order |
@@ -86,32 +85,30 @@ This mechanism is **optional but RECOMMENDED** for any community that wants web 
 | `satellite[].name` | string | Human-readable label (e.g., region name) |
 | `depot.host` | string | Depot hostname |
 | `depot.port` | number | Depot port |
-| `reactor.host` | string | Reactor (reaction service) hostname |
-| `reactor.port` | number | Reactor port |
 
 ## Per-Service Resolution
 
-### Ground Control Resolution
+### Uplink Resolution
 
 > **Note:** The original spec contained a mismatch: the client resolution logic (§7.4) tried bare `example.com:6697` first, while operator setup guidance (§9.3) told operators to create an `irc.example.com` A record. The resolution order below reconciles both sections.
 
 Resolution behaviour differs by client type.
 
-**Desktop clients** resolve Ground Control in this order:
+**Desktop clients** resolve Uplink in this order:
 
 1. **Well-known URL** - fetch `/.well-known/orbit/services.json` and use the `irc.host` and `irc.port` values if present.
 2. **Conventional subdomain** - attempt `irc.example.com` on port `6697` (IRC over TLS). This is the expected path for well-configured deployments.
 3. **Bare domain fallback** - attempt `example.com` on port `6697` as a last resort (covers operators who skipped the subdomain entirely).
 4. **Manual entry** - if all automatic attempts fail, prompt the user to enter a host:port manually.
 
-**Web clients** resolve Ground Control in this order:
+**Web clients** resolve Uplink in this order:
 
 1. **Well-known URL** - fetch `/.well-known/orbit/services.json` and use the `irc.host` and `irc.ws_port` values if present. Web clients MUST connect via WebSocket using `ws_port`, not the raw IRC port.
 2. **Manual entry** - if the well-known URL is absent or does not contain `irc`, prompt the user to enter a host manually.
 
 Operators SHOULD publish an `irc.example.com` A/AAAA record. The bare domain fallback (desktop step 3) exists only as a defensive measure and SHOULD NOT be relied upon.
 
-See [../02-components/01-ground-control/01-overview.md](../02-components/01-ground-control/01-overview.md) for Ground Control architecture.
+See [../02-components/01-uplink/01-overview.md](../02-components/01-uplink/01-overview.md) for Uplink architecture.
 
 ### Satellite Resolution
 
@@ -152,9 +149,9 @@ See [../02-components/03-depot.md](../02-components/03-depot.md) for Depot archi
 
 ### Identity Provider Resolution (Post-MVP)
 
-The Orbit client discovers the server’s OIDC identity provider (the Transponder role) through the following mechanisms in priority order:
+The Orbit client discovers the server's OIDC identity provider (the Transponder role) through the following mechanisms in priority order:
 
-1. **Well-known URL** - fetch `/.well-known/orbit/oidc` on the server’s domain. This returns a JSON document containing the OIDC issuer URL. The client then fetches the standard `/.well-known/openid-configuration` from that issuer to discover all endpoints. (All clients.)
+1. **Well-known URL** - fetch `/.well-known/orbit/oidc` on the server's domain. This returns a JSON document containing the OIDC issuer URL. The client then fetches the standard `/.well-known/openid-configuration` from that issuer to discover all endpoints. (All clients.)
 2. **DNS SRV** - resolve `_transponder._tcp.example.com`. Use the returned host and port as the OIDC issuer base URL. (Desktop only.)
 
 **If no identity provider is discovered:** all Satellite participants are treated as unverified. Voice sessions continue normally; identity verification is absent.

@@ -2,17 +2,17 @@
 
 Transponder is not a service - it is a **role**. In the Orbit ecosystem, "Transponder" refers to whatever OIDC-compliant identity provider the server operator deploys. This can be [Keycloak](https://www.keycloak.org/), [Authentik](https://goauthentik.io/), [Authelia](https://www.authelia.com/), [Zitadel](https://zitadel.com/), or any other provider that implements [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html). Orbit does not ship its own identity service - it consumes standard OIDC.
 
-The operator deploys an identity provider, points Orbit components at its issuer URL, and everything else - credential verification, token issuance, key publication - is handled by the provider. Ground Control, Satellite, Depot, and any future service all consume the same identity layer without custom adapters or glue code.
+The operator deploys an identity provider, points Orbit components at its issuer URL, and everything else - credential verification, token issuance, key publication - is handled by the provider. Uplink, Satellite, Depot, and any future service all consume the same identity layer without custom adapters or glue code.
 
 Transponder is **optional**. Deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
 
 ## Why a Shared Identity Layer
 
-The MVP authenticates users within Ground Control's own boundary: SASL to Ergochat, NickServ for account management, `account-tag` for identity assertion on the IRC wire. This works for text chat, but those assertions are server-scoped - they do not travel outside the IRC connection.
+The MVP authenticates users within Uplink's own boundary: SASL to Ergochat, NickServ for account management, `account-tag` for identity assertion on the IRC wire. This works for text chat, but those assertions are server-scoped - they do not travel outside the IRC connection.
 
-When a user connects to a Satellite (a completely separate service), the Satellite has no way to verify that this person is the same authenticated user from Ground Control. The [Satellite authentication model](../02-components/02-satellite.md#satellite-authentication) in the MVP uses a public join key - anyone who presents the key gets access. That model cannot support verified identity display in voice sessions, cross-server trust, or federation.
+When a user connects to a Satellite (a completely separate service), the Satellite has no way to verify that this person is the same authenticated user from Uplink. The [Satellite authentication model](../02-components/02-satellite.md#satellite-authentication) in the MVP uses a public join key - anyone who presents the key gets access. That model cannot support verified identity display in voice sessions, cross-server trust, or federation.
 
-The deeper problem is architectural: in the MVP, identity is embedded inside Ground Control. There is no shared identity layer that multiple components can consume. An external OIDC provider solves this by extracting identity into a standalone authority that all components plug into equally.
+The deeper problem is architectural: in the MVP, identity is embedded inside Uplink. There is no shared identity layer that multiple components can consume. An external OIDC provider solves this by extracting identity into a standalone authority that all components plug into equally.
 
 ## How It Works
 
@@ -22,7 +22,7 @@ The entire system hinges on one configuration value: the **OIDC issuer URL**. Ev
 flowchart TB
     IDP["OIDC Provider (Transponder role)\ne.g., Keycloak, Authentik, etc.\n─────────────────────────────\n/.well-known/openid-configuration\n/protocol/openid-connect/token\n/protocol/openid-connect/certs"]
 
-    IDP -->|auth-script bridge| GC["Ground Control\n(Ergochat)"]
+    IDP -->|auth-script bridge| GC["Uplink\n(Ergochat)"]
     IDP -->|JWT/JWKS verification| SAT["Satellite\n(LiveKit)"]
     IDP -->|JWT/JWKS verification| DEPOT["Depot\n(S3 API)"]
 ```
@@ -77,7 +77,7 @@ The resulting JWT is then used across all Orbit components for the duration of t
 ```mermaid
 sequenceDiagram
     participant O as Orbit Client
-    participant GC as Ground Control (Ergochat)
+    participant GC as Uplink (Ergochat)
     participant S as Satellite
     participant D as Depot
 
@@ -100,7 +100,7 @@ One authentication, one JWT, verified everywhere. Each component independently v
 
 ## Component Integration
 
-### Ground Control (Ergochat)
+### Uplink (Ergochat)
 
 IRC predates OIDC by decades. Ergochat authenticates users via SASL - it has no native OIDC support. The integration requires a thin **auth-script bridge**: a small HTTP service or script that translates Ergochat's `auth-script` credential check into a JWT verification against the OIDC provider's JWKS endpoint.
 
@@ -117,7 +117,7 @@ The flow:
 ```mermaid
 sequenceDiagram
     participant C as Orbit Client
-    participant GC as Ground Control (Ergochat)
+    participant GC as Uplink (Ergochat)
     participant B as Auth-Script Bridge
     participant IdP as Identity Provider
 
@@ -242,12 +242,12 @@ An identity provider is optional. If a server operator doesn't deploy one, nothi
 The OIDC model scales naturally to federation - more cleanly than a custom identity service, because OIDC providers are already independent HTTP services with published keys and standardized discovery:
 
 - **Same-server**: All components point at one OIDC issuer URL. Auto-configured at deployment.
-- **Linked network**: Multiple Ground Control instances in a linked Ergo network share an OIDC provider, or run separate providers. Satellites trust the key set from one or both.
+- **Linked network**: Multiple Uplink instances in a linked Ergo network share an OIDC provider, or run separate providers. Satellites trust the key set from one or both.
 - **True federation**: Satellites maintain a trust store of JWKS endpoints from federated identity providers. Trust establishment follows one of several models: manual (operator explicitly adds trusted issuers, like SSH `known_hosts`), TOFU (Trust On First Use - accept on first contact, warn on key change), directory-based (a shared discovery service vouches for issuer-to-server bindings), or DNS-based (issuer URL in a DNSSEC-verified TXT record).
 
 Because the identity layer is standard OIDC - not a custom protocol - federated trust is just "trust additional issuers." The same pattern used by OIDC federation in enterprise environments (multi-tenant Keycloak, Azure AD B2B, etc.).
 
-For the full federation research track, including IRC network linking, hard federation questions, and evaluation criteria, see [Research: Federation](../07-research/05-federation.md).
+For the full federation research track, including IRC network linking, hard federation questions, and evaluation criteria, see [Research: Federation](../06-next/01-federation.md).
 
 ## Example: Keycloak Deployment
 
@@ -346,6 +346,6 @@ The Transponder role (external OIDC identity provider) is the first planned post
 ## Cross-References
 
 - [Satellite](../02-components/02-satellite.md) - Satellite authentication context and the public join key model that verified identity supersedes
-- [Ground Control](../02-components/01-ground-control/01-overview.md) - Ergochat configuration, `auth-script` delegation
+- [Uplink](../02-components/01-uplink/01-overview.md) - Ergochat configuration, `auth-script` delegation
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - identity provider discovery and DNS SRV records
-- [Research: Federation](../07-research/05-federation.md) - the full federation research track, including IRC network linking, trust models, and evaluation criteria
+- [Research: Federation](../06-next/01-federation.md) - the full federation research track, including IRC network linking, trust models, and evaluation criteria

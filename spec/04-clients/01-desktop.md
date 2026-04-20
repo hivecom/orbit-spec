@@ -4,8 +4,8 @@
 
 The Orbit desktop client is built with **Tauri v2** (Rust backend + OS-native WebView) and **Vue 3** (frontend), using the team's own **VUI** component library (`@dolanske/vui`). Tauri provides a lightweight, cross-platform shell with a binary size an order of magnitude smaller than Electron, while Vue 3 and VUI enable rapid development with shared tooling across all Hivecom projects. The Rust backend handles performance-critical work: IRC protocol parsing, file I/O, audio device management, and IPC.
 
-- For the full rationale and Tauri vs. Electron comparison, see [ADR: Tauri vs. Electron](../06-decisions/01-adr-tauri-vs-electron.md).
-- For the Vue framework selection and alternatives considered (Leptos, Svelte, Quasar), see [ADR: Vue Alternatives](../06-decisions/02-adr-vue-alternatives.md).
+- For the full rationale and Tauri vs. Electron comparison, see [ADR: Tauri vs. Electron](../0A-decisions/01-adr-tauri-vs-electron.md).
+- For the Vue framework selection and alternatives considered (Leptos, Svelte, Quasar), see [ADR: Vue Alternatives](../0A-decisions/02-adr-vue-alternatives.md).
 
 ## Key Features
 
@@ -15,16 +15,16 @@ The Orbit desktop client is built with **Tauri v2** (Rust backend + OS-native We
 - Channel list with optional hierarchical rendering (see [Channel Organization](#channel-organization) below).
 - Message history fetched via IRCv3 `chathistory` on channel join.
 - Rich rendering: inline link previews, image thumbnails, emoji (Unicode + custom per-server), basic Markdown (bold, italic, code, strikethrough).
-- Message amending and retracting (rendered from `+orbit/msg-amend` and `+orbit/msg-retract` tags).
+- Message retractions (rendered from the server `REDACT` command via `draft/message-redaction`). Message editing is post-Uplink.
 - Unread indicators and mention highlights.
 
 ### Channel Organization
 
-IRC channels are flat. There is no server-side hierarchy, no folder concept, no metadata. Orbit keeps it that way - but uses **dot notation** as a client-side rendering convention to give communities hierarchical organization for free.
+IRC channels are flat. There is no server-side hierarchy, no folder concept, no metadata. Orbit keeps it that way - but uses **path notation** as a client-side rendering convention to give communities hierarchical organization for free.
 
-If a channel name contains dots (e.g., `#dev.frontend`, `#dev.backend`), the client interprets dots as directory separators and renders the channels in a collapsible tree structure in the sidebar. Channels without dots remain at the top level.
+If a channel name contains slashes (e.g., `#dev/frontend`, `#dev/backend`), the client interprets slashes as directory separators and renders the channels in a collapsible tree structure in the sidebar. Channels without slashes remain at the top level.
 
-Example rendering for a server with channels `#general`, `#announcements`, `#dev.frontend`, `#dev.backend`, `#dev.infrastructure`, `#gaming.lfg`, `#gaming.strategy`, `#gaming.clips`:
+Example rendering for a server with channels `#general`, `#announcements`, `#dev/frontend`, `#dev/backend`, `#dev/infrastructure`, `#gaming/lfg`, `#gaming/strategy`, `#gaming/clips`:
 
 ```
 # general
@@ -41,10 +41,10 @@ Example rendering for a server with channels `#general`, `#announcements`, `#dev
 
 Key constraints:
 
-- **No protocol change.** The IRC server sees flat channel names as always. `#dev.frontend` is just a channel name with a dot in it.
+- **No protocol change.** The IRC server sees flat channel names as always. `#dev/frontend` is just a channel name with a slash in it.
 - **No server-side enforcement.** No metadata is stored, no configuration is required. The hierarchy exists only in the client's rendering logic.
-- **Opt-in by naming convention.** Communities that don't use dots see a flat channel list. Communities that adopt dot notation get automatic folder grouping. Operators create the hierarchy simply by naming channels with dot-separated prefixes.
-- **Nesting depth is unbounded but discouraged.** `#dev.frontend.react` would render as a nested subfolder. More than two levels deep is a smell - keep it shallow.
+- **Opt-in by naming convention.** Communities that don't use slashes see a flat channel list. Communities that adopt path notation get automatic folder grouping. Operators create the hierarchy simply by naming channels with slash-separated prefixes.
+- **Nesting depth is unbounded but discouraged.** `#dev/frontend/react` would render as a nested subfolder. More than two levels deep is a smell - keep it shallow.
 
 ### Edge Cases
 
@@ -52,11 +52,12 @@ The following channel name patterns have defined rendering behavior:
 
 | Channel name | Rendering | Rationale |
 |---|---|---|
-| `#.hidden` | Top-level channel named `.hidden` | Leading dot produces an empty prefix; the empty prefix is discarded and the channel is treated as top-level |
-| `#dev.` | Top-level channel named `dev.` | Trailing dot produces an empty suffix; the channel is treated as top-level with no children |
-| `#dev..frontend` | Rendered as `dev > frontend` | Consecutive dots are collapsed to a single separator |
-| `#general` | Top-level channel | No dot, no grouping |
-| `#dev.frontend.react` | Rendered as `dev > frontend > react` | Three levels deep; valid but discouraged |
+| `#/hidden` | Top-level channel named `/hidden` | Leading slash produces an empty prefix; the empty prefix is discarded and the channel is treated as top-level |
+| `#dev/` | Top-level channel named `dev/` | Trailing slash produces an empty suffix; the channel is treated as top-level with no children |
+| `#dev//frontend` | Rendered as `dev > frontend` | Consecutive slashes are collapsed to a single separator |
+| `#general` | Top-level channel | No slash, no grouping |
+| `#dev/frontend/react` | Rendered as `dev > frontend > react` | Three levels deep; valid but discouraged |
+| `#v2.0-release` | Top-level channel named `v2.0-release` | Dots in channel names are not hierarchy separators — only slashes are. Channel names with dots are unambiguous. |
 
 These are client-side rendering decisions only. The IRC server sees the channel names as-is. No channel name is rejected or modified by the client - only its position in the rendered tree changes.
 
@@ -82,7 +83,7 @@ These are client-side rendering decisions only. The IRC server sees the channel 
 
 ## Custom URI Scheme - `orbit://`
 
-### Ground Control Links
+### Uplink Links
 
 | URI                                                     | Behavior                                              |
 |---------------------------------------------------------|-------------------------------------------------------|
@@ -148,7 +149,7 @@ Ergochat includes built-in bouncer/always-on functionality that handles offline 
 
 When enabled, Ergochat keeps the user's session alive on the server even when no client is connected. The user remains in all joined channels and accumulates messages. This is configured server-side (`accounts.multiclient.always-on`) and can be user-toggled.
 
-Orbit deployments SHOULD enable Ergochat's always-on mode for registered users. This ensures that users receive all messages sent while they were offline, and that their channel memberships are preserved across disconnections.
+Orbit deployments MUST enable Ergochat's always-on mode for registered users. This ensures that users receive all messages sent while they were offline, and that their channel memberships are preserved across disconnections.
 
 ### Reconnection Flow
 
@@ -162,7 +163,7 @@ When the Orbit client reconnects after a disconnection:
 
 ### Partial Disconnection
 
-Because Ground Control and Satellite are independent, one can drop while the other stays live:
+Because Uplink and Satellite are independent, one can drop while the other stays live:
 
 - **IRC drops, Satellite stays up**: Voice/video continues uninterrupted. Ephemeral Satellite chat continues. The client displays a warning ("Text chat reconnecting...") and attempts to re-establish the IRC connection with exponential backoff. No voice session interruption occurs.
 - **Satellite drops, IRC stays up**: Text chat continues. The client displays "Voice session disconnected" and optionally attempts to rejoin the same Satellite room. Other participants see the user leave the voice session.

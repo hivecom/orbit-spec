@@ -20,7 +20,7 @@ Leptos is a Rust-based reactive framework that compiles to WebAssembly. It elimi
 
 In practice, the Hivecom team has no existing Leptos experience, VUI does not target WASM, and the Leptos ecosystem is young enough that missing libraries would need to be built from scratch. The estimated ~10% memory premium of Vue over a Leptos/WASM approach is an acceptable trade-off for development velocity.
 
-Leptos remains an active research track. See [../07-research/02-leptos-wasm.md](../07-research/02-leptos-wasm.md).
+Leptos remains an active research track. See [../0B-research/02-leptos-wasm.md](../0B-research/02-leptos-wasm.md).
 
 ### Svelte
 

@@ -6,19 +6,22 @@ This directory contains the full set of Orbit design specifications, organized i
 
 - [Overview](01-architecture/01-overview.md) - System diagram, session flows, and component map
 - [Philosophy](01-architecture/02-philosophy.md) - Core design principles and opinionated choices
-- [Glossary](01-architecture/03-glossary.md) - Definitions for all named components (Ground Control, Satellite, Depot, Transponder, Beacon)
+- [Glossary](01-architecture/03-glossary.md) - Definitions for all named components (Uplink, Satellite, Depot, Transponder)
+- [IRC Compatibility Profile](01-architecture/04-compatibility-profile.md) - What IRC clients see on an Uplink server
 
 ## Components
 
-- [Ground Control](02-components/01-ground-control/01-overview.md) - IRC layer: IRCv3, required extensions, Ergochat configuration, message editing
+- [Uplink](02-components/01-uplink/01-overview.md) - IRC layer: IRCv3, required extensions, Ergochat configuration
+- [DMs & Group DMs](02-components/01-uplink/03-dms.md) - DM storage model, E2E interaction, always-on delivery
+- [Presence](02-components/01-uplink/04-presence.md) - Metadata, avatars, status, read markers
 - [Satellite](02-components/02-satellite.md) - Real-time media layer: SFU, voice sessions, BYON, authentication, codecs
 - [Depot](02-components/03-depot.md) - Storage layer: file uploads, the Depot API, download model
 - [Transponder](02-components/04-transponder.md) - Identity bridging: signed tokens, verified vs. unverified users (post-MVP)
 
-## Ground Control Tags
+## Uplink Tags
 
-- [Namespace](02-components/01-ground-control/02-tags/01-namespace.md) - The `+orbit/*` tag table, base64 encoding, extensions sub-namespace
-- [Trust Model](02-components/01-ground-control/02-tags/02-trust-model.md) - Client enforcement rules for client-asserted tags (edits, deletes, invites)
+- [Namespace](02-components/01-uplink/02-tags/01-namespace.md) - The `+orbit/*` tag table, base64 encoding, extensions sub-namespace
+- [Trust Model](02-components/01-uplink/02-tags/02-trust-model.md) - Client enforcement rules for client-asserted tags (edits, deletes, invites)
 
 ## Identity & Auth
 
@@ -37,24 +40,26 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Deployment](05-infrastructure/02-deployment.md) - Component resource requirements, TLS, reference Docker Compose
 - [Monorepo](05-infrastructure/03-monorepo.md) - Monorepo structure, build commands, CI pipeline
 
+## Next
+
+- [Federation](06-next/01-federation.md) - Federation between Orbit instances and IRC network linking
+- [Mobile Clients](06-next/02-mobile-clients.md) - Tauri Mobile for iOS and Android
+- [Bot API](06-next/03-bot-api.md) - Bot and Integration API: IRC bots, webhooks, REST gateway
+- [Push Notifications](06-next/04-push-notifications.md) - Uplink-native push notification delivery
+- [E2E Encryption](06-next/05-e2e-encryption.md) - End-to-end encryption for DMs and group channels
+- [Server Discovery](06-next/06-server-discovery.md) - Public server directory and community discovery
+- [Satellite Gateway](06-next/07-satellite-gateway.md) - Multi-node Satellite routing and autoscaling
+
 ## Decisions & ADRs
 
-- [ADR: Tauri vs. Electron](06-decisions/01-adr-tauri-vs-electron.md) - ADR: Why Tauri v2 over Electron
-- [ADR: Vue Alternatives](06-decisions/02-adr-vue-alternatives.md) - ADR: Why Vue 3 over Leptos, Svelte, and Quasar
-- [Open Questions](06-decisions/03-open-questions.md) - Unresolved design decisions requiring resolution
-- [Out of Scope](06-decisions/04-out-of-scope.md) - Features explicitly deferred from the MVP
+- [ADR: Tauri vs. Electron](0A-decisions/01-adr-tauri-vs-electron.md) - ADR: Why Tauri v2 over Electron
+- [ADR: Vue Alternatives](0A-decisions/02-adr-vue-alternatives.md) - ADR: Why Vue 3 over Leptos, Svelte, and Quasar
+- [Open Questions](0A-decisions/03-open-questions.md) - Unresolved design decisions requiring resolution
+- [Out of Scope](0A-decisions/04-out-of-scope.md) - Features explicitly deferred from the MVP
 
 ## Research Tracks
 
-- [MoQ / Iroh](07-research/01-moq-iroh.md) - Media over QUIC using Iroh (R&D)
-- [Leptos / WASM](07-research/02-leptos-wasm.md) - Leptos/WASM frontend rewrite (R&D)
-- [Linux Overlay](07-research/03-linux-overlay.md) - Linux gaming overlay: Wayland layer-shell and X11 (Tier 1)
-- [Vulkan Overlay](07-research/04-vulkan-overlay.md) - Linux gaming overlay: Vulkan explicit layer (Tier 2)
-- [Federation](07-research/05-federation.md) - Federation between Orbit instances and IRC network linking
-- [E2E Encryption](07-research/06-e2e-encryption.md) - End-to-end encryption for DMs and group channels
-- [Mobile Clients](07-research/07-mobile-clients.md) - Tauri Mobile for iOS and Android
-- [Beacon](07-research/08-beacon.md) - Push notification relay component (post-MVP)
-- [Bot API](07-research/09-bot-api.md) - Bot and Integration API: IRC bots, webhooks, REST gateway
-- [Server Discovery](07-research/10-server-discovery.md) - Public server directory and community discovery
-- [Satellite Gateway](07-research/11-satellite-gateway.md) - Multi-node Satellite routing and autoscaling
-- [Reaction Service](07-research/12-reaction-service.md) - Pluggable reaction service (Reactor): aggregated state, custom emoji, sticker packs
+- [MoQ / Iroh](0B-research/01-moq-iroh.md) - Media over QUIC using Iroh (R&D)
+- [Leptos / WASM](0B-research/02-leptos-wasm.md) - Leptos/WASM frontend rewrite (R&D)
+- [Linux Overlay](0B-research/03-linux-overlay.md) - Linux gaming overlay: Wayland layer-shell and X11 (Tier 1)
+- [Vulkan Overlay](0B-research/04-vulkan-overlay.md) - Linux gaming overlay: Vulkan explicit layer (Tier 2)

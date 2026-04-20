@@ -4,7 +4,7 @@ Depot is the file storage component of an Orbit deployment. It provides S3-compa
 storage for file uploads, user avatars, and other binary assets shared within Orbit communities.
 
 Depot is an optional component - text chat and real-time media function without it. File sharing
-within Ground Control channels requires a Depot instance.
+within Uplink channels requires a Depot instance.
 
 A Depot deployment consists of two parts:
 
@@ -46,7 +46,7 @@ sequenceDiagram
     participant U as Orbit Client
     participant D as Depot API
     participant S3 as S3 Backend
-    participant GC as Ground Control
+    participant GC as Uplink
 
     U->>D: POST /upload/presign {filename, size, type}<br/>Authorization: Bearer JWT (if OIDC)
     Note over D: Verify auth (if OIDC)<br/>Check rate limit<br/>Check file size<br/>Check quota (if OIDC)<br/>Write metadata row (if OIDC)
@@ -97,7 +97,7 @@ is the same model as Imgur, public S3 buckets, or paste services.
 This model is appropriate for files shared in public channels. For files shared in private contexts
 - direct messages or private channels - the URL leaking to a third party would grant them access.
 The mitigation for this case is end-to-end encryption: when E2E encryption is active for a DM (see
-[Research: E2E Encryption](../07-research/06-e2e-encryption.md)), the file is encrypted
+[Research: E2E Encryption](../06-next/05-e2e-encryption.md)), the file is encrypted
 client-side before upload. The Depot URL points to ciphertext - useless without the decryption key,
 which never leaves the participants' clients. In this model, Depot remains a dumb object store and
 the security guarantee comes from the encryption layer, not from access control on the URL.
@@ -116,7 +116,7 @@ When the server has a [Transponder](04-transponder.md) (OIDC identity provider) 
 verifies uploads against it. The client sends a Bearer JWT with its pre-sign request. Depot
 verifies the JWT signature against the provider's published JWKS - the same verification pattern
 used by [Satellite](02-satellite.md) and the
-[auth-script bridge](04-transponder.md#ground-control-ergochat). No component contacts any other
+[auth-script bridge](04-transponder.md#uplink-ergochat). No component contacts any other
 component to check identity.
 
 ```
@@ -167,7 +167,7 @@ POST /upload/presign
 - **No file deletion by uploaders.** Without identity, there is no way to prove ownership.
   Only server operators can delete files via S3 admin tools.
 - **No audit trail.** The operator cannot answer "who uploaded this file?" from Depot alone.
-  The only record is the IRC message history in Ground Control, which may have been purged.
+  The only record is the IRC message history in Uplink, which may have been purged.
 - **Abuse surface is larger.** Rate limiting (per-IP) and file size caps are the only protection.
   This may be acceptable for small, private, trusted communities. It is not appropriate for
   public-facing deployments.
@@ -298,11 +298,11 @@ When a file is shared in a channel, the client attaches a single `+orbit/file` t
 | `size` | File size in bytes                           |
 | `type` | MIME type (e.g., `image/png`)                |
 
-This tag is defined in the [Orbit Tag Namespace](01-ground-control/02-tags/01-namespace.md).
+This tag is defined in the [Orbit Tag Namespace](01-uplink/02-tags/01-namespace.md).
 
 This metadata is client-asserted and informational. Orbit clients SHOULD verify file metadata
 independently by checking HTTP response headers (`Content-Type`, `Content-Length`) on download.
-See [Tag Trust Model](../01-ground-control/02-tags/02-trust-model.md) for enforcement rules.
+See [Tag Trust Model](../01-uplink/02-tags/02-trust-model.md) for enforcement rules.
 
 ## Service Discovery
 
@@ -314,7 +314,7 @@ well-known services file. For record format and the full client resolution algor
 
 - [Transponder](04-transponder.md) - the OIDC identity provider that enables authenticated uploads
 - [Authentication](../03-identity/01-authentication.md) - how the JWT flows through all components
-- [Tag Namespace](01-ground-control/02-tags/01-namespace.md) - file metadata tag definitions
-- [Tag Trust Model](01-ground-control/02-tags/02-trust-model.md) - client-side verification rules
+- [Tag Namespace](01-uplink/02-tags/01-namespace.md) - file metadata tag definitions
+- [Tag Trust Model](01-uplink/02-tags/02-trust-model.md) - client-side verification rules
 - [Infrastructure & Deployment](../05-infrastructure/02-deployment.md) - S3 backend setup
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - Depot endpoint discovery

@@ -13,12 +13,13 @@ The `spec/` directory contains the full set of Orbit design specifications, orga
 | Section | Contents |
 |---------|----------|
 | [Architecture](spec/01-architecture/) | System overview, design philosophy, component glossary |
-| [Components](spec/02-components/) | Ground Control (incl. tag namespace & trust model), Satellite, Depot, Transponder |
+| [Components](spec/02-components/) | Uplink (incl. tag namespace & trust model), Satellite, Depot, Transponder |
 | [Identity & Auth](spec/03-identity/) | Authentication, permissions |
 | [Clients](spec/04-clients/) | Desktop, web app, widget |
 | [Infrastructure](spec/05-infrastructure/) | DNS discovery, deployment, monorepo |
-| [Decisions](spec/06-decisions/) | ADRs, open questions, out-of-scope |
-| [Research](spec/07-research/) | Post-MVP and R&D tracks |
+| [Next](spec/06-next/) | Planned: federation, mobile, bot API, push, E2E encryption, server discovery, satellite gateway |
+| [Decisions](spec/0A-decisions/) | ADRs, open questions, out-of-scope |
+| [Research](spec/0B-research/) | R&D tracks: MoQ/Iroh, Leptos/WASM, Linux overlay, Vulkan overlay |
 
 Start with the [Architecture Overview](spec/01-architecture/01-overview.md) and [Component Glossary](spec/01-architecture/03-glossary.md).
 

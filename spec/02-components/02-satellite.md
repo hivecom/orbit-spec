@@ -1,6 +1,6 @@
 # Satellite
 
-Satellite is the real-time media component of an Orbit deployment. It handles voice, video, screen sharing, and ephemeral in-session chat. Satellite is completely decoupled from Ground Control - it has no dependency on IRC, channels, or message history. A Satellite can be used standalone, without any Ground Control instance.
+Satellite is the real-time media component of an Orbit deployment. It handles voice, video, screen sharing, and ephemeral in-session chat. Satellite is completely decoupled from Uplink - it has no dependency on IRC, channels, or message history. A Satellite can be used standalone, without any Uplink instance.
 
 Satellite is an optional component. An Orbit deployment without Satellite is a fully functional IRC-based text chat server. When Satellite is present, it extends the experience with real-time media capabilities.
 
@@ -20,13 +20,13 @@ A node consists of two co-located components:
 - **SFU (LiveKit)**: Handles WebRTC media - audio/video forwarding, bandwidth adaptation, STUN/TURN integration - and data channels for ephemeral session chat.
 - **Token service**: A small HTTP API that issues LiveKit-compatible JWTs for session authentication. In a single-node deployment, this is the entry point. In a multi-node deployment, this role is absorbed by the gateway.
 
-Satellite sessions include built-in ephemeral text chat via LiveKit's data channels. This chat is **not persisted** - when the session ends, the messages are gone. It exists for in-session coordination: quick callouts during a voice call, links shared during a screen share, reactions during a stream. Persistent, searchable, historical chat lives in Ground Control (IRC). Ephemeral, throwaway chat lives in Satellite. The two are architecturally distinct and intentionally so.
+Satellite sessions include built-in ephemeral text chat via LiveKit's data channels. This chat is **not persisted** - when the session ends, the messages are gone. It exists for in-session coordination: quick callouts during a voice call, links shared during a screen share, reactions during a stream. Persistent, searchable, historical chat lives in Uplink (IRC). Ephemeral, throwaway chat lives in Satellite. The two are architecturally distinct and intentionally so.
 
 ## Discovery
 
 DNS is the primary discovery mechanism for Satellites. This is an intentional architectural
 choice: DNS works independently of any running service, requires no modification to the IRC server,
-and allows domains without Ground Control to still advertise Satellites.
+and allows domains without Uplink to still advertise Satellites.
 
 **DNS SRV discovery.** The client resolves `_satellite._tcp.example.com` SRV records. Each record
 points to a Satellite's host and port. The client then queries the Satellite's metadata
@@ -72,7 +72,7 @@ server-operated Satellites are available. Voice features degrade gracefully - P2
 work (they don't need a Satellite), and BYON Satellites can still be used, but group voice via
 server Satellites is unavailable.
 
-**Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit.satellites`) with
+**Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit/satellites`) with
 descriptors in the topic. DNS is preferred because: (1) it doesn't require creating or
 configuring anything on the IRC server, (2) it works for domains that run Satellites without
 IRC, and (3) DNS changes propagate without touching the IRC server, keeping all Orbit service
@@ -103,7 +103,7 @@ Orbit clients display a clear indicator when joining a community Satellite. The 
 ```mermaid
 sequenceDiagram
     participant A as User A
-    participant GC as Ground Control (IRC)
+    participant GC as Uplink (IRC)
     participant SAT as Satellite
     participant B as User B
 
@@ -112,7 +112,7 @@ sequenceDiagram
     A->>SAT: POST /session/create (username, channel)
     SAT-->>A: {token, room_id}
 
-    A->>GC: TAGMSG #gaming.strategy +orbit/sat-invite=…
+    A->>GC: TAGMSG #gaming/strategy +orbit/sat-invite=…
     GC->>B: Relay to channel
 
     B->>SAT: POST /session/join (username, room_id)
@@ -163,7 +163,7 @@ external chat, etc.).
 
 ## 1-on-1 Calls - P2P
 
-Private connections between two users bypass Satellite entirely. The Orbit client establishes a direct WebRTC connection using IRC only for the initial handshake - a single message in each direction. All further negotiation happens over the WebRTC data channel, independent of Ground Control.
+Private connections between two users bypass Satellite entirely. The Orbit client establishes a direct WebRTC connection using IRC only for the initial handshake - a single message in each direction. All further negotiation happens over the WebRTC data channel, independent of Uplink.
 
 ### Handshake
 
@@ -180,7 +180,7 @@ The initiator sends a `TAGMSG` to the recipient's nickname with a `+orbit/p2p-of
 }
 ```
 
-The recipient's client displays the incoming request based on the `intent` field - "Alice wants to start a voice call" or "Bob wants to send you a file." If accepted, the recipient responds with a `+orbit/p2p-answer` tag containing the same fields (their own ICE credentials, DTLS fingerprint, and a candidate). That's it - two IRC messages total, ~300–400 bytes each. Ground Control's involvement ends here.
+The recipient's client displays the incoming request based on the `intent` field - "Alice wants to start a voice call" or "Bob wants to send you a file." If accepted, the recipient responds with a `+orbit/p2p-answer` tag containing the same fields (their own ICE credentials, DTLS fingerprint, and a candidate). That's it - two IRC messages total, ~300–400 bytes each. Uplink's involvement ends here.
 
 ### Intent
 
@@ -203,7 +203,7 @@ Once the WebRTC data channel is open, all further signaling happens over the dir
 - **ICE trickling**: Additional ICE candidates are exchanged over the data channel, not IRC. If the initial candidate doesn't work (e.g., symmetric NAT), TURN relay candidates are sent through the data channel to establish a relayed path.
 - **Escalation**: Adding video to a voice call, starting a screen share, or opening a file transfer - all negotiated over the data channel.
 
-This design means that after the initial two-message handshake, the P2P connection is **fully self-sufficient**. Ground Control can go down, the entire Orbit infrastructure can be offline - the session continues. The only thing that requires IRC is starting a *new* connection.
+This design means that after the initial two-message handshake, the P2P connection is **fully self-sufficient**. Uplink can go down, the entire Orbit infrastructure can be offline - the session continues. The only thing that requires IRC is starting a *new* connection.
 
 ### TURN Fallback
 
@@ -211,7 +211,7 @@ If direct connectivity fails (both peers behind symmetric NATs), the connection 
 
 ### Privacy Note
 
-P2P handshake signaling is relayed through Ground Control (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content. Post-handshake, the operator sees nothing - all media and further signaling flows directly between peers. Users who do not trust the server operator with connection metadata should use a Satellite for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
+P2P handshake signaling is relayed through Uplink (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content. Post-handshake, the operator sees nothing - all media and further signaling flows directly between peers. Users who do not trust the server operator with connection metadata should use a Satellite for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
 
 ### No SDP over IRC
 
@@ -355,11 +355,11 @@ Knocking is best-effort. If no one responds within a reasonable timeout (e.g., 6
 
 One media transport stack for the MVP: WebRTC via LiveKit (group) and native browser/Tauri WebRTC
 (P2P), supporting voice and video. No MoQ, no Iroh, no custom transport experiments. Those are
-tracked in [Research: MoQ / Iroh](../07-research/01-moq-iroh.md).
+tracked in [Research: MoQ / Iroh](../0B-research/01-moq-iroh.md).
 
 ## Standalone Satellite Usage
 
-Satellites are fully independent services. They can be used without Ground Control (IRC)
+Satellites are fully independent services. They can be used without Uplink (IRC)
 entirely. Two users can connect to a Satellite for voice, video, and ephemeral chat without any
 IRC server involvement.
 
@@ -383,16 +383,16 @@ Use cases that do not require IRC infrastructure:
 - **Quick voice calls** between friends who share a Satellite link
 - **Embedded voice** on websites using only a Satellite (no IRC backend)
 - **BYON-only communities** where users host their own Satellite and share room links
-- **Bootstrapping new communities** before setting up a full Ground Control instance
+- **Bootstrapping new communities** before setting up a full Uplink instance
 
 In standalone mode, all participants are unverified - there is no OIDC identity provider ([Transponder](04-transponder.md))
 or IRC identity to verify against. Ephemeral chat via LiveKit data channels is available; persistent
-chat is not (that requires Ground Control). This is an intentional, honest trade-off - the
+chat is not (that requires Uplink). This is an intentional, honest trade-off - the
 experience is reduced but functional.
 
 ### Standalone Authentication
 
-When a user opens a `satellite://` link, the Satellite operates without Ground Control - but identity verification is still possible if the Satellite's domain has a discoverable identity provider.
+When a user opens a `satellite://` link, the Satellite operates without Uplink - but identity verification is still possible if the Satellite's domain has a discoverable identity provider.
 
 The client-side flow:
 
@@ -402,9 +402,9 @@ The client-side flow:
 4. If the user authenticates, the client presents the resulting JWT to the Satellite's token service alongside the `/session/join` request. The token service verifies the JWT against the provider's JWKS and issues a LiveKit token with `verified: true` and the authenticated account name.
 5. If the user declines authentication or no Transponder is discovered, the client falls back to the unverified join flow (display name only, no identity badge).
 
-This means standalone Satellite sessions can have a mix of verified and unverified participants - the same model as IRC-signaled sessions. The Satellite itself doesn't need to know about Ground Control; it only needs the OIDC provider's JWKS endpoint to verify tokens, which it fetches and caches independently.
+This means standalone Satellite sessions can have a mix of verified and unverified participants - the same model as IRC-signaled sessions. The Satellite itself doesn't need to know about Uplink; it only needs the OIDC provider's JWKS endpoint to verify tokens, which it fetches and caches independently.
 
-The identity provider used for standalone authentication is always the one associated with the **Satellite's domain**, not the user's home domain. Cross-domain identity verification is a federation concern and is out of scope (see [Research: Federation](../07-research/05-federation.md)).
+The identity provider used for standalone authentication is always the one associated with the **Satellite's domain**, not the user's home domain. Cross-domain identity verification is a federation concern and is out of scope (see [Research: Federation](../06-next/01-federation.md)).
 
 ## Session Limits
 
@@ -447,5 +447,5 @@ Room affinity is inherent - a room lives on one node for its entire lifetime. Th
   and client resolution algorithm
 - [Desktop Client](../04-clients/01-desktop.md) - `orbit://` and `satellite://` URI scheme registration
 - [Transponder](04-transponder.md) - post-MVP OIDC-based identity verification for Satellite sessions
-- [Research: MoQ / Iroh](../07-research/01-moq-iroh.md) - post-MVP media transport research track
-- [Research: Satellite Gateway](../07-research/11-satellite-gateway.md) - multi-node routing, autoscaling, and drain coordination
+- [Research: MoQ / Iroh](../0B-research/01-moq-iroh.md) - post-MVP media transport research track
+- [Research: Satellite Gateway](../06-next/07-satellite-gateway.md) - multi-node routing, autoscaling, and drain coordination

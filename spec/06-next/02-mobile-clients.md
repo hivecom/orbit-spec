@@ -3,8 +3,8 @@
 Cross-references:
 - [Web App & PWA](../04-clients/02-web-app.md) - the PWA baseline that already covers mobile
 - [Desktop Client](../04-clients/01-desktop.md) - shared monorepo structure and Tauri codebase
-- [Beacon](08-beacon.md) - push notification relay required for full notification support
-- [ADR: Vue Alternatives](../06-decisions/02-adr-vue-alternatives.md) - explains why Capacitor was not chosen
+- [Push Notifications](04-push-notifications.md) - push notification relay required for full notification support
+- [ADR: Vue Alternatives](../0A-decisions/02-adr-vue-alternatives.md) - explains why Capacitor was not chosen
 
 ## Problem
 
@@ -28,7 +28,7 @@ This is the right call for two reasons:
 1. **By the time Orbit needs a native mobile app, Tauri mobile will be mature.** Mobile is explicitly post-MVP. Tauri mobile is improving rapidly, and the gap between its current rough edges and production-readiness is expected to close well within the timeframe before mobile becomes a priority.
 2. **It preserves the single-codebase guarantee.** A bug fix or feature in `lib/core` propagates to desktop, web, and mobile simultaneously. Capacitor or native Swift/Kotlin would break this - Capacitor introduces its own plugin abstraction layer, and native builds require entirely separate frontend codebases.
 
-**Why not Capacitor**: Capacitor wraps a web app in a native WebView and exposes native APIs via plugins - similar in spirit to Tauri. It is more mature on mobile today. However, it would introduce a second native abstraction layer alongside Tauri (one for desktop, one for mobile), splitting the platform adapter and the plugin ecosystem. Tauri's mobile targets are the cleaner long-term answer since they unify the Rust backend and the build toolchain across all native targets. See also [ADR: Vue Alternatives](../06-decisions/02-adr-vue-alternatives.md) for the broader decision context around the frontend framework and cross-platform approach.
+**Why not Capacitor**: Capacitor wraps a web app in a native WebView and exposes native APIs via plugins - similar in spirit to Tauri. It is more mature on mobile today. However, it would introduce a second native abstraction layer alongside Tauri (one for desktop, one for mobile), splitting the platform adapter and the plugin ecosystem. Tauri's mobile targets are the cleaner long-term answer since they unify the Rust backend and the build toolchain across all native targets. See also [ADR: Vue Alternatives](../0A-decisions/02-adr-vue-alternatives.md) for the broader decision context around the frontend framework and cross-platform approach.
 
 **Why not native Swift/Kotlin**: Maximises platform integration but requires separate frontend codebases and platform-specific expertise. The development cost is not justified when Tauri mobile covers the same ground with shared code.
 
@@ -37,16 +37,16 @@ This is the right call for two reasons:
 - Tauri mobile is still maturing. The iOS and Android WebView abstractions have different capabilities and known rough edges compared to the desktop targets. This is acceptable risk given the post-MVP timeline.
 - Mobile UX patterns (swipe gestures, bottom navigation, pull-to-refresh, haptic feedback) require significant UI work beyond porting the desktop layout. The mobile entrypoint will need its own layout shell and navigation model.
 - Background voice connectivity is hard on mobile. Both iOS and Android aggressively kill background processes. Maintaining a voice connection while the app is backgrounded requires platform-specific handling - foreground services on Android, VOIP entitlements on iOS. Tauri mobile will need to expose hooks for this; if it cannot, a thin native wrapper may be needed for audio-only.
-- Push notifications require a separate relay component. See [Beacon](08-beacon.md) for the proposed self-hostable push notification relay. Without Beacon, the mobile app has no push notifications; everything else works.
+- Push notifications require a separate relay component. See [Push Notifications](04-push-notifications.md) for the proposed self-hostable push notification relay. Without it, the mobile app has no push notifications; everything else works.
 
 ## Evaluation Criteria
 
 When Tauri mobile is being evaluated for the mobile track, build a prototype that:
 
-- Connects to Ground Control and authenticates via SASL
+- Connects to Uplink and authenticates via SASL
 - Displays a channel list and chat messages with scrollback
 - Joins a Satellite voice session with working audio
-- Receives a push notification when mentioned (requires [Beacon](08-beacon.md) + FCM/APNs integration)
+- Receives a push notification when mentioned (requires [Push Notifications](04-push-notifications.md) + FCM/APNs integration)
 - Handles backgrounding gracefully (voice session survives switching apps)
 
 Evaluate battery usage during a 1-hour voice session (target: not significantly worse than Discord mobile). Test background behaviour on both iOS and Android. If Tauri mobile cannot satisfy the background audio requirement, assess whether a thin native audio wrapper is viable before reconsidering Capacitor.
@@ -55,7 +55,7 @@ Evaluate battery usage during a 1-hour voice session (target: not significantly 
 
 - MVP desktop client and web app must be stable and the monorepo structure established before mobile work begins.
 - Tauri mobile targets should be at a stable release (not alpha/beta) before committing to them for production.
-- [Beacon](08-beacon.md) (push relay) is a dependency for full notification support; it can be scoped and built independently.
+- [Push Notifications](04-push-notifications.md) (push relay) is a dependency for full notification support; it can be scoped and built independently.
 
 ## Long-Term Consideration: Pure Native Applications
 
@@ -63,7 +63,7 @@ A fully native client - Swift/SwiftUI on iOS, Kotlin/Jetpack Compose on Android,
 
 The reason it is not the chosen path for the core Orbit project is scope, not capability. A native client per platform is effectively a separate frontend codebase for each target. None of them share the Vue component tree, the Pinia stores, or the VUI design language. Every feature built in `lib/core` would need to be re-implemented independently on each platform. Bug fixes, UI changes, and protocol updates would need to land in multiple places simultaneously. For a small team maintaining an open-source project, this maintenance burden is prohibitive - it would fragment effort away from the protocol and server infrastructure that all clients depend on.
 
-The correct framing is: **native clients are something the community could build on top of Orbit's open infrastructure, not something the core Orbit project maintains.** Because Ground Control is standard IRCv3 and Satellite is LiveKit-compatible, a third-party developer could build a fully native client on any platform against the same backend with no changes to the server stack. This is the same relationship that WeeChat and irssi have to Orbit's Ground Control today - they are valid clients that the protocol supports, not clients the Orbit project ships.
+The correct framing is: **native clients are something the community could build on top of Orbit's open infrastructure, not something the core Orbit project maintains.** Because Uplink is standard IRCv3 and Satellite is LiveKit-compatible, a third-party developer could build a fully native client on any platform against the same backend with no changes to the server stack. This is the same relationship that WeeChat and irssi have to Uplink today - they are valid clients that the protocol supports, not clients the Orbit project ships.
 
 If native community clients emerge - on any platform - the Orbit project should:
 

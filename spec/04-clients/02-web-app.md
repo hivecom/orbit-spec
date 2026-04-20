@@ -77,7 +77,8 @@ The complete capability comparison across all three surfaces:
 |------------------------------------------|--------------------------------|---------------------------------------------|----------------------------------------|
 | Text chat (full)                         | Yes                            | Yes                                         | Yes                                    |
 | Message history / scrollback             | Yes                            | Yes                                         | Yes (limited to recent on load)        |
-| Message editing and deletion             | Yes                            | Yes                                         | Yes                                    |
+| Message retractions                      | MVP (via `draft/message-redaction`) | MVP (via `draft/message-redaction`)    | MVP (via `draft/message-redaction`)    |
+| Message editing                          | Post-Uplink                    | Post-Uplink                                 | Post-Uplink                            |
 | Rich rendering (links, images, Markdown) | Yes                            | Yes                                         | Yes                                    |
 | File uploads                             | Yes                            | Yes                                         | No (guests only; configurable)         |
 | Voice & video (full)                     | Yes                            | Yes                                         | Yes (full, with browser permission)    |
@@ -96,7 +97,7 @@ The complete capability comparison across all three surfaces:
 | Server browser                           | Yes                            | Yes                                         | No (hidden in widget mode)             |
 | "Open in Orbit" escape hatch             | N/A                            | N/A                                         | Yes                                    |
 
-¹ Whether guest users should ever be allowed to speak in voice channels is an unresolved decision. See [Open Questions](../06-decisions/03-open-questions.md#widget-voice-permissions).
+¹ Whether guest users should ever be allowed to speak in voice channels is an unresolved decision. See [Open Questions](../0A-decisions/03-open-questions.md#widget-voice-permissions).
 
 ## Rate Limiting
 

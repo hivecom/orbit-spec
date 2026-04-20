@@ -1,8 +1,8 @@
 # Research: Bot and Integration API
 
 Cross-references:
-- [Ground Control](../02-components/01-ground-control/01-overview.md) - the IRC server bots connect to
-- [Tag Namespace](../02-components/01-ground-control/02-tags/01-namespace.md) - the `+orbit-ext/<name>/*` sub-namespace used by extension plugins
+- [Uplink](../02-components/01-uplink/01-overview.md) - the IRC server bots connect to
+- [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md) - the `+orbit-ext/<name>/*` sub-namespace used by extension plugins
 
 ## Problem
 
@@ -10,7 +10,7 @@ Discord's bot ecosystem is one of its strongest retention mechanisms. Communitie
 
 ## Current State
 
-IRC already has a natural bot model - bots are just IRC clients. Any program that can speak the IRC protocol can connect to [Ground Control](../02-components/01-ground-control/01-overview.md) (Ergo), join channels, and respond to messages. There are mature IRC bot libraries in every major language. For the MVP, this works.
+IRC already has a natural bot model - bots are just IRC clients. Any program that can speak the IRC protocol can connect to [Uplink](../02-components/01-uplink/01-overview.md) (Ergo), join channels, and respond to messages. There are mature IRC bot libraries in every major language. For the MVP, this works.
 
 ## Proposal
 
@@ -30,13 +30,13 @@ Phase this incrementally to avoid over-engineering:
 
    > **Note**: Phase 0 is documentation-only - no new services, no new APIs, no new infrastructure. It should be treated as part of the MVP launch checklist (write docs, publish examples), not as a post-MVP engineering track. Its "MVP" status means it must be ready on the day Orbit ships publicly, not that it requires any engineering work beyond writing.
 
-2. **Phase 1**: Build an HTTP webhook bridge - a lightweight service that connects to Ground Control as an IRC client, listens for configurable events, and fires HTTP POST requests to registered webhook endpoints. This is a small, self-contained service.
+2. **Phase 1**: Build an HTTP webhook bridge - a lightweight service that connects to Uplink as an IRC client, listens for configurable events, and fires HTTP POST requests to registered webhook endpoints. This is a small, self-contained service.
 3. **Phase 2**: Build a REST API gateway that wraps common IRC commands (send message, join channel, set topic, kick user, query WHOIS) in HTTP endpoints with JSON request/response bodies.
 4. **Phase 3**: Formalize as a versioned API specification (OpenAPI). Add authentication scoping, rate limiting, and developer documentation portal.
 
 ### Orbit Extension API
 
-The **Orbit Extension API (orbit-app plugins)** - client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Ground Control via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace (see [Tag Namespace](../02-components/01-ground-control/02-tags/01-namespace.md)) - is considered high-value and should be designed early in the post-MVP phase.
+The **Orbit Extension API (orbit-app plugins)** - client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Uplink via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace (see [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md)) - is considered high-value and should be designed early in the post-MVP phase.
 
 The combination of an IRC bot (server-side logic) and an Orbit extension (UI integration) is the Orbit equivalent of a Discord bot with slash commands and embeds. This is the path to a rich integration ecosystem without requiring Orbit itself to implement every feature.
 
@@ -52,4 +52,4 @@ Ship the webhook bridge (Phase 1) as an optional, self-hostable service. Announc
 
 ## Dependencies
 
-MVP [Ground Control](../02-components/01-ground-control/01-overview.md) deployment must be stable. The webhook bridge is a client of Ergo - if Ground Control is unstable, the bridge inherits that instability.
+MVP [Uplink](../02-components/01-uplink/01-overview.md) deployment must be stable. The webhook bridge is a client of Ergo - if Uplink is unstable, the bridge inherits that instability.

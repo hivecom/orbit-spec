@@ -17,9 +17,9 @@ Two layers:
 
 ### Layer 1: IRC Network Linking
 
-IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. However, [Ergo](https://ergo.chat/) (Ground Control's current IRC server) **does not currently support server-to-server linking**. Per the Ergo manual: *"Ergo does not currently support server-to-server linking (federation), meaning that all clients must connect to the same instance."* Horizontal scalability is on the Ergo roadmap but is not scheduled for development in the near term.
+IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. However, [Ergo](https://ergo.chat/) (Uplink's current IRC server, Ergo) **does not currently support server-to-server linking**. Per the Ergo manual: *"Ergo does not currently support server-to-server linking (federation), meaning that all clients must connect to the same instance."* Horizontal scalability is on the Ergo roadmap but is not scheduled for development in the near term.
 
-Layer 1 is therefore not achievable with stock Ergo today. The resolution path is the **Ground Control fork** described in the [Design Philosophy](../01-architecture/02-philosophy.md). A purpose-built Ground Control IRCd, forked from Ergo, will implement server-to-server linking on Orbit's timeline rather than Ergo upstream's. This removes the blocking dependency entirely. The approach below is forward-looking against that fork, not against stock Ergo.
+Layer 1 is therefore not achievable with stock Ergo today. The resolution path is the **Uplink fork** described in the [Design Philosophy](../01-architecture/02-philosophy.md). A purpose-built Uplink IRCd, forked from Ergo, will implement server-to-server linking on Orbit's timeline rather than Ergo upstream's. This removes the blocking dependency entirely. The approach below is forward-looking against that fork, not against stock Ergo.
 
 Basic IRC linking (multiple servers forming one logical network) is not the same as true federation (independent organizations running independent servers that interoperate as peers). True federation raises hard questions:
 
@@ -29,20 +29,21 @@ Basic IRC linking (multiple servers forming one logical network) is not the same
 - **Moderation boundaries**: Who has moderation authority in a federated channel? Can server A's admins moderate users from server B? What about content policies that differ between servers?
 - **History synchronization**: Do federated servers share message history? How much? What happens when a server goes offline and comes back - does it backfill?
 
-The target simplest model remains: IRC network linking where multiple Ground Control instances form a single logical network under shared administration. This is well-understood IRC infrastructure with decades of operational experience. True cross-organization federation (more analogous to email or Matrix) is a separate, later problem. Do not attempt to design a general federation protocol until the simpler model is deployed and its limitations are understood in practice.
+The target simplest model remains: IRC network linking where multiple Uplink instances form a single logical network under shared administration. This is well-understood IRC infrastructure with decades of operational experience. True cross-organization federation (more analogous to email or Matrix) is a separate, later problem. Do not attempt to design a general federation protocol until the simpler model is deployed and its limitations are understood in practice.
 
-For the MVP, Ground Control is single-instance Ergo. Ergo scales vertically across multiple CPU cores and supports high-availability deployment via Kubernetes (shared volume, load balancer), which mitigates the single-instance constraint for reliability - but not for geographic distribution or organizational federation. Server-to-server linking is a Ground Control fork milestone, not an MVP requirement.
+For the MVP, Uplink is single-instance Ergo. Ergo scales vertically across multiple CPU cores and supports high-availability deployment via Kubernetes (shared volume, load balancer), which mitigates the single-instance constraint for reliability - but not for geographic distribution or organizational federation. Server-to-server linking is an Uplink fork milestone, not an MVP requirement.
 
 ### Layer 2: Signed Identity Assertions (Identity Bridging)
 
-The identity bridging mechanism is **Transponder** - a role filled by any OIDC-compliant identity provider (e.g., Keycloak, Authentik, Zitadel). The provider issues signed JWTs via standard OpenID Connect flows. Each Orbit component that needs to verify identity - Ground Control, Satellite, Depot, or anything added in the future - independently verifies those JWTs against the provider's published keys (JWKS). No component contacts any other component to check identity; each one fetches the provider's JWKS endpoint and performs local cryptographic verification.
+The identity bridging mechanism is **Transponder** - a role filled by any OIDC-compliant identity provider (e.g., Keycloak, Authentik, Zitadel). The provider issues signed JWTs via standard OpenID Connect flows. Each Orbit component that needs to verify identity - Uplink, Satellite, Depot, or anything added in the future - independently verifies those JWTs against the provider's published keys (JWKS). No component contacts any other component to check identity; each one fetches the provider's JWKS endpoint and performs local cryptographic verification.
 
-This means identity assertions are **per-component and independent**. If an Orbit-compatible service points at an OIDC issuer URL, it can verify user identity - regardless of whether it's a Ground Control instance, a Satellite, a Depot server, or a third-party service built on the Orbit ecosystem. There is no central broker, no token relay, and no coupling between components. The OIDC provider is the single source of truth; every consumer verifies against it directly.
+This means identity assertions are **per-component and independent**. If an Orbit-compatible service points at an OIDC issuer URL, it can verify user identity - regardless of whether it's an Uplink instance, a Satellite, a Depot server, or a third-party service built on the Orbit ecosystem. There is no central broker, no token relay, and no coupling between components. The OIDC provider is the single source of truth; every consumer verifies against it directly.
 
-- **Ground Control** integrates via Ergochat's `auth-script` mechanism and a thin auth-script bridge that verifies JWTs against the provider's JWKS. The IRC server is not modified beyond standard configuration.
+- **Uplink** integrates via Ergochat's `auth-script` mechanism and a thin auth-script bridge that verifies JWTs against the provider's JWKS. The IRC server is not modified beyond standard configuration.
 - **Satellite** verifies identity tokens directly against the JWKS endpoint. No Orbit-specific code - standard JWT verification.
 - **Depot** verifies Bearer tokens against the same JWKS endpoint. Same pattern, same keys.
 - **Any future component** follows the same model: point at the OIDC issuer URL, fetch the JWKS, verify JWTs locally. That's it.
+
 
 For the full specification - OIDC discovery, component integration flows, auth-script bridge, and the Keycloak deployment example - see [Transponder](../02-components/04-transponder.md).
 
@@ -84,7 +85,7 @@ The Orbit client detects whether an identity provider is available for the curre
 The signed identity model scales naturally to federation:
 
 - **Same-server**: All components point at one OIDC issuer URL. Each component independently fetches the JWKS and verifies tokens locally. Auto-configured at deployment.
-- **Linked network**: Multiple Ground Control instances in a linked Ergo network share an OIDC provider, or run separate providers. All Satellites in the network trust the JWKS from one or both issuers.
+- **Linked Uplink network**: Multiple Uplink instances in a linked Ergo network share an OIDC provider, or run separate providers. All Satellites in the network trust the JWKS from one or both issuers.
 - **True federation**: Components maintain a trust store of JWKS endpoints from federated identity providers. Because every component verifies independently, adding trust for a new issuer is the same operation everywhere - add the issuer URL to the trust list, fetch its JWKS. Trust establishment can follow one of several models (to be evaluated):
   - **Manual**: server operator explicitly adds keys they trust (like SSH `known_hosts`). Most secure, highest friction.
   - **TOFU (Trust On First Use)**: accept a new server's key the first time it's encountered, warn on key change. Good balance of security and usability for small-scale federation.
@@ -125,7 +126,7 @@ Do not jump to Phase 2 until Phase 1 is deployed and its limitations are underst
 
 **IRC linking (Phase 1):**
 
-> **Unblocked by the Ground Control fork.** Server-to-server linking will be implemented in the Ground Control IRCd fork. Phase 1 evaluation proceeds once the fork has a working link protocol. See [Design Philosophy - The Long-Term Path](../01-architecture/02-philosophy.md#the-long-term-path-ground-control-as-a-true-ircd) for the fork rationale and roadmap context.
+> **Unblocked by the Uplink fork.** Server-to-server linking will be implemented in the Uplink IRCd fork. Phase 1 evaluation proceeds once the fork has a working link protocol. See [Design Philosophy - The Next Step](../01-architecture/02-philosophy.md#the-next-step-the-uplink-fork) for the fork rationale and roadmap context.
 
 - Set up a two-server linked network. Test:
   - Text chat across the link (message delivery, ordering, latency)
@@ -144,4 +145,4 @@ Identify where each phase breaks and document the gaps before proceeding to the 
 
 - The MVP must be stable on single-server deployments. Federation on a shaky foundation is a recipe for compounding bugs.
 - Phase 0 (OIDC identity provider) should be deployed early post-MVP - it improves single-server Satellite auth and is a prerequisite for all federation phases. It requires no IRC server changes beyond `auth-script` configuration. It is also optional - deployments without an identity provider degrade gracefully to fully-unverified Satellite sessions.
-- Phase 2 depends on [Server Discovery](10-server-discovery.md) if directory-based trust is pursued.
+- Phase 2 depends on [Server Discovery](06-server-discovery.md) if directory-based trust is pursued.
