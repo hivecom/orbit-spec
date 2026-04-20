@@ -1,14 +1,14 @@
-# Research: Federation
+# Federation
 
-## Problem
+## Overview
 
-The MVP is single-server. All users in a community connect to one Orbit server instance. Users on server A cannot communicate with users on server B. Communities are isolated islands.
+The MVP is single-server. All users in a community connect to one Orbit server instance. Users on server A cannot communicate with users on server B. Communities are isolated islands. Federation will connect these islands, enabling cross-server communication while preserving each community's autonomy.
 
-A deeper problem sits underneath federation itself: **identity bridging**. IRC handles user authentication within its own protocol boundary (SASL, NickServ, `account-tag`), but those assertions are server-scoped. They don't travel outside the IRC connection. When a user connects to a Satellite (a completely separate service), the Satellite has no native way to verify that this person is the same user who is authenticated on IRC. The MVP punts on this with a public join key model, but that model cannot support federation, cross-server trust, or even basic identity display in voice sessions.
+A key requirement for federation is **identity bridging**. IRC handles user authentication within its own protocol boundary (SASL, NickServ, `account-tag`), but those assertions are server-scoped. They don't travel outside the IRC connection. When a user connects to a Satellite (a completely separate service), the Satellite has no native way to verify that this person is the same user who is authenticated on IRC. The MVP uses a public join key model, but that model cannot support federation, cross-server trust, or even basic identity display in voice sessions. Identity bridging solves this.
 
-Critically, the solution must not require modifications to the IRC server. Orbit's design philosophy is explicit: **Orbit is a layer on top of existing IRC.** Any IRCv3 server that supports message tags can become Orbit-enabled. The identity bridging mechanism must be a standalone component that works alongside any compliant IRC server, not a patch to one specific implementation. And it must be **optional** - if the component isn't deployed, everything else still works. The experience degrades gracefully, not catastrophically.
+The identity bridging mechanism will not require modifications to the IRC server. Orbit's design philosophy is explicit: **Orbit is a layer on top of existing IRC.** Any IRCv3 server that supports message tags can become Orbit-enabled. The identity bridging mechanism is a standalone component that works alongside any compliant IRC server, not a patch to one specific implementation. And it is **optional** - if the component isn't deployed, everything else still works. The experience degrades gracefully, not catastrophically.
 
-## Proposal
+## Design
 
 Two layers:
 
@@ -94,7 +94,7 @@ The signed identity model scales naturally to federation:
 
 Because the identity layer is standard OIDC - not a custom protocol - federated trust is just "trust additional issuers." This is the same pattern used by OIDC federation in enterprise environments (multi-tenant Keycloak, Azure AD B2B, etc.) and the same spectrum that email traversed with SPF/DKIM/DMARC.
 
-## Approach
+## Rollout Plan
 
 1. **Phase 0 (pre-federation)**: Deploy an OIDC-compliant identity provider (e.g., Keycloak). Configure Ergochat's `auth-script` to delegate authentication via the auth-script bridge. Point Satellite and Depot at the same OIDC issuer URL for JWT verification against the provider's JWKS. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. This is valuable even without federation - it gives every component verified identity via standard OIDC, with each component verifying independently.
 2. **Phase 1 (IRC linking)**: Set up a two-server linked network once Ergo supports server-to-server linking (or evaluate an alternative IRC server if Ergo support remains distant). Test text federation. Both servers share the same OIDC provider, or run separate providers. Satellites and other components trust the JWKS from both issuers.

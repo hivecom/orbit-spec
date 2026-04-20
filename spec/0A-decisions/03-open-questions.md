@@ -24,6 +24,6 @@ These are genuine unresolved decisions that need resolution before or during MVP
 
 11. ~~**Presence model**~~ *Resolved*: Presence uses `away-notify` + `extended-monitor` for online/offline, and `draft/metadata-2` for rich status and user profile metadata (avatar, display name, status string). See [Presence](../02-components/01-uplink/04-presence.md).
 
-12. ~~**Draft extension contingency**~~ *Resolved*: Both `draft/metadata-2` and `draft/message-redaction` have published specs and working implementations in Ergo's development branch. If Ergo's stable release timeline slips or the draft semantics change, the Uplink fork implements the current draft semantics directly — the spec exists, the behavior is well-defined, and the fork is already planned. In the worst case, this work is carried over into the fork on Orbit's timeline rather than waiting on upstream. This is not a blocking risk.
+12. ~~**Draft extension contingency**~~ *Resolved*: Both `draft/metadata-2` and `draft/message-redaction` have published specs and working implementations in Ergo's development branch. If Ergo's stable release timeline slips or the draft semantics change, the Uplink fork implements the current draft semantics directly - the spec exists, the behavior is well-defined, and the fork is already planned. In the worst case, this work is carried over into the fork on Orbit's timeline rather than waiting on upstream. This is not a blocking risk.
 
 *This document is updated as questions are resolved. Changes are tracked in the repository commit history.*

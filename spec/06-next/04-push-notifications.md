@@ -1,6 +1,6 @@
 # Push Notifications
 
-Push notification delivery is a planned capability of the Uplink fork. It is not a separate service — Uplink holds all the state needed to detect notification-worthy events (session state, online/offline status, DM recipients, channel membership) and dispatches notifications internally.
+Push notification delivery is a planned capability of the Uplink fork. It is not a separate service - Uplink holds all the state needed to detect notification-worthy events (session state, online/offline status, DM recipients, channel membership) and dispatches notifications internally.
 
 In the **MVP** (Ergo/Ergochat), there are no push notifications. The PWA provides limited background notification via the Web Notifications API on supported desktop browsers. On mobile, PWA push notifications work on Android (Chrome) and iOS 16.4+ (Safari).
 
@@ -13,9 +13,9 @@ Cross-references:
 
 Push notification delivery belongs inside the Uplink server for two reasons:
 
-**It avoids duplicating knowledge.** Online/offline state is core IRC session state — Uplink knows immediately when a user has no active sessions. Nickname highlight matching is something the server can do natively. DM recipients are known at the moment of delivery. A separate service would need to re-derive all of this from the outside, which is redundant and fragile.
+**It avoids duplicating knowledge.** Online/offline state is core IRC session state - Uplink knows immediately when a user has no active sessions. Nickname highlight matching is something the server can do natively. DM recipients are known at the moment of delivery. A separate service would need to re-derive all of this from the outside, which is redundant and fragile.
 
-**It can observe DMs.** In standard IRC, a `PRIVMSG` to a nickname is delivered only to that nickname — no other connected client sees it. A separate bot-based approach could monitor channel mentions but could never see DMs directed at other users without IRC operator-level privileges, carrying serious privacy implications. Native integration has no such constraint.
+**It can observe DMs.** In standard IRC, a `PRIVMSG` to a nickname is delivered only to that nickname - no other connected client sees it. A separate bot-based approach could monitor channel mentions but could never see DMs directed at other users without IRC operator-level privileges, carrying serious privacy implications. Native integration has no such constraint.
 
 ## What Push Notifications Cover
 
@@ -30,15 +30,15 @@ No message content is included in the push payload. The notification says only *
 
 Uplink dispatches push notifications via the appropriate platform delivery channel:
 
-- **FCM (Firebase Cloud Messaging)** — Android (Google ecosystem)
-- **APNs (Apple Push Notification service)** — iOS (required by the platform; unavoidable)
-- **UnifiedPush** — Android FOSS alternative to FCM; enables fully Google-free push delivery on Android
+- **FCM (Firebase Cloud Messaging)** - Android (Google ecosystem)
+- **APNs (Apple Push Notification service)** - iOS (required by the platform; unavoidable)
+- **UnifiedPush** - Android FOSS alternative to FCM; enables fully Google-free push delivery on Android
 
 All three are configured by the server operator. Hivecom is not in the notification delivery path.
 
 For Android, UnifiedPush support means operators can route notifications through any compatible distributor (e.g., ntfy, Gotify), removing the FCM dependency entirely. This makes a fully FOSS, Google-free push stack possible.
 
-For iOS, APNs is unavoidable — Apple's platform does not permit alternative push delivery mechanisms. However, the APNs connection is made by the operator's Uplink instance using the operator's registered APNs credentials.
+For iOS, APNs is unavoidable - Apple's platform does not permit alternative push delivery mechanisms. However, the APNs connection is made by the operator's Uplink instance using the operator's registered APNs credentials.
 
 ## Push Token Registration API
 
@@ -86,6 +86,6 @@ A single user may have multiple registered tokens (phone, tablet, etc.). Uplink 
 
 ## Dependencies
 
-- The Uplink fork must be underway — push notifications are native to Uplink and cannot be backported to unmodified Ergochat.
-- [Mobile Clients](02-mobile-clients.md) — push notifications are only meaningful when native mobile apps exist. The mobile client track and push notification implementation should be planned together.
-- [Transponder](../02-components/04-transponder.md) — OIDC identity provider; without it, push token registration falls back to NickServ account identity.
+- The Uplink fork must be underway - push notifications are native to Uplink and cannot be backported to unmodified Ergochat.
+- [Mobile Clients](02-mobile-clients.md) - push notifications are only meaningful when native mobile apps exist. The mobile client track and push notification implementation should be planned together.
+- [Transponder](../02-components/04-transponder.md) - OIDC identity provider; without it, push token registration falls back to NickServ account identity.

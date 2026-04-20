@@ -1,4 +1,4 @@
-# Research: Mobile Clients
+# Mobile Clients
 
 Cross-references:
 - [Web App & PWA](../04-clients/02-web-app.md) - the PWA baseline that already covers mobile
@@ -6,26 +6,26 @@ Cross-references:
 - [Push Notifications](04-push-notifications.md) - push notification relay required for full notification support
 - [ADR: Vue Alternatives](../0A-decisions/02-adr-vue-alternatives.md) - explains why Capacitor was not chosen
 
-## Problem
+## Motivation
 
-A communication platform without mobile clients is not viable beyond early adopters. Users expect to receive messages and join voice on their phone. This is non-negotiable for long-term adoption.
+A communication platform without mobile clients is not viable beyond early adopters. Users expect to receive messages and join voice on their phone. Mobile support is a requirement for long-term adoption.
 
-## Baseline: PWA Already Covers Mobile
+## Phase 1: PWA as the Initial Mobile Client
 
 The web app is already a PWA and already works on mobile without any additional development:
 
 - **Android**: Chrome and Chromium-based browsers support the full PWA install flow. The app installs to the home screen, runs in standalone mode, and WebRTC voice/video works.
 - **iOS**: Safari supports PWA installation and push notifications since iOS 16.4. Core functionality - text chat, voice, video - works. Background Sync and some service worker behaviours are more restricted than Android.
 
-The PWA is not a stopgap. It is a legitimate, supported mobile path that ships for free as part of the [web app](../04-clients/02-web-app.md). Users who don't want to install a native app are fully served by it.
+The PWA is not a stopgap. It is a legitimate, supported mobile path that ships as part of the [web app](../04-clients/02-web-app.md). Users who don't want to install a native app are fully served by it.
 
-## Chosen Approach: Tauri Mobile
+## Phase 2: Tauri Mobile
 
-For a native app store presence and deeper OS integration, **Tauri v2 mobile** is the chosen path. Tauri v2 added iOS and Android build targets, meaning the same Rust backend and the same `packages/core` Vue frontend used by the [desktop client](../04-clients/01-desktop.md) can be compiled to a native mobile app. In the monorepo this would be a new `apps/mobile` entrypoint - thin, like `apps/desktop` - importing from the same shared packages.
+For a native app store presence and deeper OS integration, **Tauri v2 mobile** is the planned path. Tauri v2 added iOS and Android build targets, meaning the same Rust backend and the same `packages/core` Vue frontend used by the [desktop client](../04-clients/01-desktop.md) can be compiled to a native mobile app. In the monorepo this would be a new `apps/mobile` entrypoint - thin, like `apps/desktop` - importing from the same shared packages.
 
-This is the right call for two reasons:
+This is the right approach for two reasons:
 
-1. **By the time Orbit needs a native mobile app, Tauri mobile will be mature.** Mobile is explicitly post-MVP. Tauri mobile is improving rapidly, and the gap between its current rough edges and production-readiness is expected to close well within the timeframe before mobile becomes a priority.
+1. **Tauri mobile will be mature by the time Orbit targets native mobile.** Mobile is post-MVP. Tauri mobile is improving rapidly, and the gap between its current rough edges and production-readiness is expected to close within the planned timeframe.
 2. **It preserves the single-codebase guarantee.** A bug fix or feature in `lib/core` propagates to desktop, web, and mobile simultaneously. Capacitor or native Swift/Kotlin would break this - Capacitor introduces its own plugin abstraction layer, and native builds require entirely separate frontend codebases.
 
 **Why not Capacitor**: Capacitor wraps a web app in a native WebView and exposes native APIs via plugins - similar in spirit to Tauri. It is more mature on mobile today. However, it would introduce a second native abstraction layer alongside Tauri (one for desktop, one for mobile), splitting the platform adapter and the plugin ecosystem. Tauri's mobile targets are the cleaner long-term answer since they unify the Rust backend and the build toolchain across all native targets. See also [ADR: Vue Alternatives](../0A-decisions/02-adr-vue-alternatives.md) for the broader decision context around the frontend framework and cross-platform approach.
@@ -39,22 +39,22 @@ This is the right call for two reasons:
 - Background voice connectivity is hard on mobile. Both iOS and Android aggressively kill background processes. Maintaining a voice connection while the app is backgrounded requires platform-specific handling - foreground services on Android, VOIP entitlements on iOS. Tauri mobile will need to expose hooks for this; if it cannot, a thin native wrapper may be needed for audio-only.
 - Push notifications require a separate relay component. See [Push Notifications](04-push-notifications.md) for the proposed self-hostable push notification relay. Without it, the mobile app has no push notifications; everything else works.
 
-## Evaluation Criteria
+## Validation Milestones
 
-When Tauri mobile is being evaluated for the mobile track, build a prototype that:
+Before committing to a production mobile build, a prototype must demonstrate that:
 
-- Connects to Uplink and authenticates via SASL
-- Displays a channel list and chat messages with scrollback
-- Joins a Satellite voice session with working audio
-- Receives a push notification when mentioned (requires [Push Notifications](04-push-notifications.md) + FCM/APNs integration)
-- Handles backgrounding gracefully (voice session survives switching apps)
+- Connection to Uplink and authentication via SASL works
+- A channel list and chat messages with scrollback display correctly
+- Joining a Satellite voice session with working audio succeeds
+- Push notifications arrive when mentioned (requires [Push Notifications](04-push-notifications.md) + FCM/APNs integration)
+- Backgrounding is handled gracefully (voice session survives switching apps)
 
-Evaluate battery usage during a 1-hour voice session (target: not significantly worse than Discord mobile). Test background behaviour on both iOS and Android. If Tauri mobile cannot satisfy the background audio requirement, assess whether a thin native audio wrapper is viable before reconsidering Capacitor.
+Battery usage during a 1-hour voice session must be measured (target: not significantly worse than Discord mobile). Background behaviour must be tested on both iOS and Android. If Tauri mobile cannot satisfy the background audio requirement, a thin native audio wrapper should be assessed before reconsidering Capacitor.
 
-## Dependencies
+## Prerequisites
 
 - MVP desktop client and web app must be stable and the monorepo structure established before mobile work begins.
-- Tauri mobile targets should be at a stable release (not alpha/beta) before committing to them for production.
+- Tauri mobile targets must be at a stable release (not alpha/beta) before committing to them for production.
 - [Push Notifications](04-push-notifications.md) (push relay) is a dependency for full notification support; it can be scoped and built independently.
 
 ## Long-Term Consideration: Pure Native Applications

@@ -1,10 +1,10 @@
-# Research: Bot and Integration API
+# Bot and Integration API
 
 Cross-references:
 - [Uplink](../02-components/01-uplink/01-overview.md) - the IRC server bots connect to
 - [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md) - the `+orbit-ext/<name>/*` sub-namespace used by extension plugins
 
-## Problem
+## Motivation
 
 Discord's bot ecosystem is one of its strongest retention mechanisms. Communities build custom moderation tools, music playback, game stat tracking, welcome flows, and hundreds of other automations via bots. Orbit needs an equivalent story.
 
@@ -12,9 +12,9 @@ Discord's bot ecosystem is one of its strongest retention mechanisms. Communitie
 
 IRC already has a natural bot model - bots are just IRC clients. Any program that can speak the IRC protocol can connect to [Uplink](../02-components/01-uplink/01-overview.md) (Ergo), join channels, and respond to messages. There are mature IRC bot libraries in every major language. For the MVP, this works.
 
-## Proposal
+## Design
 
-A formal Orbit Bot API would layer additional capabilities on top of the IRC foundation:
+A formal Orbit Bot API will layer additional capabilities on top of the IRC foundation:
 
 - **Standardized event webhooks**: HTTP callbacks fired when specific events occur (message posted, user joined, channel created). This lets bot developers use any HTTP-capable language/framework without implementing IRC protocol handling.
 - **REST API for actions**: HTTP endpoints for sending messages, managing channels, querying message history, updating user metadata. Wraps IRC commands in a more accessible interface.
@@ -24,7 +24,7 @@ A formal Orbit Bot API would layer additional capabilities on top of the IRC fou
 
 ## Approach
 
-Phase this incrementally to avoid over-engineering:
+This will be phased incrementally to avoid over-engineering:
 
 1. **Phase 0 (day-one, ships with MVP)**: Write documentation on how to build IRC bots against Ergo. Provide example bots in Rust, Python, and JavaScript. This is **zero engineering cost** and enables the community immediately.
 
@@ -36,7 +36,7 @@ Phase this incrementally to avoid over-engineering:
 
 ### Orbit Extension API
 
-The **Orbit Extension API (orbit-app plugins)** - client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Uplink via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace (see [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md)) - is considered high-value and should be designed early in the post-MVP phase.
+The **Orbit Extension API (orbit-app plugins)** - client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Uplink via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace (see [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md)) - is considered high-value and will be designed early in the post-MVP phase.
 
 The combination of an IRC bot (server-side logic) and an Orbit extension (UI integration) is the Orbit equivalent of a Discord bot with slash commands and embeds. This is the path to a rich integration ecosystem without requiring Orbit itself to implement every feature.
 
@@ -46,9 +46,9 @@ The combination of an IRC bot (server-side logic) and an Orbit extension (UI int
 - Webhook reliability requires queuing and retry infrastructure. A naive implementation that fires HTTP requests and hopes they arrive will lose events under load or when endpoints are temporarily down.
 - Security scoping for bots needs careful design. A bot with `send_message` permission in `#general` should not be able to escalate to operator privileges. IRC's permission model is coarse - the API layer must enforce finer-grained access control on top of it.
 
-## Evaluation Criteria
+## Validation Criteria
 
-Ship the webhook bridge (Phase 1) as an optional, self-hostable service. Announce it to the community. If bot developers actually adopt it and build useful integrations, that validates further investment in Phase 2+. Let adoption data drive the roadmap, not speculation.
+Ship the webhook bridge (Phase 1) as an optional, self-hostable service. Announce it to the community. If bot developers actually adopt it and build useful integrations, that validates further investment in Phase 2+. Adoption data will drive the roadmap.
 
 ## Dependencies
 

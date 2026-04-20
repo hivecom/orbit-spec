@@ -57,7 +57,7 @@ The following channel name patterns have defined rendering behavior:
 | `#dev//frontend` | Rendered as `dev > frontend` | Consecutive slashes are collapsed to a single separator |
 | `#general` | Top-level channel | No slash, no grouping |
 | `#dev/frontend/react` | Rendered as `dev > frontend > react` | Three levels deep; valid but discouraged |
-| `#v2.0-release` | Top-level channel named `v2.0-release` | Dots in channel names are not hierarchy separators — only slashes are. Channel names with dots are unambiguous. |
+| `#v2.0-release` | Top-level channel named `v2.0-release` | Dots in channel names are not hierarchy separators - only slashes are. Channel names with dots are unambiguous. |
 
 These are client-side rendering decisions only. The IRC server sees the channel names as-is. No channel name is rejected or modified by the client - only its position in the rendered tree changes.
 

@@ -284,15 +284,15 @@ Standard IRC clients are not thread-aware but degrade gracefully:
 
 ### Known Limitations
 
-Thread channels are real IRC channels — they consume server-side state (channel metadata, membership, history). In a busy community with many active threads, this means channel proliferation on the server. Ergochat's configured channel expiry mitigates this: inactive thread channels are cleaned up automatically after the configured TTL.
+Thread channels are real IRC channels - they consume server-side state (channel metadata, membership, history). In a busy community with many active threads, this means channel proliferation on the server. Ergochat's configured channel expiry mitigates this: inactive thread channels are cleaned up automatically after the configured TTL.
 
 Other trade-offs:
 
 - **No server-enforced thread-parent relationship.** The server sees thread channels as ordinary channels. The relationship between a thread and its parent message exists only in the client's rendering logic and the `+orbit/msg-thread` tag.
-- **Client-managed lifecycle.** Thread creation (JOIN, mode setting, TOPIC, TAGMSG) is orchestrated by the Orbit client. If a client crashes mid-creation, the thread channel may exist in a partially-initialized state. This is recoverable — subsequent clients joining the same thread channel will set the correct state.
+- **Client-managed lifecycle.** Thread creation (JOIN, mode setting, TOPIC, TAGMSG) is orchestrated by the Orbit client. If a client crashes mid-creation, the thread channel may exist in a partially-initialized state. This is recoverable - subsequent clients joining the same thread channel will set the correct state.
 - **IRC clients see flat channels.** An IRC user who discovers a thread channel sees it as an ordinary channel with a message as its topic. This is functional but lacks the visual context that Orbit clients provide.
 
-This is an honest trade-off. The sub-channel approach works on any existing IRC server without modification. Orbit clients abstract the mechanics entirely — users see a thread panel, not IRC primitives. The experience is comparable to threading in Slack or Teams, which also took years to mature. Communities that operated without threads (including Discord, which still does not have threaded conversations — its "Threads" are closer to ephemeral sub-channels, and its "Forum" channels are a distinct forum-like structure) demonstrate that threading is a nice-to-have, not a blocker.
+This is an honest trade-off. The sub-channel approach works on any existing IRC server without modification. Orbit clients abstract the mechanics entirely - users see a thread panel, not IRC primitives. The experience is comparable to threading in Slack or Teams, which also took years to mature. Communities that operated without threads (including Discord, which still does not have threaded conversations - its "Threads" are closer to ephemeral sub-channels, and its "Forum" channels are a distinct forum-like structure) demonstrate that threading is a nice-to-have, not a blocker.
 
 ## The Uplink Fork
 
@@ -313,7 +313,7 @@ upstream development. `draft/message-redaction` covers server-enforced retractio
 `draft/metadata-2` covers user avatars, display names, and presence status. These are largely
 solved before the fork ships.
 
-The Uplink fork extends the server with capabilities that stock Ergochat cannot provide: **atomic message editing** (the server maintains canonical current state; `CHATHISTORY` returns edited versions), **full-text search** over retained channel history, **server-to-server linking** for federation, and **integrated push notifications** for mobile clients. Reactions are also a planned fork capability. Features that already work in the MVP — message retractions via `draft/message-redaction`, threads via client-managed sub-channels, and user metadata via `draft/metadata-2` — carry forward unchanged. If Ergo's stable releases ship these draft extensions before the fork is ready, the fork inherits them; if not, the fork implements the draft specs directly.
+The Uplink fork extends the server with capabilities that stock Ergochat cannot provide: **atomic message editing** (the server maintains canonical current state; `CHATHISTORY` returns edited versions), **full-text search** over retained channel history, **server-to-server linking** for federation, and **integrated push notifications** for mobile clients. Reactions are also a planned fork capability. Features that already work in the MVP - message retractions via `draft/message-redaction`, threads via client-managed sub-channels, and user metadata via `draft/metadata-2` - carry forward unchanged. If Ergo's stable releases ship these draft extensions before the fork is ready, the fork inherits them; if not, the fork implements the draft specs directly.
 
 The fork is not a day-one decision. Ergochat is the right server for the MVP and well beyond. The
 fork becomes the path when the project is established enough to justify owning an IRCd.

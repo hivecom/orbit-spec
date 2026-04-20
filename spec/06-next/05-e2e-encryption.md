@@ -10,11 +10,11 @@ E2E encryption in Orbit applies to exactly two contexts:
 - **1:1 DMs** (`PRIVMSG` between two registered users)
 - **P2P calls** (WebRTC direct connections via `+orbit/p2p-offer` / `+orbit/p2p-answer`)
 
-It does not apply to channels or group voice sessions, and this is not a gap — it is a deliberate
+It does not apply to channels or group voice sessions, and this is not a gap - it is a deliberate
 design boundary.
 
 E2E-encrypted DMs coexist with the server's standard DM storage model. The server stores and
-delivers encrypted messages using the same retention and delivery mechanisms as plaintext DMs —
+delivers encrypted messages using the same retention and delivery mechanisms as plaintext DMs -
 it just can't read the content. Offline delivery works (the server holds ciphertext until the
 recipient reconnects). History works (`chathistory` returns encrypted messages; the client decrypts
 locally). Server-side search does not work (the server cannot index ciphertext); client-side search
@@ -27,7 +27,7 @@ server operator. E2E encryption on a channel would silently break every server-s
 depend on. It is not a trade-off worth making.
 
 **Group voice via Satellite** routes media through an SFU. The SFU must be able to forward media
-streams — it cannot do that with E2E encrypted content. If you need a private call with no server
+streams - it cannot do that with E2E encrypted content. If you need a private call with no server
 in the path, use P2P. That is exactly what P2P is for.
 
 The rule is consistent across the entire stack: **if a server is mediating the content, there is
@@ -49,7 +49,7 @@ read the content.
 **E2E encryption** protects against the server operator. The server terminates TLS, so the operator
 can see plaintext content at the server level. For channels, this is accepted by design. For 1:1
 DMs, E2E means the operator sees ciphertext it cannot read. The server stores and delivers
-encrypted messages using operator-configured retention — the same mechanics as plaintext DMs — but
+encrypted messages using operator-configured retention - the same mechanics as plaintext DMs - but
 cannot read the content.
 
 The combination for 1:1 DMs: TLS in transit + E2E encryption means the server operator has neither
@@ -74,7 +74,7 @@ The Double Ratchet requires an initial key exchange. For Orbit, this uses the ex
 connection as the key exchange channel:
 
 1. Both users publish their identity public keys via `draft/metadata-2` (`orbit.identity-key`
-   metadata key). Keys are server-visible but that is fine — public keys are public.
+   metadata key). Keys are server-visible but that is fine - public keys are public.
 2. On the first DM, the initiating client performs an X3DH key agreement using the recipient's
    published identity key and a one-time prekey (also published via metadata).
 3. The initial encrypted message is sent as a `PRIVMSG` with a `+orbit/dm-init` tag carrying the
@@ -111,7 +111,7 @@ All subsequent messages are encrypted. The server sees tag payloads it cannot de
 
 P2P WebRTC connections already provide strong security guarantees at the media layer:
 
-- DTLS-SRTP is mandatory for all WebRTC media — the browser and Tauri WebRTC stack enforce this.
+- DTLS-SRTP is mandatory for all WebRTC media - the browser and Tauri WebRTC stack enforce this.
 - The IRC handshake (`+orbit/p2p-offer` / `+orbit/p2p-answer`) carries DTLS fingerprints, which
   are verified by both peers at connection time. A man-in-the-middle cannot substitute their own
   DTLS certificate without the fingerprint check failing.
@@ -170,7 +170,7 @@ initial implementation.
 
 **Key verification**: How does a user confirm they are talking to the right person and not an
 impersonator with a different key? Options include safety number comparison (Signal's model) or QR
-code scanning. This requires UX prototyping — it must be simple enough that users actually do it.
+code scanning. This requires UX prototyping - it must be simple enough that users actually do it.
 
 **Key recovery after device loss**: If a user loses their device and has no key backup (Option A)
 or another device (Option B/C), their ratchet state is gone. Messages sent before key recovery
@@ -179,7 +179,7 @@ to Depot is the primary mitigation.
 
 **Anonymous users**: E2E requires stable identity (persistent key pairs). Guest users (`SASL
 ANONYMOUS`) have no persistent identity and cannot participate in E2E-encrypted DMs. The Orbit
-client must make this clear — E2E DMs require a registered account.
+client must make this clear - E2E DMs require a registered account.
 
 **Transition between E2E and non-E2E**: A conversation that starts unencrypted can transition to
 E2E when both clients negotiate keys. The reverse (E2E to non-E2E) should be discouraged by the
@@ -198,7 +198,7 @@ disabled.
 
 ## Dependencies
 
-- `draft/metadata-2` must be stable in Ergo — key publication relies on it
+- `draft/metadata-2` must be stable in Ergo - key publication relies on it
 - Stable account registration and SASL authentication
 - See [Authentication](../03-identity/01-authentication.md) for the identity model
 - See [DMs](../02-components/01-uplink/03-dms.md) for the two-tier DM storage model (standard
