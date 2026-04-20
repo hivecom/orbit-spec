@@ -39,7 +39,7 @@ DNS is the primary discovery mechanism for all Orbit services. These records are
 |---|---|---|---|
 | `_satellite._tcp.example.com` | SRV | Satellite discovery | If running Satellite |
 | `_depot._tcp.example.com` | SRV | Depot (file storage) discovery | If running Depot |
-| `_transponder._tcp.example.com` | SRV | Transponder (identity) discovery | Post-MVP |
+| `_transponder._tcp.example.com` | SRV | Transponder (identity) discovery | If running Transponder |
 
 ### A / AAAA Records
 
@@ -64,7 +64,7 @@ A reference `docker-compose.yml` is provided for self-hosters. It includes:
 - **LiveKit + token service** (Satellite) - **optional**; can be removed for text-only deployments.
 - **MinIO** (Depot) - **optional**; only required if file uploads are needed.
 - **coturn** (STUN/TURN) - for NAT traversal.
-- **Auth-script bridge** (Transponder integration) - **optional (post-MVP)**; required only when an OIDC identity provider is configured. Verifies JWTs for Ergochat's `auth-script` SASL delegation. See [Transponder](../02-components/04-transponder.md).
+- **Auth-script bridge** (Transponder integration) - **optional**; required only when an OIDC identity provider is configured. Verifies JWTs for Ergochat's `auth-script` SASL delegation. See [Transponder](../02-components/04-transponder.md).
 - **Caddy** (reverse proxy) - terminates TLS via Let's Encrypt, routes WebSocket and API requests to Ergochat and Satellite, and serves `/.well-known/orbit/services.json` as a static file for web client service discovery.
 
 One `docker compose up` produces a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list). Satellite discovery is handled via DNS SRV records configured at the domain level - no IRC channel configuration is needed.

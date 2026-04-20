@@ -49,7 +49,7 @@ For the full specification - OIDC discovery, component integration flows, auth-s
 
 ## Verified and Unverified Users
 
-A Satellite is a media service. There is no requirement that every participant be an IRC user. Legitimate use cases exist for non-IRC participants: someone shares a voice room link with a friend who doesn't have an account, a BYON Satellite operator wants open access, a website embeds a voice widget for anonymous visitors.
+A Satellite is a media service. There is no requirement that every participant be an IRC user. Legitimate use cases exist for non-IRC participants: someone shares a voice room link with a friend who doesn't have an account, a BYOS Satellite operator wants open access, a website embeds a voice widget for anonymous visitors.
 
 The Satellite token service can issue tokens in two modes:
 
@@ -74,7 +74,7 @@ An identity provider is **optional**. If a server operator doesn't deploy one, n
 |---------|----------------------|--------------------------|
 | Text chat | Works - Ergochat delegates credential verification via auth-script bridge | Works - Ergochat uses built-in NickServ/SASL |
 | Group voice / video | Works, participants verified | Works, all participants unverified |
-| BYON | Works, IRC users verified | Works, everyone unverified |
+| BYOS | Works, IRC users verified | Works, everyone unverified |
 | Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
 | P2P calls | Works, caller identity verified | Works, caller identity unverified |
 
@@ -144,5 +144,5 @@ Identify where each phase breaks and document the gaps before proceeding to the 
 ## Dependencies
 
 - The MVP must be stable on single-server deployments. Federation on a shaky foundation is a recipe for compounding bugs.
-- Phase 0 (OIDC identity provider) should be deployed early post-MVP - it improves single-server Satellite auth and is a prerequisite for all federation phases. It requires no IRC server changes beyond `auth-script` configuration. It is also optional - deployments without an identity provider degrade gracefully to fully-unverified Satellite sessions.
+- Phase 0 (OIDC identity provider) ships with the MVP as an optional component. It improves single-server Satellite auth and is a prerequisite for all federation phases. It requires no IRC server changes beyond `auth-script` configuration. It is also optional - deployments without an identity provider degrade gracefully to fully-unverified Satellite sessions.
 - Phase 2 depends on [Server Discovery](06-server-discovery.md) if directory-based trust is pursued.

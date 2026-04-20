@@ -69,7 +69,7 @@ records are the operator's assertion that these Satellites are official.
 
 **Fallback: no DNS records.** If no `_satellite._tcp` SRV records exist for the domain, no
 server-operated Satellites are available. Voice features degrade gracefully - P2P calls still
-work (they don't need a Satellite), and BYON Satellites can still be used, but group voice via
+work (they don't need a Satellite), and BYOS Satellites can still be used, but group voice via
 server Satellites is unavailable.
 
 **Why not an IRC channel?** Earlier designs used a well-known IRC channel (`#orbit/satellites`) with
@@ -81,12 +81,12 @@ advertisement in one authoritative place.
 For the canonical DNS SRV record definitions and the full client resolution algorithm, see
 [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
 
-## Bring Your Own Satellite (BYON)
+## Bring Your Own Satellite (BYOS)
 
 Users can add their own Satellite URL in Orbit's settings. When starting a session, they choose their own Satellite instead of a server-advertised one. The `+orbit/sat-invite` posted to the channel includes the Satellite URL, so other participants connect to the user's Satellite.
 
-- BYON Satellites appear in the UI as "Community" (no verified badge).
-- The server operator cannot block BYON usage - Orbit clients can always choose their own Satellite. The IRC server just passes the tags.
+- BYOS Satellites appear in the UI as "Community" (no verified badge).
+- The server operator cannot block BYOS usage - Orbit clients can always choose their own Satellite. The IRC server just passes the tags.
 - This enables voice in communities where the server operator hasn't set up any Satellite infrastructure. Two users on any IRCv3 server with message tags can use voice if one of them hosts a Satellite.
 
 ## Trust Model
@@ -94,9 +94,9 @@ Users can add their own Satellite URL in Orbit's settings. When starting a sessi
 | Type                | Discovery                      | UI Treatment                         | Trust Level      |
 |---------------------|--------------------------------|--------------------------------------|------------------|
 | Server Satellite    | DNS SRV (`_satellite._tcp`)    | Verified badge, shown by default     | Operator-trusted |
-| Community Satellite | BYON, posted via invite        | "Community" label, no badge          | User-discretion  |
+| Community Satellite | BYOS, posted via invite        | "Community" label, no badge          | User-discretion  |
 
-Orbit clients display a clear indicator when joining a community Satellite. The user must confirm before connecting to an unknown Satellite for the first time - similar to SSH host key confirmation. Once a user has accepted a BYON Satellite, the client remembers that decision.
+Orbit clients display a clear indicator when joining a community Satellite. The user must confirm before connecting to an unknown Satellite for the first time - similar to SSH host key confirmation. Once a user has accepted a BYOS Satellite, the client remembers that decision.
 
 ## Voice Session Flow - Group
 
@@ -107,7 +107,7 @@ sequenceDiagram
     participant SAT as Satellite
     participant B as User B
 
-    note over A: Pick Satellite<br/>(from discovery or BYON settings)
+    note over A: Pick Satellite<br/>(from discovery or BYOS settings)
 
     A->>SAT: POST /session/create (username, channel)
     SAT-->>A: {token, room_id}
@@ -222,7 +222,7 @@ Earlier iterations of this design sent full SDP offers over IRC tags. SDPs are l
 Each Satellite runs a token service (or gateway, in multi-node deployments) - a small HTTP API that issues LiveKit-compatible JWTs scoped to a room and identity.
 
 - **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](04-transponder.md) role), the token service verifies the client's JWT against the provider's JWKS endpoint. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
-- **BYON Satellites**: The operator controls auth entirely. They issue tokens however they see fit.
+- **BYOS Satellites**: The operator controls auth entirely. They issue tokens however they see fit.
 - **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-Satellite - the same Satellite can host both open and protected sessions simultaneously.
 - **No identity provider configured**: The token service issues tokens to anyone who can reach the Satellite. All participants are unverified. Sessions can still be password-protected.
 
@@ -382,7 +382,7 @@ Use cases that do not require IRC infrastructure:
 
 - **Quick voice calls** between friends who share a Satellite link
 - **Embedded voice** on websites using only a Satellite (no IRC backend)
-- **BYON-only communities** where users host their own Satellite and share room links
+- **BYOS-only communities** where users host their own Satellite and share room links
 - **Bootstrapping new communities** before setting up a full Uplink instance
 
 In standalone mode, all participants are unverified - there is no OIDC identity provider ([Transponder](04-transponder.md))
@@ -446,6 +446,6 @@ Room affinity is inherent - a room lives on one node for its entire lifetime. Th
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - canonical SRV record definitions
   and client resolution algorithm
 - [Desktop Client](../04-clients/01-desktop.md) - `orbit://` and `satellite://` URI scheme registration
-- [Transponder](04-transponder.md) - post-MVP OIDC-based identity verification for Satellite sessions
+- [Transponder](04-transponder.md) - OIDC-based identity verification for Satellite sessions
 - [Research: MoQ / Iroh](../0B-research/01-moq-iroh.md) - post-MVP media transport research track
 - [Research: Satellite Gateway](../06-next/07-satellite-gateway.md) - multi-node routing, autoscaling, and drain coordination

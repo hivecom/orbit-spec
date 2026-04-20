@@ -63,7 +63,7 @@ These are client-side rendering decisions only. The IRC server sees the channel 
 
 ### Voice & Video
 
-- Satellite selector: server Satellites shown with verified badge, BYON Satellites shown with community label.
+- Satellite selector: server Satellites shown with verified badge, BYOS (Bring Your Own Satellite) Satellites shown with community label.
 - Join/leave voice sessions - "Join voice" means picking a Satellite and joining or creating a session in the current channel. See [Satellite](../02-components/02-satellite.md) for the session model.
 - Visual participant list showing who is in the active session.
 - Mute/deafen controls.
@@ -90,8 +90,11 @@ These are client-side rendering decisions only. The IRC server sees the channel 
 | `orbit://server.example.com/`                           | Connect to server, show channel list                  |
 | `orbit://server.example.com/channel-name`               | Connect and navigate to `#channel-name`               |
 | `orbit://server.example.com/channel-name?voice=true`    | Connect, navigate to `#channel-name`, auto-join voice |
+| `orbit://server.example.com/%26channel-name`            | Connect and navigate to `&channel-name`               |
+| `orbit://server.example.com/%2Bchannel-name`            | Connect and navigate to `+channel-name`               |
+| `orbit://server.example.com/%21channel-name`            | Connect and navigate to `!channel-name`               |
 
-Channel names omit the `#` prefix in the URI path. The client prepends `#` when joining - this avoids URL-encoding issues with the `#` character (which is a fragment delimiter in URIs).
+**Channel prefix rules:** When the URI path contains a bare channel name (no prefix), the client assumes `#` - this is the common case and avoids URL-encoding issues with the `#` character (which is a fragment delimiter in URIs). To target a channel with a different IRC prefix (`&`, `+`, `!`), the prefix MUST be explicitly included in the path using percent-encoding (`%26`, `%2B`, `%21` respectively). The client detects a percent-encoded prefix and uses it verbatim instead of prepending `#`.
 
 ### Satellite Standalone Links (`satellite://`)
 

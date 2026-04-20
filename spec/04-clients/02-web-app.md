@@ -82,7 +82,7 @@ The complete capability comparison across all three surfaces:
 | Rich rendering (links, images, Markdown) | Yes                            | Yes                                         | Yes                                    |
 | File uploads                             | Yes                            | Yes                                         | No (guests only; configurable)         |
 | Voice & video (full)                     | Yes                            | Yes                                         | Yes (full, with browser permission)    |
-| Voice & video (guest)                    | N/A                            | Receive-only in MVP ¹                       | Receive-only in MVP ¹                  |
+| Voice & video (guest)                    | N/A                            | Speak by default; configurable per Satellite | Speak by default; configurable per Satellite |
 | User list                                | Yes                            | Yes                                         | Yes (compact)                          |
 | Unread indicators / mention highlights   | Yes                            | Yes                                         | Yes                                    |
 | Offline message outbox                   | Yes                            | Yes (PWA Background Sync)                   | No                                     |
@@ -97,7 +97,7 @@ The complete capability comparison across all three surfaces:
 | Server browser                           | Yes                            | Yes                                         | No (hidden in widget mode)             |
 | "Open in Orbit" escape hatch             | N/A                            | N/A                                         | Yes                                    |
 
-¹ Whether guest users should ever be allowed to speak in voice channels is an unresolved decision. See [Open Questions](../0A-decisions/03-open-questions.md#widget-voice-permissions).
+¹ *Resolved*: Guest users can speak in voice channels by default. This is configurable per Satellite instance by the operator. See [Open Questions](../0A-decisions/03-open-questions.md#widget-voice-permissions).
 
 ## Rate Limiting
 

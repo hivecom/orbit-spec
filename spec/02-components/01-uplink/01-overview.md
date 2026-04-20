@@ -77,9 +77,9 @@ Key configuration points for an Orbit-compatible Ergochat instance:
   default - operators choose an appropriate retention window for their community (e.g., 7 days or
   10,000 messages). DM query history uses the same operator-configured retention as channels. See
   [Direct Messages](03-dms.md) for the full DM storage model and Ergo configuration snippet.
-- **SASL**: Required for registered users. SASL PLAIN and SCRAM-SHA-256 over TLS. For the MVP,
-  Ergochat's built-in account database handles credential verification. Post-MVP, Ergochat can
-  delegate SASL verification to an external OIDC identity provider via the `auth-script`
+- **SASL**: Required for registered users. SASL PLAIN and SCRAM-SHA-256 over TLS. By default,
+  Ergochat's built-in account database handles credential verification. When a Transponder is
+  deployed, Ergochat can delegate SASL verification to the OIDC identity provider via the `auth-script`
   configuration option and a thin auth-script bridge. This enables any OIDC-compliant provider
   (Keycloak, Authentik, etc.) to serve as the identity backend without modifying the IRC server.
   When an identity provider is configured, **NickServ must be disabled** - the provider is the sole

@@ -14,8 +14,6 @@ Items are deferred because they require significant research, have unresolved de
 | Federation between Orbit instances | Requires protocol extensions beyond IRCv3 server linking | [Federation](../06-next/01-federation.md) |
 | Mobile clients (iOS / Android) | Tauri v2 mobile support exists but is immature | [Mobile Clients](../06-next/02-mobile-clients.md) |
 | Server directory / discovery service | Centralization concern; needs careful design | [Server Discovery](../06-next/06-server-discovery.md) |
-| Screen sharing | Voice and video are in the MVP; screen sharing is a post-MVP fast-follow | - |
-| Multi-server support in client | Connect to one server at a time in the MVP | - |
 | Custom emoji / sticker packs | Nice-to-have; not essential for launch | - |
 | Custom role / permission system | Use IRC modes; extend via extensions if needed | - |
 | Message editing (amend) | Not available in MVP; requires server-side canonical state that IRC's append-only model cannot provide | Uplink fork (next) |

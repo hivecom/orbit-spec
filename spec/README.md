@@ -14,9 +14,9 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Uplink](02-components/01-uplink/01-overview.md) - IRC layer: IRCv3, required extensions, Ergochat configuration
 - [DMs & Group DMs](02-components/01-uplink/03-dms.md) - DM storage model, E2E interaction, always-on delivery
 - [Presence](02-components/01-uplink/04-presence.md) - Metadata, avatars, status, read markers
-- [Satellite](02-components/02-satellite.md) - Real-time media layer: SFU, voice sessions, BYON, authentication, codecs
+- [Satellite](02-components/02-satellite.md) - Real-time media layer: SFU, voice sessions, BYOS, authentication, codecs
 - [Depot](02-components/03-depot.md) - Storage layer: file uploads, the Depot API, download model
-- [Transponder](02-components/04-transponder.md) - Identity bridging: signed tokens, verified vs. unverified users (post-MVP)
+- [Transponder](02-components/04-transponder.md) - Identity bridging: signed tokens, verified vs. unverified users
 
 ## Uplink Tags
 

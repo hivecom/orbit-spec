@@ -27,7 +27,7 @@ DNS discovery applies to desktop clients only. Web clients skip this section ent
 |---|---|---|---|
 | `_satellite._tcp.example.com` | SRV | Satellite discovery | If running Satellite |
 | `_depot._tcp.example.com` | SRV | Depot (file storage) discovery | If running Depot |
-| `_transponder._tcp.example.com` | SRV | Identity provider (OIDC) discovery | Post-MVP |
+| `_transponder._tcp.example.com` | SRV | Identity provider (OIDC) discovery | If running Transponder |
 
 > **Uplink (IRC)** does not use an SRV record. It is reached via a conventional `irc.example.com` A/AAAA record on port 6697. See [Uplink Resolution](#uplink-resolution) below.
 
@@ -125,7 +125,7 @@ See [../02-components/01-uplink/01-overview.md](../02-components/01-uplink/01-ov
 2. For each entry, query `GET /info` to retrieve node metadata and verify availability.
 3. If no well-known file is available, prompt the user for manual entry.
 
-**If no Satellites are discovered by any applicable mechanism:** Voice features degrade gracefully - P2P calls still work (no Satellite is required for P2P), and BYON Satellites remain available, but group voice via server-operated Satellites is unavailable. The client hides Satellite selection UI rather than showing an error.
+**If no Satellites are discovered by any applicable mechanism:** Voice features degrade gracefully - P2P calls still work (no Satellite is required for P2P), and BYOS Satellites remain available, but group voice via server-operated Satellites is unavailable. The client hides Satellite selection UI rather than showing an error.
 
 **Multiple nodes** may be advertised via multiple SRV records (desktop) or multiple entries in the `satellite` array (all clients). Priority order follows SRV priority/weight for DNS, and array index for well-known discovery.
 
@@ -147,7 +147,7 @@ See [../02-components/02-satellite.md](../02-components/02-satellite.md) for Sat
 
 See [../02-components/03-depot.md](../02-components/03-depot.md) for Depot architecture.
 
-### Identity Provider Resolution (Post-MVP)
+### Identity Provider Resolution
 
 The Orbit client discovers the server's OIDC identity provider (the Transponder role) through the following mechanisms in priority order:
 

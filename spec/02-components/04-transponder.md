@@ -233,7 +233,7 @@ An identity provider is optional. If a server operator doesn't deploy one, nothi
 |---------|----------------------|--------------------------|
 | Text chat | Works - Ergochat delegates credential verification via auth-script bridge | Works - Ergochat uses built-in NickServ/SASL |
 | Group voice / video | Works, participants verified | Works, all participants unverified |
-| BYON | Works, users verified | Works, everyone unverified |
+| BYOS | Works, users verified | Works, everyone unverified |
 | Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
 | P2P calls | Works, caller identity verified | Works, caller identity unverified |
 
@@ -341,7 +341,7 @@ Orbit requires the `openid` and `profile` scopes at minimum. The `email` scope i
 
 ## MVP Status
 
-The Transponder role (external OIDC identity provider) is the first planned post-MVP addition. Deploying a standard OIDC provider (Keycloak, Authentik, etc.) alongside Orbit is high-feasibility and should follow the MVP closely. It improves Satellite authentication with verified identity and centralizes identity in a standard, pluggable layer. It is fully optional - deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade to fully-unverified Satellite sessions.
+The Transponder role (external OIDC identity provider) ships with the MVP. Deploying a standard OIDC provider (Keycloak, Authentik, etc.) alongside Orbit is high-feasibility and included in the first release. It improves Satellite authentication with verified identity and centralizes identity in a standard, pluggable layer. It is fully optional - deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade to fully-unverified Satellite sessions.
 
 ## Cross-References
 
