@@ -1,8 +1,21 @@
 # Orbit Design Specification
 
-IRC has always been the right protocol for community communication. Thirty years of reliability, a vast ecosystem of bots and tooling, a server you can run yourself on minimal hardware, and an open standard that nobody owns. What it has never had is a client layer that meets modern expectations - one that runs in a browser tab, embeds on a website, works on any device without installation, and doesn't require users to understand IRC at all.
+> [!NOTE]
+> **Matrix Evaluation**
+>
+> Matrix is still being evaluated as an alternative chat backend before committing to IRC/Ergochat. It offers built-in federation, persistent message history, and a broad ecosystem of clients and bridges. On paper it maps well to what Orbit needs.
+>
+> In practice, several caveats are pushing the decision toward IRC:
+>
+> - **Integration complexity and surface.** The Matrix client-server API is large, stateful, and opinionated. Building on top of it means conforming to its event model, room state resolution, and sync protocol - all of which add significant integration surface and constrain how the client layer behaves.
+> - **Infrastructure overhead.** Running a production-grade Matrix homeserver (Synapse or Dendrite) is substantially heavier than Ergochat. Storage requirements grow aggressively with room history and federation traffic. The operational burden is meaningfully higher.
+> - **No meaningful decoupling.** The Matrix protocol is tightly coupled to the homeserver implementation. There is no clean separation between transport and logic that would allow Orbit to extend or replace layers independently. Orbit would effectively become a UI skin over Matrix rather than a platform with its own architecture.
+>
+> IRC's simplicity is the point. It gives Orbit a minimal, well-understood transport that the team can extend on its own terms via the Uplink fork, without inheriting the complexity of a second opinionated platform.
 
-That is what Orbit is.
+IRC is a solid protocol for community communication. Thirty years of reliability, a vast ecosystem of bots and tooling, a server you can run yourself on minimal hardware, and an open standard that nobody owns. What it has never had is a client layer that meets modern expectations - one that runs in a browser tab, embeds on a website, works on any device without installation, and doesn't require users to understand IRC at all.
+
+Orbit takes this to the next level. It is a client layer built on IRC, but it is not an IRC client. It is a modern, full-featured communication platform that happens to use IRC as its transport and message store. The MVP proves the architecture and delivers a compelling product on stock Ergochat. The fork - a purpose-built IRCd that extends Ergo while remaining 100% IRC-compatible at the protocol level - is where Orbit becomes the platform.
 
 ## What Orbit Is
 
