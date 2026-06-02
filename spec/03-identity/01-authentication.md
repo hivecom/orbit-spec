@@ -113,13 +113,13 @@ sequenceDiagram
     participant GC as Uplink
 
     BR->>GC: Connect WSS
-    BR->>GC: SASL ANONYMOUS (auto guest-* nick)
+    BR->>GC: SASL ANONYMOUS (auto anon-* nick)
     GC-->>BR: IRC session established (direct)
 ```
 
-- Guest users connect via SASL ANONYMOUS. Ergochat assigns a `guest-*` nickname automatically.
+- Anonymous/guest users connect via SASL ANONYMOUS. Ergochat assigns a `anon-*` nickname automatically.
 - No account creation, no backend, no JWT, no session tokens required.
-- Guest nicknames are prefixed with `guest-` and cannot be registered.
+- Guest nicknames are prefixed with `anon-` and cannot be registered.
 - Any IRC client - including third-party web UIs - can connect the same way. This is intentional: Orbit does not gatekeep access to a standard IRC server.
 
 ## Graceful Degradation
