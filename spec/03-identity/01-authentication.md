@@ -80,28 +80,29 @@ The Orbit client manages token refresh transparently:
 
 The refresh token lifetime is set by the identity provider. Operators should configure a refresh token lifetime appropriate to their community (e.g., 7–30 days for persistent logins, shorter for higher-security deployments).
 
-## NickServ Disablement
+## NickServ and the Identity Provider
 
-When an identity provider is configured, **NickServ must be disabled**. The OIDC provider is the single source of truth for accounts - running NickServ alongside it creates two competing account databases and a namespace conflict (a user could register the same nickname via NickServ and the OIDC provider as two different people).
+When an identity provider is configured, OIDC is the authoritative source of truth for accounts. If a user has a valid JWT, it wins - their Hivecom account maps directly to their IRC account via `preferred_username`, enforced by the auth-script bridge.
 
-Disabling NickServ means:
+NickServ registration can remain open as a compatibility layer. This is a deployment choice, not a requirement. The case for keeping it:
 
-- **Account registration** happens in the identity provider (admin console, self-service portal, etc.), not via `/msg NickServ REGISTER`.
-- **Nickname enforcement** still works. Ergochat's nick reservation is tied to account login, not to NickServ specifically. Once `auth-script` confirms an account name, Ergochat enforces that account's reserved nicknames exactly as before.
-- **Existing NickServ accounts** should be migrated into the identity provider before switchover. The provider becomes the canonical user database; NickServ's internal database is retired.
+- **Traditional IRC clients cannot authenticate via SASL PLAIN with OIDC.** JWTs are long, short-lived (5-15 minutes), and require a browser-based PKCE flow to obtain. There is no practical way to enter one from irssi, weechat, or similar clients. NickServ `IDENTIFY` bypasses the auth-script path entirely and remains the only viable authentication route for these clients.
+- **Self-serve account migration.** When a user changes their Hivecom username, they can rename their NickServ account themselves via `/NS RENAME` rather than requiring admin intervention.
 
-The rule is simple: **identity provider configured -> NickServ is disabled, the provider owns accounts. No provider -> NickServ handles everything.** No hybrid mode, no two-source-of-truth ambiguity.
+The two authentication paths coexist cleanly:
+
+| Client | Auth path | Account |
+|--------|-----------|---------|
+| Web / Orbit client | SASL PLAIN (JWT) via auth-script bridge | OIDC account |
+| Traditional IRC client | NickServ IDENTIFY | NickServ account |
+
+Namespace conflicts are possible but self-inflicted - if a NickServ account claims a nick that an OIDC user later claims from Hivecom, the NickServ account becomes unreachable via SASL. Nick enforcement still works; the OIDC claim simply wins.
+
+Operators who want strict single-source-of-truth can disable registration (`accounts.registration.enabled = false`). Operators who want maximum client compatibility leave it open.
 
 ## Legacy IRC Clients
 
-Traditional IRC clients that cannot perform an OIDC browser flow can still authenticate if the identity provider supports the Resource Owner Password Credentials grant (direct username/password to token endpoint). The auth-script bridge handles both cases transparently:
-
-1. If the SASL password is a valid JWT -> verify it directly against the JWKS.
-2. If the SASL password is a plain password -> forward it to the provider's token endpoint via the Resource Owner Password Credentials grant.
-
-Either way, the same user database is consulted. From Ergochat's perspective, the result is identical - a verified account name.
-
-Note: the Resource Owner Password Credentials grant is deprecated in OAuth 2.1 and not all providers support it. If the provider does not, legacy IRC clients would need to obtain a JWT out-of-band (e.g., via a web login page) and paste it into their client's SASL password field. This is an acceptable trade-off - traditional IRC clients are a compatibility edge case, not the primary audience.
+Traditional IRC clients that cannot perform an OIDC browser flow authenticate via NickServ `IDENTIFY` - this path bypasses the auth-script bridge entirely and works regardless of whether an identity provider is configured. 
 
 ## Anonymous Web Widget Users
 
