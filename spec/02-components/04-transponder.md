@@ -140,23 +140,30 @@ The auth-script bridge is the **only Orbit-specific glue code** in the entire id
 
 ### NickServ and the Identity Provider
 
-When an OIDC provider is configured, NickServ should be **disabled**. The two cannot coexist as dual sources of truth - if NickServ manages some accounts and the OIDC provider manages others, nickname ownership conflicts are inevitable.
+When an OIDC provider is configured, OIDC is the **authoritative source of truth for accounts**. A valid JWT always wins: the user's Hivecom account maps directly to their IRC account via `preferred_username`, enforced by the auth-script bridge. NickServ does not need to manage these accounts.
 
-The clean separation:
+This does **not** require disabling NickServ. The two layers coexist cleanly because they own different things: OIDC owns identity and login; NickServ provides a compatibility and recovery surface that OIDC structurally cannot (legacy SASL `IDENTIFY`, self-serve renames, and email-based password recovery). This is a deployment choice, and both configurations are supported:
 
 | Configuration | Account management | Credential verification | Nickname enforcement |
 |---------------|-------------------|------------------------|---------------------|
 | **No identity provider (MVP)** | NickServ handles registration, password changes, email verification | Ergochat's built-in SASL against NickServ's database | NickServ enforces registered nicknames |
-| **Identity provider configured** | OIDC provider owns all accounts - registration, password resets, MFA, etc. happen there | `auth-script` bridge verifies JWTs (and optionally plain passwords) against the provider | Ergochat still enforces registered nicknames - enforcement is tied to account login, not to NickServ specifically |
+| **Identity provider configured (coexistence, recommended)** | OIDC owns identity; accounts are autocreated on first JWT login. NickServ remains for recovery (email) and legacy `IDENTIFY` | `auth-script` bridge verifies JWTs; NickServ verifies legacy `IDENTIFY` | Ergochat enforces registered nicknames - enforcement is tied to account login, not to NickServ specifically |
+| **Identity provider configured (strict single-source)** | OIDC owns everything; NickServ registration disabled | `auth-script` bridge only | Ergochat enforces registered nicknames |
+
+**Autocreation:** For the coexistence model to work seamlessly, the auth-script bridge MUST be configured with autocreation enabled, so a persistent Ergochat account and nickname reservation are established on a user's first OIDC login. Without it, OIDC users may not get a persistent account or a reserved nick.
+
+**Account claim (recovery readiness):** An OIDC-autocreated account starts with no email on its NickServ record. The presence of a *verified* email is the signal that the account is recoverable via NickServ's `SENDPASS`/`RESETPASS` flow from a legacy client, independent of the provider. Orbit clients abstract this as a non-blocking "claim your account" flow (silent `INFO` probe -> `SET EMAIL` -> `VERIFYEMAIL`). The NickServ email is a *recovery channel*, not an identity assertion - identity remains the OIDC `preferred_username` carried in `account-tag`. See [IRC Services Abstraction - NickServ](05-services.md#nickserv).
+
+**Namespace conflicts** are possible but self-inflicted: if a NickServ account claims a nick that an OIDC user later claims from Hivecom, the NickServ account becomes unreachable via SASL. Nick enforcement still works; the OIDC claim simply wins. Operators who want to eliminate this risk entirely choose the strict single-source configuration (`accounts.registration.enabled = false`).
 
 **Migration from NickServ to an OIDC provider:**
 
 1. Import existing NickServ accounts into the OIDC provider (or connect the provider to the same backing store - e.g., if accounts already live in a database the provider can consume).
-2. Disable NickServ registration (`REGISTER` command).
-3. Configure `auth-script` to point at the auth-script bridge.
+2. Enable autocreation on the auth-script bridge and point `auth-script` at it.
+3. Decide on coexistence (keep NickServ for recovery/legacy clients) or strict mode (disable registration via `accounts.registration.enabled = false`).
 4. Existing nickname reservations continue to work - Ergochat's enforcement mechanism is unchanged, only the credential verification path is swapped.
 
-**Legacy IRC clients:** When an identity provider is active, traditional IRC clients that don't understand OIDC can still authenticate via SASL PLAIN - the auth-script bridge accepts both JWTs and plain passwords. For plain passwords, the bridge forwards them to the OIDC provider's token endpoint (Resource Owner Password Credentials grant). This grant type is supported by most providers (Keycloak, Supabase, etc.) but is deprecated in OAuth 2.1 - operator discretion applies. If the provider does not support it, legacy clients must obtain a JWT out-of-band (e.g., via a web login page) and paste it as their SASL password.
+**Legacy IRC clients:** Traditional IRC clients that don't understand OIDC authenticate via NickServ `IDENTIFY`, which bypasses the auth-script path entirely and works regardless of provider configuration. This is the only legacy authentication path Orbit specifies - and the primary reason to keep NickServ in coexistence mode. There is deliberately no JWT-over-SASL path for these clients: JWTs are long, short-lived, and require a browser-based PKCE flow to obtain, so making a user fetch a token out-of-band and paste it as a SASL password is unacceptable UX. Legacy clients use NickServ; that is the contract.
 
 ### Satellite
 
@@ -172,6 +179,10 @@ Token verification is a local cryptographic operation. The Satellite does not co
 ### Depot
 
 Depot (and any future Orbit service) follows the same pattern: fetch the JWKS, verify incoming JWTs locally. No adapter, no custom integration - standard Bearer token authentication.
+
+### IRC Services (NickServ / ChanServ)
+
+Ergo's built-in services coexist with the identity provider rather than competing with it. NickServ provides account recovery and legacy `IDENTIFY`; ChanServ provides persistent channel state that ephemeral channel modes cannot. Orbit clients treat both as implementation details and surface user *intent* instead of raw `/NS` and `/CS` commands. The full abstraction model - claim flow, always-on, channel administration, and service-notice suppression - is specified in [IRC Services Abstraction](05-services.md).
 
 ## Multi-Server Identity
 
@@ -347,5 +358,6 @@ The Transponder role (external OIDC identity provider) ships with the MVP. Deplo
 
 - [Satellite](../02-components/02-satellite.md) - Satellite authentication context and the public join key model that verified identity supersedes
 - [Uplink](../02-components/01-uplink/01-overview.md) - Ergochat configuration, `auth-script` delegation
+- [IRC Services Abstraction](05-services.md) - NickServ/ChanServ intent mapping, claim flow, always-on, service-notice suppression
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - identity provider discovery and DNS SRV records
 - [Research: Federation](../06-next/01-federation.md) - the full federation research track, including IRC network linking, trust models, and evaluation criteria

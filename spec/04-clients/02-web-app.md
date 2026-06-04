@@ -99,6 +99,19 @@ The complete capability comparison across all three surfaces:
 
 ¹ *Resolved*: Guest users can speak in voice channels by default. This is configurable per Satellite instance by the operator. See [Open Questions](../0A-decisions/03-open-questions.md#widget-voice-permissions).
 
+## Account & Identity Surface
+
+Identity is a first-class product surface in every client context (desktop, web app, widget), not a debugging aid. The client never exposes raw IRC service commands; it surfaces user intent and maps it to NickServ/ChanServ behind the scenes (see [IRC Services Abstraction](../02-components/05-services.md)).
+
+The baseline identity surface:
+
+- **Account claim.** When a registered account has no verified recovery email, the client shows a non-blocking prompt and an in-app flow to claim it (set + verify email). This makes the account recoverable from legacy IRC clients without ever showing a `/NS` command.
+- **Always-on / reachability.** The client surfaces whether the user stays reachable for DMs while offline as plain-language status, and warns when it is off (see [DMs - Always-On](../02-components/01-uplink/03-dms.md#always-on-mode)).
+- **Identity-issue indicator.** A subtle indicator in the chat toolbar flags actionable identity state (unclaimed account, always-on disabled) so the user is nudged once, not nagged.
+- **Verified vs. unverified display.** Authenticated users are visually distinguished from guests per [Identity Display](../03-identity/02-permissions.md#identity-display).
+
+The reference proof-of-concept implements claim and always-on management in a single `IdentityModal`, with the toolbar indicator gated on unclaimed/always-on-off state. This is the baseline IRC foundation Orbit clients build on.
+
 ## Rate Limiting
 
 Rate limiting for guest connections is handled by Ergochat's built-in flood protection and per-IP connection limits, configured by the server operator in Ergochat's settings. No separate service or configuration is needed. The same limits apply to all connecting clients - desktop, web app, widget, or third-party IRC clients.

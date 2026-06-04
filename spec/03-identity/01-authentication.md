@@ -100,6 +100,8 @@ Namespace conflicts are possible but self-inflicted - if a NickServ account clai
 
 Operators who want strict single-source-of-truth can disable registration (`accounts.registration.enabled = false`). Operators who want maximum client compatibility leave it open.
 
+In the coexistence model, OIDC accounts are autocreated on first login and start with no NickServ email. Orbit clients surface a non-blocking "claim your account" flow that sets and verifies an email so the account is recoverable via NickServ (`SENDPASS`/`RESETPASS`) from legacy clients. This claim email is a recovery channel, not an identity assertion - identity remains the `account-tag`. The client abstracts all NickServ interaction (claim, always-on, service-notice suppression); users never type `/NS` commands. See [IRC Services Abstraction](../02-components/05-services.md).
+
 ## Legacy IRC Clients
 
 Traditional IRC clients that cannot perform an OIDC browser flow authenticate via NickServ `IDENTIFY` - this path bypasses the auth-script bridge entirely and works regardless of whether an identity provider is configured. 

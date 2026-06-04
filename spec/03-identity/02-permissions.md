@@ -15,6 +15,8 @@ Orbit uses IRC's built-in channel modes. Period.
 
 There are no custom roles, no role colors, no granular permission overrides. This is an opinionated decision. IRC has a proven, battle-tested permissions model. It covers the needs of the vast majority of communities.
 
+Channel modes are **ephemeral** - they live only while the channel is in memory. *Persistent* channel state (founder ownership, standing operator grants, standing bans, and whether the channel survives a restart) is owned by ChanServ, not by channel modes. Orbit keeps live moderation on raw channel modes as described here, and maps persistent channel administration to ChanServ behind a channel-settings UI. See [IRC Services Abstraction - ChanServ](../02-components/05-services.md#chanserv) for that split.
+
 If you need more - role hierarchies, per-channel upload limits, auto-mod rules, custom role colors - build an extension. An IRC bot connected to Uplink can enforce arbitrarily complex rules by monitoring channel events and acting on them. An Orbit client extension can add UI for complementary features in the desktop client (post-MVP). But the core stays simple.
 
 ### Bot-Managed Roles

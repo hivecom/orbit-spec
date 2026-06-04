@@ -18,6 +18,7 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Satellite](02-components/02-satellite.md) - Real-time media layer: SFU, voice sessions, BYOS, authentication, codecs
 - [Depot](02-components/03-depot.md) - Storage layer: file uploads, the Depot API, download model
 - [Transponder](02-components/04-transponder.md) - Identity bridging: signed tokens, verified vs. unverified users
+- [IRC Services Abstraction](02-components/05-services.md) - NickServ/ChanServ intent mapping, account claim, always-on, service-notice suppression
 
 ## Uplink Tags
 
