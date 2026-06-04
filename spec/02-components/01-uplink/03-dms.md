@@ -52,7 +52,7 @@ When E2E is first established, the client inserts a visible marker in the conver
 *"🔒 Messages from this point are end-to-end encrypted."* Previous messages remain in whatever
 state they were in. This is explicit - the user always knows which messages are protected.
 
-See [Research: E2E Encryption](../../../06-next/05-e2e-encryption.md) for the key exchange
+See [Research: E2E Encryption](../../06-next/05-e2e-encryption.md) for the key exchange
 protocol, cross-device key synchronization, and the `+orbit/e2e` tag design.
 
 ## Always-On Mode
@@ -82,7 +82,7 @@ would break the features that make channels useful: history, search, threads, mo
 The trust model for a channel is simple - you are trusting the server you joined. Choose your
 server accordingly.
 
-E2E encryption for DMs is tracked in [Research: E2E Encryption](../../../06-next/05-e2e-encryption.md)
+E2E encryption for DMs is tracked in [Research: E2E Encryption](../../06-next/05-e2e-encryption.md)
 and is not part of the MVP. For the MVP, the honest position is: DM content is stored with
 operator-configured retention, and it is not encrypted. Users who need confidentiality before E2E
 ships should be aware of this.
@@ -111,5 +111,5 @@ This is standard Ergo configuration. No patches, no plugins.
 ## Cross-References
 
 - [Uplink Overview](01-overview.md) - always-on mode configuration
-- [Research: E2E Encryption](../../../06-next/05-e2e-encryption.md) - end-to-end encryption
+- [Research: E2E Encryption](../../06-next/05-e2e-encryption.md) - end-to-end encryption
   for DMs, key exchange, cross-device sync

@@ -302,7 +302,7 @@ This tag is defined in the [Orbit Tag Namespace](01-uplink/02-tags/01-namespace.
 
 This metadata is client-asserted and informational. Orbit clients SHOULD verify file metadata
 independently by checking HTTP response headers (`Content-Type`, `Content-Length`) on download.
-See [Tag Trust Model](../01-uplink/02-tags/02-trust-model.md) for enforcement rules.
+See [Tag Trust Model](01-uplink/02-tags/02-trust-model.md) for enforcement rules.
 
 ## Service Discovery
 

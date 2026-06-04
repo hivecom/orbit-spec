@@ -78,10 +78,30 @@ sequenceDiagram
     end
 ```
 
-The email a user claims with is their own choice. The client MAY prefill it from the OIDC
-`email` claim and MAY warn when the NickServ email and the OIDC email diverge, but it MUST NOT
-treat the NickServ email as an identity assertion - it is a recovery channel, not a verified
-identity (see [Metadata Is Not an Identity Signal](#metadata-is-not-an-identity-signal)).
+The email a user claims with is their own choice. The client SHOULD prefill it from the OIDC
+`email` claim. It MUST NOT treat the NickServ email as an identity assertion - it is a recovery
+channel, not a verified identity (see [Metadata Is Not an Identity Signal](#metadata-is-not-an-identity-signal)).
+
+**Email match is the account-integrity signal.** Comparing the NickServ email against the OIDC
+`email` claim is how the client detects that an account was not cleanly claimed - most importantly
+the co-ownership case where someone NickServ-registered the nick before the OIDC user first logged
+in (see [Transponder - Namespace conflicts](04-transponder.md#nickserv-and-the-identity-provider)).
+The client SHOULD surface three states:
+
+- **Claimed (in sync):** NickServ email present and equal to the OIDC email. No action.
+- **Mismatch:** NickServ email present but different from the OIDC email - warn prominently and
+  offer re-claim. This is the squatting/co-ownership tell.
+- **Unclaimed:** no NickServ email - offer the claim flow.
+
+> **Implementation note - why the claim sequence is `SET EMAIL` then `RESETPASS`, never
+> `SET PASSWORD`.** An OIDC-autocreated account has empty credentials (`PassphraseHash` unset).
+> Ergo blocks `NS SET PASSWORD` on such accounts with `errCredsExternallyManaged` - it treats the
+> account as managed by the auth-script. The email-reset path is the way in: `RESETPASS` calls the
+> internal `setPassword` with elevated privileges, which bypasses that lock and can set the first
+> password. So `SET EMAIL` -> `VERIFYEMAIL` establishes recovery, and `SENDPASS`/`RESETPASS` is the
+> only self-service route to an actual password on an OIDC-origin account. Re-running `RESETPASS`
+> also overwrites a squatter's stored password, which is how a re-claim can fully evict prior
+> co-ownership.
 
 ### Always-On (Offline Delivery)
 
@@ -166,20 +186,21 @@ Because the abstraction depends on never leaking service chatter, clients MUST h
 | HistServ | Any | Suppressed from unread/mention/badge state |
 | Any service | Power-user/raw mode explicitly enabled | Shown verbatim in a service query buffer |
 
-The reference proof-of-concept implements suppression via short-lived "suppressing" flags around
-each initiated operation and a silent probe path; see `useIrcChat.ts` in the Hivecom web client.
+Suppression is implemented with short-lived "suppressing" flags around each client-initiated
+operation plus a dedicated silent-probe path: while a probe or `SET` is in flight, matching service
+notices are parsed for state and withheld from buffers.
 
 ## Conformance Summary
 
-| Service interaction | Spec position | PoC web client |
-|---|---|---|
-| NickServ email claim / recovery readiness | Abstracted (silent probe + claim flow) | Implemented (`IdentityModal`) |
-| NickServ always-on management | Abstracted (status + warn when off) | Implemented (`IdentityModal`) |
-| NickServ raw commands for OIDC users | Never required | Not surfaced |
-| Live channel moderation (modes) | Intent-mapped to channel modes | Partial (per Permissions) |
-| Persistent channel admin (ChanServ) | Abstracted into channel-settings panel | **Gap** - raw `/CS` only |
-| HistServ | Not user-facing; use `chathistory` | Suppressed; `chathistory` used |
-| Metadata as profile signal | Cosmetic only, not identity | Pending `draft/metadata-2` |
+| Service interaction | Orbit requirement |
+|---|---|
+| NickServ email claim / recovery readiness | Abstracted - silent probe + claim flow; never raw commands |
+| NickServ always-on management | Abstracted - surface status, warn when off |
+| NickServ raw commands for OIDC users | Never required |
+| Live channel moderation (modes) | Intent-mapped to channel modes (see Permissions) |
+| Persistent channel admin (ChanServ) | Abstracted into a channel-settings panel |
+| HistServ | Not user-facing; use `chathistory` |
+| Metadata as profile signal | Cosmetic only, never an identity signal |
 
 ## Cross-References
 

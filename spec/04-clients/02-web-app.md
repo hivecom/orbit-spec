@@ -110,7 +110,7 @@ The baseline identity surface:
 - **Identity-issue indicator.** A subtle indicator in the chat toolbar flags actionable identity state (unclaimed account, always-on disabled) so the user is nudged once, not nagged.
 - **Verified vs. unverified display.** Authenticated users are visually distinguished from guests per [Identity Display](../03-identity/02-permissions.md#identity-display).
 
-The reference proof-of-concept implements claim and always-on management in a single `IdentityModal`, with the toolbar indicator gated on unclaimed/always-on-off state. This is the baseline IRC foundation Orbit clients build on.
+Claim and always-on management SHOULD be presented as a single account/identity surface, with a toolbar indicator gated on actionable state (unclaimed account, always-on off) so the user is nudged once rather than nagged. This is the baseline IRC foundation Orbit clients build on.
 
 ## Rate Limiting
 

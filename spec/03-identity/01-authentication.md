@@ -96,7 +96,7 @@ The two authentication paths coexist cleanly:
 | Web / Orbit client | SASL PLAIN (JWT) via auth-script bridge | OIDC account |
 | Traditional IRC client | NickServ IDENTIFY | NickServ account |
 
-Namespace conflicts are possible but self-inflicted - if a NickServ account claims a nick that an OIDC user later claims from Hivecom, the NickServ account becomes unreachable via SASL. Nick enforcement still works; the OIDC claim simply wins.
+Namespace conflicts are possible but self-inflicted. If a NickServ account registers a nick before an OIDC user first claims it, the OIDC login is logged into that *existing* account (autocreation resolves the name to it) and the pre-existing NickServ password stays valid - effective co-ownership, not an automatic takeover. The signal that this happened is email divergence: the verified NickServ email will not match the user's OIDC email. Orbit clients surface this mismatch as an account-integrity warning and prompt a re-claim. See [IRC Services Abstraction - Account Claim](../02-components/05-services.md#account-claim-email-recovery-readiness).
 
 Operators who want strict single-source-of-truth can disable registration (`accounts.registration.enabled = false`). Operators who want maximum client compatibility leave it open.
 

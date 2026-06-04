@@ -56,7 +56,7 @@ For Ergochat's tag relay configuration, see [Uplink Overview](../01-overview.md)
 > **Note on `+orbit/e2e`**: This tag is **post-MVP** and is reserved for end-to-end encrypted DMs.
 > When present on a `PRIVMSG`, it indicates the message body is ciphertext encrypted with the
 > Double Ratchet protocol. The tag value contains the sender's key ID, which the recipient uses to
-> select the correct decryption key. See [Research: E2E Encryption](../../../../06-next/05-e2e-encryption.md)
+> select the correct decryption key. See [Research: E2E Encryption](../../../06-next/05-e2e-encryption.md)
 > for the full design.
 
 ## Encoding

@@ -65,7 +65,7 @@ This section lists the IRCv3 capabilities Orbit relies on and their availability
 | `draft/pre-away` | Signal impending disconnect before it happens | Stable in Ergo |
 | `draft/read-marker` | Server-side read state synced across devices | Stable in Ergo |
 | `draft/message-redaction` | Server-enforced message retractions (`REDACT` command) | In Ergo git, pending release |
-| `draft/metadata-2` | Native key/value store per user and channel (avatars, display names, status) | In Ergo git, pending release |
+| `draft/metadata-2` | Native key/value store per user and channel (avatars, display names, status) | Stable in Ergo (2.17.0+); requires the `accounts.metadata` config block |
 | In-place message editing | Server-canonical edited message state | Uplink fork |
 | Full-text search | Search over retained channel history | Uplink fork |
 | Server-to-server federation | Linking independent Uplink instances | Uplink fork |
@@ -90,10 +90,10 @@ Threads are implemented as client-managed IRC sub-channels with a naming convent
 
 ### User Metadata
 
-User metadata - avatars, display names, and presence status - is stored and distributed via `draft/metadata-2` (in Ergo's git, pending release). Orbit uses the following keys:
+User metadata - avatars, display names, and presence status - is stored and distributed via `draft/metadata-2` (stable in Ergo 2.17.0+; enabled per deployment via the `accounts.metadata` config block). Orbit uses the following keys:
 
-- `orbit.avatar` - a Depot URL pointing to the user's avatar image
+- `avatar` - a URL pointing to the user's avatar image (Orbit uses a Depot URL); IRCv3 quasi-standard key, unprefixed for interop
 - `display-name` - the user's preferred display name
-- `orbit.status` - the user's presence/status string
+- `orbit.status` - the user's presence/status string (vendor-prefixed; no standard equivalent)
 
 Clients subscribe to these keys and receive live push updates when they change. IRC clients that implement `draft/metadata-2` can read and set these keys via `METADATA GET` / `METADATA SET`.

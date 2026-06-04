@@ -154,7 +154,11 @@ This does **not** require disabling NickServ. The two layers coexist cleanly bec
 
 **Account claim (recovery readiness):** An OIDC-autocreated account starts with no email on its NickServ record. The presence of a *verified* email is the signal that the account is recoverable via NickServ's `SENDPASS`/`RESETPASS` flow from a legacy client, independent of the provider. Orbit clients abstract this as a non-blocking "claim your account" flow (silent `INFO` probe -> `SET EMAIL` -> `VERIFYEMAIL`). The NickServ email is a *recovery channel*, not an identity assertion - identity remains the OIDC `preferred_username` carried in `account-tag`. See [IRC Services Abstraction - NickServ](05-services.md#nickserv).
 
-**Namespace conflicts** are possible but self-inflicted: if a NickServ account claims a nick that an OIDC user later claims from Hivecom, the NickServ account becomes unreachable via SASL. Nick enforcement still works; the OIDC claim simply wins. Operators who want to eliminate this risk entirely choose the strict single-source configuration (`accounts.registration.enabled = false`).
+**Namespace conflicts** are possible but self-inflicted, and they do *not* resolve themselves the way one might expect. If a NickServ account registers a nick before an OIDC user first claims it, the OIDC login does **not** transparently take over the name. With autocreation enabled, the bridge resolves `preferred_username` to that nick and Ergochat logs the OIDC user into the *existing* account - the one the squatter registered - while the squatter's stored password remains valid. Both can then authenticate, and under `multiclient` both sessions attach to the same account simultaneously. This is effective **co-ownership**, not an automatic win.
+
+The detectable signal is **email divergence**: the OIDC user's verified IdP email will not match the email on the squatted NickServ record. Orbit clients surface this mismatch as an account-integrity warning and prompt a re-claim (see [IRC Services Abstraction - Account Claim](05-services.md#account-claim-email-recovery-readiness)). Re-claiming syncs the email; fully evicting the prior credential additionally requires overwriting the stored password (via `SENDPASS`/`RESETPASS`, which replaces the hash) or an operator clearing it (`PASSWD <account> *`). There is no automatic eviction today - the bridge cannot mutate IRC state, and the auth-script protocol returns only `accountName`/`success`/`error`.
+
+Operators who want to eliminate this risk entirely choose the strict single-source configuration (`accounts.registration.enabled = false`), where no one can pre-register a nick.
 
 **Migration from NickServ to an OIDC provider:**
 
@@ -348,7 +352,7 @@ All JWT verification MUST apply a clock skew tolerance of ±30 seconds to accoun
 
 ### Scope
 
-Orbit requires the `openid` and `profile` scopes at minimum. The `email` scope is optional and can be used for account recovery or display if the provider supports it.
+Orbit requires the `openid` and `profile` scopes at minimum. The `email` scope SHOULD be requested when the NickServ account-claim flow is in use: the client prefills the claim email from the `email` claim and uses it to detect OIDC/NickServ email divergence (see [IRC Services Abstraction - Account Claim](05-services.md#account-claim-email-recovery-readiness)). Without `email`, the claim flow still functions but cannot prefill or detect divergence.
 
 ## MVP Status
 

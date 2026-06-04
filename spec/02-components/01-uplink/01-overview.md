@@ -82,12 +82,16 @@ Key configuration points for an Orbit-compatible Ergochat instance:
   deployed, Ergochat can delegate SASL verification to the OIDC identity provider via the `auth-script`
   configuration option and a thin auth-script bridge. This enables any OIDC-compliant provider
   (Keycloak, Authentik, etc.) to serve as the identity backend without modifying the IRC server.
-  When an identity provider is configured, **NickServ must be disabled** - the provider is the sole
-  authority for account management (registration, password changes, identity verification).
-  Ergochat's nickname enforcement continues to work because it is tied to account login, not to
-  NickServ specifically; once `auth-script` confirms an account name, nickname reservation and
-  enforcement behave identically to the NickServ path. See [Transponder](../04-transponder.md)
-  for details.
+  When an identity provider is configured, OIDC is the authoritative identity layer. NickServ does
+  **not** have to be disabled: by default it coexists as a recovery and legacy-client layer
+  (email-based `SENDPASS`/`RESETPASS` and SASL `IDENTIFY`) while OIDC owns identity. The bridge MUST
+  enable account autocreation so the first OIDC login establishes a persistent account and nickname
+  reservation. Operators who want a strict single source of truth MAY instead disable NickServ
+  registration (`accounts.registration.enabled = false`). Either way, Ergochat's nickname
+  enforcement continues to work because it is tied to account login, not to NickServ specifically;
+  once `auth-script` confirms an account name, nickname reservation and enforcement behave
+  identically to the NickServ path. See [Transponder](../04-transponder.md) for the full coexistence
+  vs. strict model.
 - **Client-only tag allowlist**: Ergochat relays all `+`-prefixed tags by default per IRCv3 spec.
   No special configuration needed, but the server should enforce maximum tag size limits.
 - **Connection limits**: Per-IP connection limits configured to prevent abuse. Browser-based web
@@ -95,9 +99,9 @@ Key configuration points for an Orbit-compatible Ergochat instance:
   from the same IP (e.g., shared NAT or multiple browser tabs).
 - **Nickname reservation**: The `guest-` prefix MUST be reserved. In the MVP (NickServ active),
   configure NickServ to reject registration of any nickname starting with `guest-`. When an OIDC
-  identity provider is configured and NickServ is disabled, the provider's account management
-  ensures no user can register a `guest-` prefixed username. Either way, this prevents collision
-  between registered users and anonymous widget guests.
+  identity provider is configured, the provider's account management (and/or disabled NickServ
+  registration in strict mode) ensures no user can register a `guest-` prefixed username. Either
+  way, this prevents collision between registered users and anonymous widget guests.
 
 For DNS SRV record configuration that makes this instance discoverable by Orbit clients, see
 [DNS & Service Discovery](../../05-infrastructure/01-domain-discovery.md).
