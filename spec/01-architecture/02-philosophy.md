@@ -18,6 +18,16 @@ Orbit is that client. A desktop application, a web app, an embeddable widget tha
 
 ## Where Orbit's Value Lives
 
+Orbit is not trying to beat Discord. It is trying to make defection cheap, pleasant, and boringly reliable - so that when people are ready to leave, the door is already open.
+
+The pitch is concrete: everything your friend group needs from Discord, privately, on a $5 VPS. `docker compose up`. For less than $10 a month you get voice, text, files, identity - all self-hosted, all yours. Every alternative that died tried to out-Discord Discord with custom protocols, custom servers, and years spent catching up. They failed because they were not decoupled, they scaled poorly on cost, and they were horrible to maintain. Orbit survives by not owning what it does not have to.
+
+The goal is not a product to sell. It is infrastructure and a cultural push - resistance to surveillance and platform lock-in. If Orbit ever provides hosted instances, that is a small convenience cut for people who do not want to operate their own box, not a SaaS play.
+
+The way Orbit wins on the client side is UX. It has always been UX. People stay on Discord because it is easy. The bar: make leaving take an afternoon instead of a research project. Anonymous access, invite a friend to a call without them making an account, works in the browser, works on a phone. The onboarding is gone. The product demonstrates itself; the viral loop is the absence of a funnel.
+
+IRC already does the "decentralized but nobody cares" thing naturally. An Orbit client can connect to any existing IRC network. Layering a modern client onto existing networks is the slow creep - adoption does not require a migration.
+
 Orbit does not fork the IRC server, and it is not in the business of reimplementing IRC. Orbit's value is the whole experience: a polished client layer together with Satellite and Depot, orchestrated into one cohesive, seamless product. The work is UX and integration - making a thirty-year-old protocol feel modern and effortless - not owning the transport.
 
 The posture toward the protocol is simple: Orbit conforms to IRCv3, and whatever stock Ergo implements, the Orbit client supports. Much of what a private fork was once imagined for is already native in Ergo (push notifications, OIDC/JWT authentication, user metadata, message retraction, an HTTP API, and pluggable history backends), so there is nothing to fork. Where IRC has not standardized something yet, Orbit follows the same draft work the rest of the ecosystem does and handles the remainder at the client and tag layer. If a capability is standardized in IRCv3, great; if Ergo ships it, Orbit gets it for free; if neither has happened, Orbit adapts. We would contribute upstream where it helps, but the leverage is the product, not the protocol.
@@ -84,6 +94,19 @@ IRC is the right foundation, but it is honest to name what it does not natively 
 - **Federation** needs server-to-server linking that stock IRC servers do not provide. It is not a goal for now; Ergo may add it or Orbit may help upstream, but nothing depends on it. Single-instance Ergo scales vertically and supports high-availability deployment via Kubernetes.
 
 None of these are reasons to abandon IRC. They are the current state, each with a defined resolution path.
+
+## Moderation and Trust
+
+IRC moderation at scale is not hypothetical. Freenode ran roughly 90,000 concurrent users for twenty years with channel ops, services, bots, and network bans. Libera inherited that model and continues it. The primitives work. Orbit adds good client-side UX on top of them - operator tooling, moderation panels, visible trust indicators - but does not reinvent the permission model.
+
+The thing that actually killed Freenode was not a moderation failure. It was a governance and ownership failure - the 2021 hostile takeover. Everyone migrated to Libera in a week. That cuts in Orbit's favor: when your platform is decoupled and built on a standard protocol with no lock-in, what would be a death for a centralized service becomes a one-week migration. Portability over permanence is a stronger defense than moderation features alone.
+
+Orbit is not text-only like traditional IRC. Depot handles file uploads and Satellite handles voice and video. These add a content surface IRC never had, and scale requires additional care here. The posture is layered:
+
+- **Shared content (files via Depot):** Every upload is attributed to a user identity via OIDC. Content is removable by operators. Depot provides a gateway chokepoint where automated scanning can be bolted on at scale. Small instances do not need it; large public ones can add it. The safe default: anonymous users can join calls and chat, but cannot upload files to public channels (unless configured and desired).
+- **Private content (P2P calls, E2E DMs):** The shield is cryptographic, not topological. End-to-end encryption plus non-retention means Orbit cannot see, decrypt, or produce 1:1 content. "We cannot decrypt and did not store" is the posture. This is the same model as Signal.
+
+The principled summary: Orbit is infrastructure. For private content, it architecturally cannot see it. For shared content, it attributes it and can remove it.
 
 ## Message Storage
 

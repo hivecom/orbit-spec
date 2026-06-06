@@ -182,7 +182,7 @@ The initiator sends a `TAGMSG` to the recipient's nickname with a `+orbit/p2p-of
 }
 ```
 
-The recipient's client displays the incoming request based on the `intent` field - "Alice wants to start a voice call" or "Bob wants to send you a file." If accepted, the recipient responds with a `+orbit/p2p-answer` tag containing the same fields (their own ICE credentials, DTLS fingerprint, and a candidate). That's it - two IRC messages total, ~300–400 bytes each. Uplink's involvement ends here.
+The recipient's client displays the incoming request based on the `intent` field - "Alice wants to start a voice call" or "Bob wants to send you a file." If accepted, the recipient responds with a `+orbit/p2p-answer` tag containing the same fields (their own ICE credentials, DTLS fingerprint, and a candidate). That's it - two IRC messages total, ~300-400 bytes each. Uplink's involvement ends here.
 
 ### Intent
 
@@ -211,13 +211,21 @@ This design means that after the initial two-message handshake, the P2P connecti
 
 If direct connectivity fails (both peers behind symmetric NATs), the connection falls back to a TURN relay. Unlike the direct P2P case, a TURN-relayed session depends on the TURN server remaining available - if the TURN server goes down, the call drops. However, ICE restart candidates can be exchanged over the data channel to attempt a new path without re-involving IRC.
 
+When TURN is in the path, encrypted media bytes transit the operator's TURN server (coturn or STUNner). The relay can observe that a relayed session exists and its duration, but because P2P calls use DTLS-SRTP, the relay only sees ciphertext - it cannot decrypt or inspect media content. The "cannot decrypt" property holds for both direct and relayed paths. What weakens under TURN is the "not on our wires" property: the encrypted bytes do pass through operator infrastructure. This is a meaningful distinction and should inform user expectations.
+
 ### Privacy Note
 
-P2P handshake signaling is relayed through Uplink (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content. Post-handshake, the operator sees nothing - all media and further signaling flows directly between peers. Users who do not trust the server operator with connection metadata should use a Satellite for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
+P2P handshake signaling is relayed through Uplink (IRC). The IRC server operator can observe who is connecting to whom, the intent (call, video, chat, file), and the initial ICE candidate (which reveals one public IP per peer). This is consistent with the trust model for text chat - the server operator can already read message content.
+
+The real privacy shield for P2P calls is cryptographic, not topological. All P2P sessions use DTLS-SRTP, which provides end-to-end encryption of media between the two peers. When the connection is direct, the operator sees nothing post-handshake - media and further signaling flow between peers without touching any server. When the connection falls back to TURN, the encrypted bytes transit the relay, but the relay cannot decrypt them. The privacy guarantee is "we cannot decrypt and did not store," not merely "it went direct." Direct routing achieves non-retention (bytes never touch Orbit servers); encryption ensures that even when TURN is involved, the content is opaque to the relay.
+
+P2P sessions - whether direct or TURN-relayed - retain nothing. There is no recording, no server-side storage, no logs of media content. When the session ends, the content is gone. The IRC signaling (the handshake `TAGMSG` tags) is the only retained trace, and it contains connection metadata (intent, ICE credentials, DTLS fingerprint), not content.
+
+Users who do not trust the server operator with connection metadata should use a Satellite for group calls instead, where signaling metadata is limited to the `+orbit/sat-invite` tag visible in the channel.
 
 ### No SDP over IRC
 
-Earlier iterations of this design sent full SDP offers over IRC tags. SDPs are large (~2–3 KB for audio+video) due to exhaustive codec enumeration, which created pressure on the IRCv3 tag budget (4,094 bytes for client tags) and Ergochat's flood protection. The handshake-first model eliminates this entirely - the IRC payload contains only connection credentials (~300 bytes), and full SDP negotiation happens over the data channel where there are no size constraints.
+Earlier iterations of this design sent full SDP offers over IRC tags. SDPs are large (~2-3 KB for audio+video) due to exhaustive codec enumeration, which created pressure on the IRCv3 tag budget (4,094 bytes for client tags) and Ergochat's flood protection. The handshake-first model eliminates this entirely - the IRC payload contains only connection credentials (~300 bytes), and full SDP negotiation happens over the data channel where there are no size constraints.
 
 ## Satellite Authentication
 
@@ -351,7 +359,7 @@ Knocking is best-effort. If no one responds within a reasonable timeout (e.g., 6
 | Media | Codec | Bitrate (default)                       | Notes                                                              |
 |-------|-------|-----------------------------------------|--------------------------------------------------------------------|
 | Audio | Opus  | 64 kbps (voice), 128 kbps (music mode) | Mandatory. No alternative in the MVP.                              |
-| Video | VP9   | Adaptive (300–2500 kbps)               | SVC profile for bandwidth adaptation. AV1 is a post-MVP option.   |
+| Video | VP9   | Adaptive (300-2500 kbps)               | SVC profile for bandwidth adaptation. AV1 is a post-MVP option.   |
 
 ## Scope Boundary
 
@@ -416,9 +424,9 @@ LiveKit (the MVP SFU) has no built-in participant limit per room. A single node 
 
 | Session profile | Approximate capacity (single node, 1 Gbps link) |
 |---|---|
-| Audio-only (Opus, ~50 kbps/participant) | ~200–500 participants |
+| Audio-only (Opus, ~50 kbps/participant) | ~200-500 participants |
 | Mixed audio + video (360p, ~500 kbps/participant) | ~50 participants |
-| Mixed audio + video (720p, ~1.5 Mbps/participant) | ~20–30 participants |
+| Mixed audio + video (720p, ~1.5 Mbps/participant) | ~20-30 participants |
 
 These are rough estimates based on aggregate bandwidth. Actual capacity depends on the node's NIC throughput, CPU (for SRTP encryption), and LiveKit's simulcast configuration. Audio-only sessions are dramatically cheaper than video sessions.
 

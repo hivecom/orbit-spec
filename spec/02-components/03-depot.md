@@ -263,6 +263,42 @@ Layer 2 supersedes the trust assumption of Layer 1. The client encrypts the file
 
 Until these land, operators of private communities should be aware that ordinary Depot URLs are accessible to anyone who obtains them, and communicate this to their users.
 
+## Content Moderation
+
+Because every upload either passes through Depot (filesystem driver) or is authorized by Depot (S3 pre-signed URL driver), the gateway is the natural chokepoint for optional automated content scanning. Hash-matching against known-bad databases (e.g. PhotoDNA / NCMEC-style hash lists), ML-based classification, or custom operator-defined rules can all hook in at this layer. This is an operator concern, not a core Depot feature - Depot provides the hook point, not the scanner itself.
+
+### Scaling the capability
+
+A small friend-group instance does not need content scanning. A large public-facing instance probably does. The capability scales with deployment size, and Depot's job is to make both paths easy: no scanning overhead when it is not configured, clean integration points when it is.
+
+### Storage-driver asymmetry
+
+The two storage drivers create a real asymmetry for scanning, and this section documents it honestly rather than glossing over it.
+
+**Filesystem / proxy mode.** Depot receives the bytes directly. Scanning can happen inline (synchronously, before the file is made available to other users). This is the simplest and safest path for deployments that need hard content gating.
+
+**S3-direct mode (pre-signed PUT).** The bytes go straight to the storage backend and never touch Depot. Scanning cannot happen synchronously at the gateway. Instead, scanning happens asynchronously - typically via an S3 event notification (or equivalent) that triggers a scan on the newly uploaded object. Until the scan completes, the object exists in storage.
+
+This means deployments that need real content gating under the S3 driver should use a **private-by-default bucket policy** with gateway-mediated downloads: Depot issues a short-lived pre-signed GET only after the object's scan status is marked clean. This sacrifices the bandwidth-free public-URL property of the S3 driver but gains content safety.
+
+Operators choose their position on this spectrum:
+
+| Posture | Bucket policy | Download path | Scanning | Typical deployment |
+|---------|--------------|---------------|----------|--------------------|
+| No scanning | Public | Direct URL | None | Friend-group, homelab |
+| Async scan-and-quarantine | Public | Direct URL | Async, best-effort | Mid-size community |
+| Private-by-default, gateway-served | Private | Pre-signed GET via Depot | Inline or pre-serve | Large/public-facing instance |
+
+### Safe anonymous defaults
+
+Anonymous (unauthenticated) users can join calls and chat via Uplink/Satellite without restriction - that is the frictionless entry model. But anonymous users should not be able to upload files to public channels by default. This is consistent with the existing [guest restriction](#guest-users): guests cannot upload regardless of configuration.
+
+For operators who explicitly enable anonymous uploads, Depot applies tighter rate limits and smaller size caps than authenticated uploads receive. The safe default is authenticated uploads only; anonymous upload capability is an explicit operator opt-in.
+
+### The posture
+
+Orbit is infrastructure. For shared content, every upload is attributed to an identity, content is removable, and operators can scan at the gateway. For 1:1 private content (P2P calls, E2E-encrypted DMs), Orbit cannot see or store the content - the shield is cryptographic and architectural. This is the same trust model as Signal for private content and a moderated platform for shared content.
+
 ## Metadata Store
 
 When any stateful capability is enabled (quotas, deletion, audit, API keys, recipient-scoping), Depot maintains a small metadata database tracking uploads.
