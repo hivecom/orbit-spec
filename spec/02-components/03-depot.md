@@ -1,55 +1,135 @@
 # Depot
 
-Depot is the file storage component of an Orbit deployment. It provides S3-compatible object
-storage for file uploads, user avatars, and other binary assets shared within Orbit communities.
+> **Component class: bespoke component (Orbit-built).** Depot is software Orbit builds, but it is deliberately a *thin* gateway, not a UI app. It abstracts its own storage backend (S3 or local disk), but Depot itself is not one of Orbit's adopted abstractions; it is built by Orbit. See [Component Classes](../01-architecture/02-philosophy.md#component-classes).
 
-Depot is an optional component - text chat and real-time media function without it. File sharing
-within Uplink channels requires a Depot instance.
+Depot is a thin S3/disk policy-and-signing gateway, not an app. It holds the storage credentials, decides who may upload what, signs (or proxies) the transfer, and gets out of the way. It is the file storage component of an Orbit deployment, used for file uploads, user avatars, and other binary assets shared within Orbit communities.
 
-A Depot deployment consists of two parts:
+Existing self-hosted products like [Zipline](https://github.com/diced/zipline) and [Plik](https://github.com/root-gg/plik) already do everything Depot does and far more: full web UIs, galleries, URL shorteners, account dashboards. Orbit deliberately does not want that. The Orbit client *is* the UI; Depot only needs to be the authority that sits in front of the bytes.
 
-- **S3-compatible backend**: Any S3-compatible service that stores the actual objects and serves
-  them via public URLs. MinIO (self-hosted), Amazon S3, Cloudflare R2, Backblaze B2, Garage, or
-  any other S3-compatible provider. The Depot API does not care which backend is behind it.
-- **Depot API**: A thin HTTP service that sits in front of the S3 backend. This is the only piece
-  that Orbit clients interact with directly - the S3 backend is never accessed by clients except
-  via pre-signed upload URLs issued by the Depot API.
+Raw S3 alone is insufficient, which is why a thin authority is always needed in front of it. S3 cannot verify an OIDC token and attribute an upload to one of *your* users, it cannot enforce *your-app* per-user quotas, it cannot mint *your-app* API keys, and it cannot scope a download to specific recipients. Those are application-level concerns. Depot is exactly that thin authority, and nothing more.
 
-The Depot API is a small service (~200-300 lines of core logic). It authenticates requests, enforces
-limits, generates pre-signed URLs, and optionally tracks upload metadata. It does not proxy file
-content in either direction.
+Depot is an optional component - text chat and real-time media function without it. File sharing within Uplink channels requires a Depot instance.
 
-For backend configuration (MinIO setup, S3 bucket policy, TLS), see
-[Infrastructure & Deployment](../05-infrastructure/02-deployment.md).
+For backend configuration (MinIO setup, S3 bucket policy, TLS), see [Infrastructure & Deployment](../05-infrastructure/02-deployment.md). For DNS-based discovery of a domain's Depot instance, see [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
 
-For DNS-based discovery of a domain's Depot instance, see
-[DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
+## What S3 Does vs What Depot Does
+
+Depot stays thin by leaning on everything S3-compatible storage already does natively, and only implementing the handful of things storage cannot.
+
+**What S3-compatible storage gives natively (Depot leans on all of this):**
+
+- Direct client transfer via pre-signed URLs (bytes never touch Depot).
+- Per-upload constraints baked into the signature: content-type, content-length range, key prefix, expiry.
+- Object metadata.
+- Lifecycle and expiry rules.
+- Bucket and IAM policies.
+- CORS.
+- Range requests and multipart uploads.
+
+**What only Depot can do (application-level, S3 cannot):**
+
+- Verify a [Transponder](04-transponder.md) OIDC JWT and attribute the upload to a real account.
+- Enforce per-user storage quotas.
+- Mint and manage your-app API keys (ShareX, Puush, cURL).
+- Scope downloads to specific recipients (DMs).
+
+Everything in the first list is configuration Depot hands to the storage backend. Everything in the second list is the reason Depot exists at all.
+
+## Storage Drivers
+
+Where the bytes live is the first of two orthogonal axes an operator composes. The storage driver is a small interface with two operations:
+
+```
+StorageDriver {
+  presign_upload(key, constraints) -> upload_url
+  resolve_download(key)            -> download_url
+}
+```
+
+`constraints` carries the content-type, content-length range, key prefix, and expiry that S3 can enforce in the signature. The client API contract is **identical** for both drivers: the client always calls the presign endpoint and PUTs to whatever URL it gets back. It never knows which backend is behind Depot.
+
+### `s3` driver
+
+- **Upload** is a direct pre-signed PUT. `presign_upload` returns an S3 pre-signed URL and the client PUTs bytes straight to the storage backend. Bytes never touch Depot.
+- **Download** is a public object URL, or a short-lived pre-signed GET when the object is private.
+- Any S3-compatible backend works: MinIO (self-hosted), Amazon S3, Cloudflare R2, Backblaze B2, Garage. Depot does not care which.
+
+### `fs` driver (local filesystem)
+
+- There is no pre-signed-URL equivalent for a local disk, so Depot **proxies** the transfer. `presign_upload` returns a Depot-hosted upload URL; the client PUTs through Depot, which writes to local disk.
+- Depot also **serves** downloads itself from disk.
+- No object storage is required to run.
+
+### Tradeoff
+
+State this honestly:
+
+- **`s3`** keeps Depot stateless and bandwidth-free; the storage backend carries all transfer load. This is the path to scale.
+- **`fs`** puts Depot directly in the data path, consuming its bandwidth and CPU, which makes Depot a bottleneck. In exchange it needs no object storage at all.
+
+Rule of thumb: **`fs` for single-box/homelab, `s3` for scale.**
+
+## Accepted Credentials
+
+The second orthogonal axis is *which credentials Depot accepts*. This is a set of capability flags the operator toggles, in any combination, not a choice between exclusive modes. There is no longer an "open mode vs OIDC mode" switch.
+
+| Flag | Meaning |
+|------|---------|
+| `anonymous` | Accept unauthenticated presign requests. |
+| `oidc` | Accept a [Transponder](04-transponder.md) OIDC JWT and attribute the upload to the account. |
+| `api_key` | Accept a long-lived Depot-issued API key (ShareX/Puush/cURL). |
+
+The two formerly-named modes are just points in this space:
+
+- "Open mode" is simply `anonymous` being the only accepted credential.
+- "OIDC mode" is simply `oidc` enabled.
+
+An operator can enable several at once: for example `oidc` + `api_key` for a normal Orbit server, or `anonymous` + `oidc` for a community that wants quick anonymous drops alongside attributed uploads.
+
+When OIDC is enabled, Depot verifies the JWT signature against the provider's published JWKS, the same verification pattern used by [Satellite](02-satellite.md) and the [auth-script bridge](04-transponder.md). No component contacts any other component to check identity.
+
+```
+POST /upload/presign
+Authorization: Bearer <JWT>        # when oidc or api_key credential is used
+
+{
+  "filename": "screenshot.png",
+  "size": 2048576,
+  "content_type": "image/png"
+}
+```
+
+### Statefulness is opt-in per capability
+
+Pure anonymous signing needs no state at all; Depot is fully stateless. State is only required by the capabilities that genuinely need it:
+
+- Quotas, deletion, audit, API keys, and recipient-scoping all require a small [metadata store](#metadata-store).
+- SQLite is plenty; Postgres is optional for operators who already run one.
+
+An operator who enables only `anonymous` runs a stateless Depot. The moment any stateful capability is enabled, the metadata store comes into play.
+
+### Guest users
+
+Regardless of configuration, anonymous web widget guests (SASL ANONYMOUS users with `guest-*` nicknames) cannot upload files. In OIDC-only configurations they have no JWT; when `anonymous` is enabled the Orbit client still does not present the upload UI to guests. This is client-side enforcement - guests are not the intended audience for file uploads.
 
 ## Upload Flow
 
 1. User selects a file in the Orbit client.
-2. The client sends a pre-signed URL request to the Depot API (`POST /upload/presign`). The Depot
-   API authenticates the request (if OIDC is configured), enforces rate limits and maximum file
-   size, checks per-user quota (if OIDC is configured), and - if all checks pass - generates a
-   pre-signed S3 upload URL.
-3. The client uploads the file directly to the S3 backend via the pre-signed URL. The upload
-   does not pass through the Depot API.
-4. On successful upload, the client posts a `PRIVMSG` to the channel containing the public file
-   URL as the message body.
-5. The client attaches file metadata as a single `+orbit/file` tag (base64-encoded JSON containing
-   name, size, and type) on the same `PRIVMSG`.
-6. The Orbit client renders an inline preview (images, audio, video) or a download card. Pure IRC
-   clients see a plain URL.
+2. The client sends a presign request to Depot (`POST /upload/presign`). Depot authenticates the request against the accepted credentials, enforces rate limits and maximum file size, checks per-user quota (when an identity is present), and - if all checks pass - returns an upload URL.
+3. The client PUTs the file to the returned upload URL. With the `s3` driver this goes directly to the storage backend and never passes through Depot; with the `fs` driver the URL points back at Depot, which proxies the bytes to disk.
+4. On successful upload, the client posts a `PRIVMSG` to the channel containing the public file URL as the message body.
+5. The client attaches file metadata as a single `+orbit/file` tag (base64-encoded JSON containing name, size, and type) on the same `PRIVMSG`.
+6. The Orbit client renders an inline preview (images, audio, video) or a download card. Pure IRC clients see a plain URL.
 
 ```mermaid
 sequenceDiagram
     participant U as Orbit Client
     participant D as Depot API
-    participant S3 as S3 Backend
+    participant S3 as Storage Backend (S3)
     participant GC as Uplink
 
-    U->>D: POST /upload/presign {filename, size, type}<br/>Authorization: Bearer JWT (if OIDC)
-    Note over D: Verify auth (if OIDC)<br/>Check rate limit<br/>Check file size<br/>Check quota (if OIDC)<br/>Write metadata row (if OIDC)
+    U->>D: POST /upload/presign {filename, size, type}<br/>Authorization: Bearer JWT (oidc/api_key)
+    Note over D: Verify credential<br/>Check rate limit<br/>Check file size<br/>Check quota (if identity)<br/>Write metadata row (if stateful)
     D-->>U: {upload_url, object_key, expires_in}
 
     U->>S3: PUT (pre-signed URL) - file bytes
@@ -59,162 +139,154 @@ sequenceDiagram
     Note over U: Attaches +orbit/file tag (base64 JSON: name, size, type)
 ```
 
+The diagram shows the `s3` driver (direct pre-signed PUT) as the primary illustration. With the `fs` driver the only change is that `upload_url` points back at Depot, so the PUT in step `U->>S3` is instead `U->>D` and Depot writes to local disk; everything else, including the client contract, is identical.
+
 ## The Depot API
 
-The Depot API is a thin HTTP service deployed co-located with (or in front of) the S3 backend.
-
-**Endpoints:**
+Depot is a thin HTTP service deployed co-located with (or in front of) the storage backend.
 
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /upload/presign` | Authenticate, validate, rate-limit, return a time-limited S3 upload URL |
-| `DELETE /file/{key}` | Delete a file (requires OIDC; uploader or server admin only) |
-| `GET /quota` | Return current usage for the authenticated user (requires OIDC) |
+| `POST /upload/presign` | Authenticate, validate, rate-limit, return a time-limited upload URL |
+| `POST /upload` | One-shot multipart upload (ShareX/cURL); returns the final URL |
+| `POST /keys` | Mint a long-lived API key (requires OIDC) |
+| `GET /keys` | List the caller's API keys (requires OIDC) |
+| `DELETE /keys/{id}` | Revoke an API key (requires OIDC) |
+| `DELETE /file/{key}` | Delete a file (requires identity; uploader or operator only) |
+| `GET /quota` | Return current usage for the authenticated user |
 | `GET /health` | Health check for deployment tooling |
 
 **Responsibilities:**
 
-- **Authentication**: Verify the caller's identity via JWT when OIDC is configured; accept all
-  requests when running in open mode (see [Authentication](#authentication)).
-- **Pre-signed URL issuance**: Generate time-limited S3 pre-signed upload URLs. The S3 SDK handles
-  this natively - no custom signing logic is needed.
-- **Rate limiting**: Enforce per-IP upload rate limits (both modes). Enforce per-user upload rate
-  limits (OIDC mode).
+- **Authentication**: Verify the caller against the accepted credential flags.
+- **Upload URL issuance**: Generate a time-limited upload URL via the active [storage driver](#storage-drivers). With the `s3` driver the SDK handles signing natively; no custom signing logic is needed.
+- **Rate limiting**: Enforce per-IP upload rate limits always, and per-user limits when an identity is present.
 - **Size enforcement**: Reject requests that exceed the configurable maximum file size per upload.
-- **Quota enforcement**: Reject requests that would exceed the user's storage quota (OIDC mode).
-- **Metadata tracking**: Record upload metadata for quota accounting, deletion, and audit
-  (OIDC mode).
+- **Quota enforcement**: Reject requests that would exceed the user's storage quota.
+- **Metadata tracking**: Record upload metadata for quota accounting, deletion, and audit (when a stateful capability is enabled).
 
-The Depot API does **not** proxy file downloads. Downloads are served directly from the S3 backend
-via public object URLs.
+Depot does **not** proxy file downloads under the `s3` driver; those are served by the storage backend. It does serve and proxy under the `fs` driver, and it serves the private/proxied download path in either driver when recipient-scoping requires it.
 
-## Download Model
+## API Keys & External Uploads (ShareX / Puush / cURL)
 
-Downloads are public. Anyone with the file URL can fetch the file directly from the S3 backend. The
-URL is the access control - if you don't want someone to access a file, don't share the URL. This
-is the same model as Imgur, public S3 buckets, or paste services.
+API keys are a separate auth path from the short-lived OIDC browser token, designed for external tools that cannot run an interactive OIDC flow.
 
-This model is appropriate for files shared in public channels. For files shared in private contexts
-- direct messages or private channels - the URL leaking to a third party would grant them access.
-The mitigation for this case is end-to-end encryption: when E2E encryption is active for a DM (see
-[Research: E2E Encryption](../06-next/05-e2e-encryption.md)), the file is encrypted
-client-side before upload. The Depot URL points to ciphertext - useless without the decryption key,
-which never leaves the participants' clients. In this model, Depot remains a dumb object store and
-the security guarantee comes from the encryption layer, not from access control on the URL.
-
-For the MVP, E2E encryption is not implemented. Operators running private communities should be
-aware that Depot URLs are permanently accessible to anyone who obtains them, and should communicate
-this to their users.
-
-## Authentication
-
-Depot operates in one of two modes, chosen by the server operator at deployment time.
-
-### OIDC Mode (Recommended)
-
-When the server has a [Transponder](04-transponder.md) (OIDC identity provider) configured, Depot
-verifies uploads against it. The client sends a Bearer JWT with its pre-sign request. Depot
-verifies the JWT signature against the provider's published JWKS - the same verification pattern
-used by [Satellite](02-satellite.md) and the
-[auth-script bridge](04-transponder.md#uplink-ergochat). No component contacts any other
-component to check identity.
+A user, already authenticated via OIDC in the Orbit client, mints a long-lived key:
 
 ```
-POST /upload/presign
+POST /keys
 Authorization: Bearer <JWT>
 
-{
-  "filename": "screenshot.png",
-  "size": 2048576,
-  "content_type": "image/png"
-}
+{ "label": "ShareX desktop", "scopes": ["upload"], "expires_at": "2027-01-01" }
 ```
 
-OIDC mode enables the full feature set:
+Depot stores **only a hash** of the key plus the owner identity (`sub`/`iss`), the label, optional scopes, and an optional expiry. The raw key is shown **once**, at creation. Lifecycle operations:
 
-- Uploads are tied to a verified account identity.
-- Per-user quotas are enforced.
-- Uploaders can delete their own files.
-- Operators can audit and moderate uploads by account.
+- **List** (`GET /keys`): the caller's keys with labels and `last_used` timestamps.
+- **Revoke** (`DELETE /keys/{id}`): instant, unlike a JWT which remains valid until it expires.
+- **Last-used** tracking for spotting stale or leaked keys.
 
-**This is the recommended configuration for any deployment.** Transponder is a standard OIDC
-provider (Keycloak, Authentik, etc.) plus a ~100-line auth-script bridge for Ergochat. It is not
-a heavy dependency.
-
-### Open Mode
-
-When no identity provider is configured, Depot runs in **open mode**. No authentication is
-performed. Anyone who can reach the Depot API can request a pre-signed upload URL.
+A key is presented exactly like a JWT:
 
 ```
-POST /upload/presign
-
-{
-  "filename": "screenshot.png",
-  "size": 2048576,
-  "content_type": "image/png"
-}
+Authorization: Bearer <key>
 ```
 
-**The trade-offs of open mode must be understood clearly:**
+Depot resolves the key to its owner and then reuses **all** the OIDC-mode machinery: identity, quota, deletion rights, and audit. A key-attributed upload is indistinguishable from an OIDC-attributed upload once the owner is resolved.
 
-- **No upload attribution.** There is no identity to bind uploads to. Every upload is anonymous
-  from Depot's perspective. The IRC `PRIVMSG` that shares the URL will carry the sender's
-  nickname and `account-tag` (if they are logged in via NickServ), but Depot itself has no
-  knowledge of this.
-- **No per-user quotas.** Without identity, there is no "user" to quota against. A single actor
-  can fill the storage backend up to whatever global limits the operator configures.
-- **No file deletion by uploaders.** Without identity, there is no way to prove ownership.
-  Only server operators can delete files via S3 admin tools.
-- **No audit trail.** The operator cannot answer "who uploaded this file?" from Depot alone.
-  The only record is the IRC message history in Uplink, which may have been purged.
-- **Abuse surface is larger.** Rate limiting (per-IP) and file size caps are the only protection.
-  This may be acceptable for small, private, trusted communities. It is not appropriate for
-  public-facing deployments.
+### One-shot upload endpoint
 
-Open mode exists because Depot should function without hard dependencies on other components -
-consistent with Orbit's design philosophy of independent services. But it is the operator's
-responsibility to understand what they are giving up. **If you are running a public server, configure
-an identity provider.**
+The two-step presign dance is awkward for ShareX and cURL, so Depot provides a one-shot endpoint:
 
-### Guest Users
+```
+POST /upload          (multipart/form-data)
+Authorization: Bearer <key>
+```
 
-Regardless of mode, anonymous web widget guests (SASL ANONYMOUS users with `guest-*` nicknames)
-cannot upload files. In OIDC mode, they have no JWT. In open mode, the Orbit client does not
-present the upload UI to guest users. This is a client-side enforcement - guests are not the
-intended audience for file uploads.
+It accepts the file bytes directly and returns the final URL. Note that the one-shot endpoint **proxies bytes even under the `s3` driver**, since the client cannot perform the pre-signed PUT itself. Because of this it should be **rate-limited more tightly** than the presign flow. The Orbit client keeps using the efficient presign flow and does not touch `/upload`.
+
+## Per-User Quotas
+
+When an identity is present (OIDC or API key), Depot enforces per-user storage quotas. At presign time, before issuing the upload URL, it queries the metadata store:
+
+```
+SUM(file_size) WHERE uploader_account = ? AND uploader_issuer = ?
+```
+
+If the current total plus the requested file size exceeds the configured quota, the request is rejected with a clear error before any upload URL is issued.
+
+**Configuration:**
+
+- `default_quota`: the default per-user storage limit (e.g., `500MB`), applied to all users unless overridden.
+- `quota_overrides`: a map of account names to custom limits (e.g., a higher quota for trusted users or bots).
+
+Quotas require an identity. Anonymous uploads cannot be quota'd per-user; for those the operator relies on bucket-level storage limits and manual monitoring.
+
+## File Deletion
+
+### By uploaders (identity present)
+
+When the caller has an identity, they can delete their own files:
+
+```
+DELETE /file/{object_key}
+Authorization: Bearer <JWT or API key>
+```
+
+Depot verifies the credential, checks the metadata store to confirm the authenticated account matches the `uploader_account` for the given object key, deletes the object, and removes the metadata row. If the account does not match, the request is rejected.
+
+### By server operators
+
+Operators can always delete files at the backend level (MinIO console, AWS S3 management, `mc rm`, or simply removing files from disk under the `fs` driver) regardless of credential configuration. Depot does not gate operator-level access. When an operator deletes a file out of band, the metadata row (if any) becomes orphaned and the periodic cleanup job reconciles it automatically.
+
+### Anonymous uploads
+
+There is no client-facing delete API for anonymous uploads. Without an identity, ownership cannot be proven.
+
+## Recipient-Scoped Uploads (NEXT)
+
+> This is a **NEXT**, Orbit-specific capability, not part of the MVP.
+
+DMs need a file shared with a specific person, not the whole world. This is something only Depot can provide, because S3 has no concept of *your* accounts. Two layers are planned.
+
+### Layer 1 - access-controlled downloads
+
+- Files are stored **private**. Their metadata gains an `allowed_recipients` field: a list of account `sub`s (the sender plus the DM target).
+- Downloads go **through Depot**, which checks that `requester.sub` is in `allowed_recipients`. The requester proves their identity with their own valid JWT.
+- This forces the private/proxied download path even under the `s3` driver: Depot either issues a short-lived pre-signed GET or streams the bytes itself.
+- **The sender does not sign with the recipient's JWT.** At presign time the sender *asserts* the recipient account identities; at download time the recipient *proves* their own identity. These are distinct steps.
+- Only works when `oidc` is enabled. Reject `allowed_recipients` for anonymous callers.
+
+### Layer 2 - end-to-end encryption (future)
+
+Layer 2 supersedes the trust assumption of Layer 1. The client encrypts the file before upload, and the URL points to ciphertext, useless without the decryption key, which never leaves the participants' clients. Depot stays a dumb object store and the security guarantee comes from the encryption layer rather than access control on the URL. See [Research: E2E Encryption](../06-next/05-e2e-encryption.md).
+
+Until these land, operators of private communities should be aware that ordinary Depot URLs are accessible to anyone who obtains them, and communicate this to their users.
 
 ## Metadata Store
 
-When running in OIDC mode, the Depot API maintains a small metadata database that tracks uploads.
-This is the foundation for quotas, deletion, and audit.
-
-**Schema:**
+When any stateful capability is enabled (quotas, deletion, audit, API keys, recipient-scoping), Depot maintains a small metadata database tracking uploads.
 
 | Field | Description |
 |-------|-------------|
-| `object_key` | S3 object key (primary key) |
-| `uploader_account` | Account name from the JWT `sub` claim |
+| `object_key` | Object key (primary key) |
+| `uploader_account` | Account from the JWT `sub` claim (or the API key owner) |
 | `uploader_issuer` | Issuer from the JWT `iss` claim (supports multi-server identity) |
 | `file_size` | File size in bytes |
 | `content_type` | MIME type |
 | `original_filename` | Original filename as provided by the client |
-| `uploaded_at` | Timestamp of pre-signed URL issuance |
+| `uploaded_at` | Timestamp of presign URL issuance |
+| `allowed_recipients` | (NEXT) account subs permitted to download a private file |
 
-SQLite is sufficient for most single-server deployments. Postgres is supported for operators who
-already have one running.
+SQLite is sufficient for most single-server deployments. Postgres is supported for operators who already have one.
 
-The metadata row is written at **pre-sign time**, not at upload completion. The pre-signed URL
-constrains the upload (size, content type, expiry), so the metadata is a reliable record of intent.
-If the client never completes the upload, the row is orphaned - a periodic cleanup job can reconcile
-metadata against actual S3 objects and prune stale rows.
+The metadata row is written at **presign time**, not at upload completion. The presigned URL constrains the upload (size, content type, expiry), so the row is a reliable record of intent. If the client never completes the upload, the row is orphaned; a periodic cleanup job reconciles metadata against actual stored objects and prunes stale rows.
 
-In open mode, no metadata is stored. The Depot API is stateless.
+When only `anonymous` is enabled, no metadata is stored and Depot is stateless.
 
 ## Object Key Structure
 
-The S3 object key encodes the uploader identity for easy grouping, admin tooling, and S3-level
-lifecycle policies:
+The object key encodes the uploader identity for easy grouping, admin tooling, and backend-level lifecycle policies:
 
 ```
 uploads/{account_hash}/{timestamp}-{random}/{filename}
@@ -222,67 +294,16 @@ uploads/{account_hash}/{timestamp}-{random}/{filename}
 
 | Segment | Purpose |
 |---------|---------|
-| `uploads/` | Top-level prefix; separates user uploads from other bucket contents (avatars, etc.) |
-| `{account_hash}` | A short hash of the uploader's account name; groups all files by user at the S3 level without exposing the raw account name in the URL |
+| `uploads/` | Top-level prefix; separates user uploads from other contents (avatars, etc.) |
+| `{account_hash}` | A short hash of the uploader's account name; groups files by user at the backend level without exposing the raw account name in the URL |
 | `{timestamp}-{random}` | Collision-free directory per upload; timestamp enables chronological listing |
 | `{filename}` | Original filename, sanitized; preserves human-readable context in the URL |
 
-In open mode (no identity), `{account_hash}` is replaced with `_anonymous`.
+For anonymous uploads (no identity), `{account_hash}` is replaced with `_anonymous`.
 
-## Per-User Quotas
+## The +orbit/file Tag
 
-When OIDC is configured, the Depot API enforces per-user storage quotas. At pre-sign time, before
-generating the upload URL, the API queries the metadata store:
-
-```
-SUM(file_size) WHERE uploader_account = ? AND uploader_issuer = ?
-```
-
-If the current total plus the requested file size exceeds the configured quota, the request is
-rejected with a clear error before any upload URL is issued.
-
-**Configuration:**
-
-- `default_quota`: The default per-user storage limit (e.g., `500MB`). Applied to all users unless
-  overridden.
-- `quota_overrides`: A map of account names to custom limits (e.g., give trusted users or bots a
-  higher quota).
-
-Quota enforcement is only possible in OIDC mode. In open mode, there is no identity to quota
-against - the operator relies on S3 bucket-level storage limits and manual monitoring.
-
-## File Deletion
-
-### By Uploaders (OIDC Mode)
-
-When OIDC is configured, uploaders can delete their own files:
-
-```
-DELETE /file/{object_key}
-Authorization: Bearer <JWT>
-```
-
-The Depot API verifies the JWT, checks the metadata store to confirm the authenticated account
-matches the `uploader_account` for the given object key, deletes the S3 object, and removes the
-metadata row. If the account does not match, the request is rejected.
-
-### By Server Operators
-
-Server operators can always delete files via S3 admin tools (MinIO console, AWS S3 management,
-`mc rm`, etc.) regardless of auth mode. The Depot API does not gate operator-level access - that
-is handled at the S3 backend level.
-
-When an operator deletes a file via S3 admin tools, the metadata row (if any) becomes orphaned.
-The periodic cleanup job reconciles this automatically.
-
-### In Open Mode
-
-There is no client-facing delete API in open mode. Without identity, ownership cannot be proven.
-
-## File Metadata Tag
-
-When a file is shared in a channel, the client attaches a single `+orbit/file` tag to the
-`PRIVMSG`. The tag value is a base64-encoded JSON payload:
+When a file is shared in a channel, the client attaches a single `+orbit/file` tag to the `PRIVMSG`. The tag value is a base64-encoded JSON payload:
 
 ```json
 {
@@ -300,21 +321,54 @@ When a file is shared in a channel, the client attaches a single `+orbit/file` t
 
 This tag is defined in the [Orbit Tag Namespace](01-uplink/02-tags/01-namespace.md).
 
-This metadata is client-asserted and informational. Orbit clients SHOULD verify file metadata
-independently by checking HTTP response headers (`Content-Type`, `Content-Length`) on download.
-See [Tag Trust Model](01-uplink/02-tags/02-trust-model.md) for enforcement rules.
+This metadata is client-asserted and informational. Orbit clients SHOULD verify file metadata independently by checking HTTP response headers (`Content-Type`, `Content-Length`) on download. See [Tag Trust Model](01-uplink/02-tags/02-trust-model.md) for enforcement rules.
 
 ## Service Discovery
 
-Orbit clients discover a domain's Depot instance via a `_depot._tcp` DNS SRV record or the
-well-known services file. For record format and the full client resolution algorithm, see
-[DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
+Orbit clients discover a domain's Depot instance via a `_depot._tcp` DNS SRV record or the well-known services file. For record format and the full client resolution algorithm, see [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md).
+
+## Configuration Example
+
+```toml
+[depot]
+# Axis 1: storage driver - where bytes live
+driver = "s3"                       # "s3" | "fs"
+
+[depot.s3]                           # used when driver = "s3"
+endpoint = "https://s3.example.com"
+bucket   = "orbit-uploads"
+region   = "auto"
+
+[depot.fs]                           # used when driver = "fs"
+root = "/var/lib/depot/uploads"
+
+# Axis 2: accepted credentials - any combination
+[depot.credentials]
+anonymous = false
+oidc      = true                     # verify Transponder JWTs
+api_key   = true                     # ShareX / Puush / cURL
+
+[depot.limits]
+max_file_size = "100MB"
+default_quota = "500MB"
+rate_limit_per_ip   = "30/min"
+rate_limit_per_user = "120/min"
+oneshot_rate_limit  = "10/min"       # /upload proxies bytes; throttle harder
+
+[depot.quota_overrides]
+"botaccount" = "5GB"
+
+[depot.store]
+backend = "sqlite"                   # "sqlite" | "postgres"; only needed for stateful capabilities
+path    = "/var/lib/depot/depot.db"
+```
 
 ## Cross-References
 
-- [Transponder](04-transponder.md) - the OIDC identity provider that enables authenticated uploads
+- [Transponder](04-transponder.md) - the OIDC identity provider role whose JWTs Depot verifies
 - [Authentication](../03-identity/01-authentication.md) - how the JWT flows through all components
 - [Tag Namespace](01-uplink/02-tags/01-namespace.md) - file metadata tag definitions
 - [Tag Trust Model](01-uplink/02-tags/02-trust-model.md) - client-side verification rules
-- [Infrastructure & Deployment](../05-infrastructure/02-deployment.md) - S3 backend setup
+- [Research: E2E Encryption](../06-next/05-e2e-encryption.md) - Layer 2 of recipient-scoped uploads
+- [Infrastructure & Deployment](../05-infrastructure/02-deployment.md) - storage backend setup
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - Depot endpoint discovery

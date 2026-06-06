@@ -6,50 +6,50 @@ Discord, Slack, and Microsoft Teams are the three platforms most people reach fo
 
 The comparison is not symmetrical. Orbit is built on IRC, uses a shared-uplink model rather than isolated community namespaces, and has an explicit philosophy of composability over completeness. Some of what looks like a gap in the table below is a deliberate model difference: the problem is solved a different way, or is considered out of scope by design. Those cases are marked separately from genuine gaps.
 
-Where Orbit is behind, this document says so plainly. The goal is to give operators, contributors, and prospective users an accurate picture of where things stand today (MVP), where they are going (Uplink fork / NEXT), and what is not planned.
+Where Orbit is behind, this document says so plainly. The goal is to give operators, contributors, and prospective users an accurate picture of where things stand today, what IRC has not standardized yet, and what is not planned.
 
 ## Summary Comparison
 
 **Legend:**
 - `+` Supported
-- `~` Planned - Uplink fork or post-MVP NEXT track
+- `~` Planned / pending upstream IRCv3 or post-MVP NEXT track
 - `*` Model difference - covered differently by design
 - `-` Not planned
 
-| Category | Orbit MVP | Orbit + Fork | Discord | Slack | Teams |
-|---|---|---|---|---|---|
-| Text chat basics | + | + | + | + | + |
-| Message editing | - | ~ | + | + | + |
-| Message reactions | - | ~ | + | + | + |
-| Message retractions | + | + | + | + | + |
-| Replies and threads | + | + | + | + | + |
-| Full-text search | - | ~ | + | + | + |
-| Files and media | + | + | + | + | + |
-| Group voice and video | + | + | + | + | + |
-| Screen sharing | + | + | + | + | + |
-| P2P 1:1 calls | + | + | + | + | + |
-| Presence and status | + | + | + | + | + |
-| Rich custom status | + | + | + | + | + |
-| Permissions and moderation | * | * | + | + | + |
-| Role hierarchies | * | * | + | + | + |
-| Desktop app | + | + | + | + | + |
-| Web app / PWA | + | + | + | + | + |
-| Mobile (PWA) | + | + | + | + | + |
-| Mobile native app | - | ~ | + | + | + |
-| Embeddable widget | + | + | - | - | - |
-| Push notifications | - | ~ | + | + | + |
-| Bots and integrations | + | + | + | + | + |
-| Webhook / REST gateway | - | ~ | + | + | + |
-| OIDC / SSO / MFA | + | + | - | + | + |
-| Guest / anonymous access | + | + | - | + | + |
-| E2E encryption (1:1 DMs) | - | ~ | - | - | - |
-| Self-hosting | + | + | - | - | - |
-| Open protocol | + | + | - | - | - |
-| Federation | - | ~ | - | - | - |
-| Community / server model | * | * | + | + | + |
-| Enterprise compliance tools | - | - | - | + | + |
-| Application platform | - | - | + | + | + |
-| Custom emoji | - | ~ | + | + | + |
+| Category | Orbit | Discord | Slack | Teams |
+|---|---|---|---|---|
+| Text chat basics | + | + | + | + |
+| Message editing | ~ | + | + | + |
+| Message reactions | + | + | + | + |
+| Message retractions | + | + | + | + |
+| Replies and threads | + | + | + | + |
+| Full-text search | + | + | + | + |
+| Files and media | + | + | + | + |
+| Group voice and video | + | + | + | + |
+| Screen sharing | + | + | + | + |
+| P2P 1:1 calls | + | + | + | + |
+| Presence and status | + | + | + | + |
+| Rich custom status | + | + | + | + |
+| Permissions and moderation | * | + | + | + |
+| Role hierarchies | * | + | + | + |
+| Desktop app | + | + | + | + |
+| Web app / PWA | + | + | + | + |
+| Mobile (PWA) | + | + | + | + |
+| Mobile native app | ~ | + | + | + |
+| Embeddable widget | + | - | - | - |
+| Push notifications | + | + | + | + |
+| Bots and integrations | + | + | + | + |
+| Webhook / REST gateway | ~ | + | + | + |
+| OIDC / SSO / MFA | + | - | + | + |
+| Guest / anonymous access | + | - | + | + |
+| E2E encryption (1:1 DMs) | ~ | - | - | - |
+| Self-hosting | + | - | - | - |
+| Open protocol | + | - | - | - |
+| Federation | - | - | - | - |
+| Community / server model | * | + | + | + |
+| Enterprise compliance tools | - | - | + | + |
+| Application platform | - | + | + | + |
+| Custom emoji | ~ | + | + | + |
 
 ## Category Breakdown
 
@@ -59,7 +59,7 @@ Orbit covers channels, DMs, group private conversations, persistent server-side 
 
 ### Message actions
 
-**This is the most significant honest gap at MVP.** Editing and reactions are not present yet - both are Uplink fork milestones. Retractions, replies (with inline excerpt), and client-managed threads are in MVP. Full-text search is a fork milestone. Operators running stock Ergochat today accept this trade-off; the Uplink fork closes it.
+**Message editing is the one honest gap today.** IRC has not standardized in-place editing yet, so Orbit handles it at the client and tag layer until Ergo or IRCv3 ships a standard; it does not fork the server to add it. Reactions work today, handled client-side via message tags, with one concession: reactions cannot be shown on messages surfaced purely from a search result. Retractions, replies (with inline excerpt), and client-managed threads are available. Full-text search is available via Ergo's history backends plus an external indexer.
 
 ### Files and media
 
@@ -83,7 +83,7 @@ Desktop (Tauri v2, Linux/Windows/macOS, ~10-15 MB binary), web app, and PWA are 
 
 ### Notifications
 
-**A genuine gap.** Push notifications (FCM, APNs, UnifiedPush, Web Push) are a fork milestone. In-app notifications work today. Running Orbit as a primary community platform without push notifications is workable for desktop-first communities, but is a real limitation for mobile users. This is on the roadmap and is not a model difference.
+Push notifications are available now: stock Ergo ships native Web Push via `draft/webpush`. In-app notifications also work. Native mobile delivery (FCM, APNs, UnifiedPush) pairs with the NEXT-track native mobile apps, but Web Push covers the web and desktop surfaces today. This is no longer a gap and is not a model difference.
 
 ### Bots and integrations
 
@@ -111,8 +111,8 @@ Discord's Activities, Slack's app marketplace, and Teams' tab/app ecosystem are 
 
 ## What This Means in Practice
 
-**Right now (MVP):** Orbit is a good fit for technical communities, open-source projects, gaming groups, and operators who want full control over their infrastructure. It covers text, voice, video, files, presence, and identity well enough for daily use. The missing pieces - editing, reactions, search, push notifications - are real, and communities where those features are table stakes should wait for the fork milestones or evaluate whether the trade-offs are acceptable.
+**Right now:** Orbit is a good fit for technical communities, open-source projects, gaming groups, and operators who want full control over their infrastructure. It covers text, voice, video, files, presence, identity, push notifications, reactions, and search well enough for daily use. The one remaining gap is message editing, which IRC has not standardized yet and Orbit handles at the client layer in the meantime. Communities where in-place editing is table stakes should evaluate whether the trade-off is acceptable today.
 
-**After the fork:** The Uplink fork closes the most significant functional gaps - editing, reactions, search, push notifications, mobile native apps, and federation. At that point, Orbit is a credible general-purpose alternative for communities that prioritize self-hosting, open protocols, and operator control over convenience features.
+**As IRC evolves:** if an editing standard lands in stock Ergo or IRCv3, Orbit gains it without a fork, closing the last text gap. Orbit is already a credible general-purpose alternative for communities that prioritize self-hosting, open protocols, and operator control over convenience features. Federation is not a goal for now: it requires server-to-server linking that stock IRC servers do not provide.
 
 **Who Orbit is not for:** Organizations that require enterprise compliance tooling (DLP, eDiscovery, audit exports), teams that depend heavily on embedded third-party applications, and anyone who needs a fully managed hosted service with commercial SLAs. Orbit is infrastructure, not a SaaS product.

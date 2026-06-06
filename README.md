@@ -11,17 +11,17 @@
 > - **Infrastructure overhead.** Running a production-grade Matrix homeserver (Synapse or Dendrite) is substantially heavier than Ergochat. Storage requirements grow aggressively with room history and federation traffic. The operational burden is meaningfully higher.
 > - **No meaningful decoupling.** The Matrix protocol is tightly coupled to the homeserver implementation. There is no clean separation between transport and logic that would allow Orbit to extend or replace layers independently. Orbit would effectively become a UI skin over Matrix rather than a platform with its own architecture.
 >
-> IRC's simplicity is the point. It gives Orbit a minimal, well-understood transport that the team can extend on its own terms via the Uplink fork, without inheriting the complexity of a second opinionated platform.
+> IRC's simplicity is the point. It gives Orbit a minimal, well-understood transport that Orbit builds a modern client layer over, without inheriting the complexity of a second opinionated platform.
 
 IRC is a solid protocol for community communication. Thirty years of reliability, a vast ecosystem of bots and tooling, a server you can run yourself on minimal hardware, and an open standard that nobody owns. What it has never had is a client layer that meets modern expectations - one that runs in a browser tab, embeds on a website, works on any device without installation, and doesn't require users to understand IRC at all.
 
-Orbit takes this to the next level. It is a client layer built on IRC, but it is not an IRC client. It is a modern, full-featured communication platform that happens to use IRC as its transport and message store. The MVP proves the architecture and delivers a compelling product on stock Ergochat. The fork - a purpose-built IRCd that extends Ergo while remaining 100% IRC-compatible at the protocol level - is where Orbit becomes the platform.
+Orbit takes this to the next level. It is a client layer built on IRC, but it is not an IRC client. It is a modern, full-featured communication platform that happens to use IRC as its transport and message store. Orbit adopts a stock IRCv3 server and an OIDC identity provider, and builds two bespoke services on top: Satellite for real-time media and Depot for storage. Orbit's value is the whole experience, a great client layer plus Satellite and Depot orchestrated into one cohesive product, not a fork of the server.
 
 ## What Orbit Is
 
-Orbit is a modern client layer built on IRC. The text and signaling transport is IRCv3. The voice and video layer is WebRTC via LiveKit. File storage is S3-compatible. Identity is standard OIDC. The Orbit client - desktop, web app, and embeddable widget - composes these into a single coherent experience that works everywhere, on any device, without installation friction.
+Orbit is a modern client layer built on IRC. The text and signaling transport is IRCv3. The voice and video layer is WebRTC via LiveKit. File storage is S3-compatible or local disk. Identity is standard OIDC. The Orbit client - desktop, web app, and embeddable widget - composes these into a single coherent experience that works everywhere, on any device, without installation friction.
 
-**The Uplink fork is the product.** The MVP ships on stock Ergochat to validate the architecture and prove the client. The fork - a purpose-built IRCd that extends Ergo while remaining 100% IRC-compatible at the protocol level - is where Orbit becomes the platform. Message editing, reactions, full-text search, push notifications, and federation are all fork milestones. This is not a post-launch roadmap item. It is the primary and planned development track, and every architectural decision in this spec is made with it in mind.
+**Orbit is a client layer plus two bespoke services over adopted infrastructure.** The text transport is a stock IRCv3 server (Uplink, with [Ergo](https://ergo.chat/) as the reference implementation) and identity is any OIDC-compliant provider (Transponder). Orbit does not fork the IRC server. On top of these adopted parts, Orbit builds and owns the components where product value lives: the clients, Satellite (real-time media), and Depot (storage). Capabilities once imagined for a server fork - push, OIDC/JWT auth, user metadata, message retraction, history backends, an HTTP API - are now native in stock Ergo. Orbit conforms to IRCv3 and supports whatever Ergo ships; the one text feature IRC has not standardized yet (message editing) is handled at the client layer until it does. Every architectural decision in this spec is made with that model in mind.
 
 ## What Orbit Is Not
 
@@ -54,4 +54,4 @@ Start with the [Platform Comparison](spec/01-architecture/05-platform-comparison
 
 ## Status
 
-These are **living documents** subject to revision as the project evolves. Designs may change based on prototyping results, community feedback, and shifting priorities. The fork roadmap in particular will be updated as milestones are defined and sequenced.
+These are **living documents** subject to revision as the project evolves. Designs may change based on prototyping results, community feedback, and shifting priorities. They will be updated as stock Ergo and the IRCv3 ecosystem evolve.

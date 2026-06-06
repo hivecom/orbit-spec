@@ -15,8 +15,9 @@ IRC-standard `REDACT` command provided by the `draft/message-redaction` extensio
 server-enforced operation. See [Uplink Overview - Message Retractions](../01-overview.md#message-retractions-and-replies)
 for the full retraction flow.
 
-Message editing is **post-Uplink** and does not exist in the MVP. There is no `+orbit/msg-amend`
-tag.
+Message editing is **not standardized in IRC yet** and does not exist as a stable feature today.
+Orbit handles editing at the client and tag layer and will adopt a standard if Ergo or IRCv3 ships
+one. `+orbit/msg-amend` is an interim tag, not a long-term design.
 
 For Ergochat's tag relay configuration, see [Uplink Overview](../01-overview.md).
 
@@ -28,9 +29,12 @@ For Ergochat's tag relay configuration, see [Uplink Overview](../01-overview.md)
 | `+orbit/p2p-offer`   | P2P handshake: intent + ICE credentials + DTLS fingerprint + candidate (base64 JSON)              | Client → Client   |
 | `+orbit/p2p-answer`  | P2P handshake response: ICE credentials + DTLS fingerprint + candidate (base64 JSON)              | Client → Client   |
 | `+orbit/msg-thread`  | `parent_msgid` + thread channel name (base64 JSON)                                                | Client → Channel  |
-| `+orbit/msg-reply`   | `target-msgid`                                                                                    | Client → Channel  |
 | `+orbit/file`        | File metadata: name, size, type (base64 JSON)                                                     | Client → Channel  |
 | `+orbit/e2e`         | Sender key ID / fingerprint (base64)                                                              | Client → Client   |
+
+> **Replies are not an Orbit tag.** Message replies use the standard IRCv3 `+draft/reply=<msgid>`
+> client tag, the same mechanism other IRC clients use. There is no `+orbit/` reply tag, so replies
+> interoperate with any client that understands `+draft/reply`.
 
 > **Note on `+orbit/msg-thread`**: This tag is a **creation signal only**. It is sent to the parent
 > channel - not the thread channel - when a thread is first created. It is NOT sent on subsequent

@@ -6,7 +6,7 @@ This page defines the named components and core concepts used throughout the Orb
 
 ### Uplink
 
-Uplink is the IRC layer of an Orbit deployment. In the MVP, Uplink runs on [Ergochat](https://ergo.chat/) - a stock IRCv3 server with no Orbit-specific patches. All persistent communication - messages, channel membership, message history, user identity - flows through Uplink. It is a standard IRCv3 server: no Orbit-specific plugins, no knowledge of Satellite or Depot at the protocol level. Orbit clients and plain IRC clients connect identically. The planned next step is the Uplink fork, a purpose-built IRCd that extends Ergo while maintaining 100% IRC client compatibility.
+Uplink is the IRC layer of an Orbit deployment - an adopted role, not software Orbit builds. Uplink is any stock IRCv3 server; [Ergo](https://ergo.chat/) is the reference implementation, run with no Orbit-specific patches. All persistent communication - messages, channel membership, message history, user identity - flows through Uplink. It is a standard IRCv3 server: no Orbit-specific plugins, no knowledge of Satellite or Depot at the protocol level. Orbit clients and plain IRC clients connect identically. There is no Uplink fork; Orbit runs the server stock and conforms to IRCv3, supporting whatever stock Ergo implements.
 
 -> See [Uplink](../02-components/01-uplink/01-overview.md) for the full specification.
 
@@ -28,7 +28,7 @@ Depot is the storage layer - an S3-compatible object store (MinIO, AWS S3, or eq
 
 ### Transponder
 
-Transponder is a role, not a service. It refers to whatever OIDC-compliant identity provider the server operator deploys (e.g., Keycloak, Authentik, Authelia, Zitadel). Orbit components consume the provider via standard OpenID Connect Discovery - the operator configures a single OIDC issuer URL, and each component discovers endpoints, fetches signing keys (JWKS), and verifies identity tokens independently. Uplink integrates via Ergochat's `auth-script` mechanism through a thin auth-script bridge; Satellite and Depot verify JWTs directly against the provider's published keys. Neither Uplink nor Satellite needs to know which provider is in use.
+Transponder is a role, not a service. It refers to whatever OIDC-compliant identity provider the server operator deploys (e.g., Keycloak, Authentik, Authelia, Zitadel). Orbit components consume the provider via standard OpenID Connect Discovery - the operator configures a single OIDC issuer URL, and each component discovers endpoints, fetches signing keys (JWKS), and verifies identity tokens independently. Uplink verifies provider JWTs natively (Ergo via its OAUTHBEARER/IRCV3BEARER SASL and jwt-auth/oauth2 config); Satellite and Depot verify JWTs directly against the provider's published keys. Any bridge is optional. Neither Uplink nor Satellite needs to know which provider is in use.
 
 Transponder is optional: Orbit deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
 
@@ -52,9 +52,9 @@ IRC bots are standard IRC clients that connect to Uplink and respond to events i
 
 ## IRC Capabilities in Use
 
-This section lists the IRCv3 capabilities Orbit relies on and their availability in the MVP (Ergo) versus the next step (Uplink fork).
+This section lists the IRCv3 capabilities Orbit relies on and their availability in stock Ergo, along with status for capabilities IRC has not standardized yet.
 
-| Capability | Purpose | MVP Status |
+| Capability | Purpose | Availability / Status |
 |---|---|---|
 | `sasl` | Authentication (PLAIN, SCRAM-SHA-256, ANONYMOUS) | Stable in Ergo |
 | `message-tags` | Carry Orbit metadata on IRC messages | Stable in Ergo |
@@ -64,11 +64,11 @@ This section lists the IRCv3 capabilities Orbit relies on and their availability
 | `extended-monitor` | Track online/offline state for a list of nicks | Stable in Ergo |
 | `draft/pre-away` | Signal impending disconnect before it happens | Stable in Ergo |
 | `draft/read-marker` | Server-side read state synced across devices | Stable in Ergo |
-| `draft/message-redaction` | Server-enforced message retractions (`REDACT` command) | In Ergo git, pending release |
-| `draft/metadata-2` | Native key/value store per user and channel (avatars, display names, status) | Stable in Ergo (2.17.0+); requires the `accounts.metadata` config block |
-| In-place message editing | Server-canonical edited message state | Uplink fork |
-| Full-text search | Search over retained channel history | Uplink fork |
-| Server-to-server federation | Linking independent Uplink instances | Uplink fork |
+| `draft/message-redaction` | Server-enforced message retractions (`REDACT` command) | Shipped/stable in Ergo |
+| `draft/metadata-2` | Native key/value store per user and channel (avatars, display names, status) | Shipped/stable in Ergo (2.17.0+); requires the `accounts.metadata` config block |
+| `draft/webpush` | Native push notification delivery | Stable in Ergo (2.15.0+) |
+| In-place message editing | Edited message state | Not yet standardized in IRC; handled client-side |
+| Full-text search | Search over retained channel history | Via Ergo history backends + external indexer |
 
 ## Core Concepts
 
@@ -78,7 +78,7 @@ Direct messages are standard IRC `PRIVMSG` to a nickname. The server stores DM h
 
 ### Message Retractions
 
-Message retractions in the MVP use the IRC-standard `REDACT` command via `draft/message-redaction` (in Ergo's git, pending stable release). This is server-enforced, not a client-only tag. Orbit clients render a tombstone in place of the retracted message. IRC clients that implement the cap see the message removed. IRC clients without the cap receive a server NOTICE fallback: `*** alice retracted a message ***`.
+Message retractions in the MVP use the IRC-standard `REDACT` command via `draft/message-redaction` (shipped and stable in Ergo). This is server-enforced, not a client-only tag. Orbit clients render a tombstone in place of the retracted message. IRC clients that implement the cap see the message removed. IRC clients without the cap receive a server NOTICE fallback: `*** alice retracted a message ***`.
 
 ### Message Storage
 

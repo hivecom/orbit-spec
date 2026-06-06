@@ -36,7 +36,7 @@ The identity provider controls the login experience. If the operator wants usern
 
 Once the client has a JWT, it is reused across all Orbit components for the current domain - the domain whose `/.well-known/orbit/oidc` or DNS SRV records pointed to the identity provider:
 
-- **Uplink (Ergochat)** - the client sends the JWT as the SASL PLAIN password. Ergochat's `auth-script` calls the auth-script bridge, which verifies the JWT against the provider's JWKS. On success, the bridge returns the `preferred_username` claim as the account name, and Ergochat sets the `account-tag` accordingly.
+- **Uplink (stock Ergo)** - the recommended path is native verification: the client presents the JWT via `OAUTHBEARER` SASL, and Ergo verifies it against the provider's JWKS (`accounts.jwt-auth`), mapping a configured claim (e.g. `preferred_username`) to the account and setting the `account-tag` accordingly. No bridge is involved. As an optional fallback for SASL PLAIN-only clients or older Ergo, the client may send the JWT as the SASL PLAIN password and an auth-script bridge verifies it against the same JWKS, returning the `preferred_username` claim as the account name.
 - **Satellite** - the client presents the JWT with its session join request. The Satellite token service verifies the JWT against the provider's JWKS and issues a LiveKit JWT with `verified: true`.
 - **Depot** - the client sends the JWT as a Bearer token. Depot verifies it against the same JWKS.
 
@@ -45,15 +45,16 @@ Each component verifies independently against the provider's published keys. No 
 ```mermaid
 sequenceDiagram
     participant O as Orbit Client
-    participant GC as Uplink (Ergochat)
+    participant GC as Uplink (stock Ergo)
     participant S as Satellite
     participant D as Depot
 
     Note over O: Already authenticated - has JWT from OIDC flow
 
-    O->>GC: IRC connect + SASL PLAIN (username, JWT as password)
-    Note over GC: auth-script bridge verifies JWT against JWKS
-    GC-->>O: SASL success, account-tag = username
+    O->>GC: IRC connect + OAUTHBEARER SASL (provider JWT)
+    Note over GC: Ergo verifies JWT against JWKS (accounts.jwt-auth)
+    Note over GC: Fallback: SASL PLAIN + auth-script bridge
+    GC-->>O: SASL success, account-tag = claim value
 
     O->>S: POST /session/join {identity_token: JWT, room_id: "..."}
     Note over S: Verifies JWT signature against JWKS
@@ -82,18 +83,18 @@ The refresh token lifetime is set by the identity provider. Operators should con
 
 ## NickServ and the Identity Provider
 
-When an identity provider is configured, OIDC is the authoritative source of truth for accounts. If a user has a valid JWT, it wins - their Hivecom account maps directly to their IRC account via `preferred_username`, enforced by the auth-script bridge.
+When an identity provider is configured, OIDC is the authoritative source of truth for accounts. If a user has a valid JWT, it wins - their Hivecom account maps directly to their IRC account via `preferred_username`, enforced by stock Ergo's native JWT verification (`OAUTHBEARER` + `accounts.jwt-auth`), or by the auth-script bridge in the SASL PLAIN fallback path.
 
 NickServ registration can remain open as a compatibility layer. This is a deployment choice, not a requirement. The case for keeping it:
 
-- **Traditional IRC clients cannot authenticate via SASL PLAIN with OIDC.** JWTs are long, short-lived (5-15 minutes), and require a browser-based PKCE flow to obtain. There is no practical way to enter one from irssi, weechat, or similar clients. NickServ `IDENTIFY` bypasses the auth-script path entirely and remains the only viable authentication route for these clients.
+- **Traditional IRC clients cannot perform the OIDC browser flow.** JWTs are long, short-lived (5-15 minutes), and require a browser-based PKCE flow to obtain. There is no practical way to enter one from irssi, weechat, or similar clients. NickServ `IDENTIFY` bypasses JWT verification (native or bridge) entirely and remains the only viable authentication route for these clients.
 - **Self-serve account migration.** When a user changes their Hivecom username, they can rename their NickServ account themselves via `/NS RENAME` rather than requiring admin intervention.
 
 The two authentication paths coexist cleanly:
 
 | Client | Auth path | Account |
 |--------|-----------|---------|
-| Web / Orbit client | SASL PLAIN (JWT) via auth-script bridge | OIDC account |
+| Web / Orbit client | OAUTHBEARER SASL (provider JWT), Ergo native verification; SASL PLAIN + auth-script bridge as fallback | OIDC account |
 | Traditional IRC client | NickServ IDENTIFY | NickServ account |
 
 Namespace conflicts are possible but self-inflicted. If a NickServ account registers a nick before an OIDC user first claims it, the OIDC login is logged into that *existing* account (autocreation resolves the name to it) and the pre-existing NickServ password stays valid - effective co-ownership, not an automatic takeover. The signal that this happened is email divergence: the verified NickServ email will not match the user's OIDC email. Orbit clients surface this mismatch as an account-integrity warning and prompt a re-claim. See [IRC Services Abstraction - Account Claim](../02-components/05-services.md#account-claim-email-recovery-readiness).
@@ -104,7 +105,7 @@ In the coexistence model, OIDC accounts are autocreated on first login and start
 
 ## Legacy IRC Clients
 
-Traditional IRC clients that cannot perform an OIDC browser flow authenticate via NickServ `IDENTIFY` - this path bypasses the auth-script bridge entirely and works regardless of whether an identity provider is configured. 
+Traditional IRC clients that cannot perform an OIDC browser flow authenticate via NickServ `IDENTIFY` - this path bypasses JWT verification (native or the auth-script bridge fallback) entirely and works regardless of whether an identity provider is configured.
 
 ## Anonymous Web Widget Users
 

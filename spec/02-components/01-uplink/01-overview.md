@@ -2,10 +2,14 @@
 
 Uplink is the IRC backbone of an Orbit deployment. It provides persistent text chat, user
 authentication, signaling transport for Satellite session coordination, and server-side message
-history. In the MVP, Uplink runs on [Ergochat](https://ergo.chat/) - a modern,
-standards-compliant IRCv3 server with no Orbit-specific patches. The planned next step is the
-Uplink fork: a purpose-built IRCd that extends Ergo while maintaining 100% IRC client
-compatibility.
+history. Uplink is an abstraction: Orbit specifies a contract that any stock IRCv3 server can
+fulfill, with [Ergo](https://ergo.chat/) as the reference implementation. Orbit runs Ergo
+unmodified, with no Orbit-specific patches and no Orbit fork. Where stock IRCv3 has gaps, Orbit
+handles them in the client and tag layer rather than forking the server, so every IRC client keeps
+working and compatibility is preserved. See
+[Design Philosophy - Where Orbit's Value Lives](../../01-architecture/02-philosophy.md#where-orbits-value-lives)
+and [Component Classes](../../01-architecture/02-philosophy.md#component-classes) for the rationale
+and the abstraction-vs-component taxonomy.
 
 Uplink is the only required component in an Orbit deployment. All other components
 ([Satellite](../02-satellite.md), [Depot](../03-depot.md),
@@ -25,7 +29,7 @@ layer as `+`-prefixed client-only tags. For DNS-based service advertisement, see
 | Message tags                 | Rich metadata transport without polluting message content            |
 | Battle-tested protocol       | 30+ years of real-world usage; failure modes are well understood     |
 | Backward compatibility       | Users can connect with WeeChat, irssi, or any IRCv3 client          |
-| Built-in federation model    | Server-to-server protocol exists (deferred to the Uplink fork)      |
+| Built-in federation model    | Server-to-server protocol exists (deferred; not a planned track)    |
 | Chathistory extension        | Server-side message history with standardized retrieval              |
 
 IRCv3 gives us a text and signaling transport that works today, scales vertically to the community
@@ -52,8 +56,8 @@ The following extensions MUST be enabled on any Ergochat instance serving as Upl
 | `draft/pre-away`           | Clients signal they are about to go away, enabling smoother presence transitions                                                | Stable                |
 | `draft/read-marker`        | Server-side read position tracking, synced across all client sessions                                                           | Stable                |
 | `setname`                  | Users can set a display name separate from their nickname (superseded by `display-name` metadata key when `draft/metadata-2` is available, but kept for compatibility) | Stable |
-| `draft/message-redaction`  | Server-enforced message retractions via the IRC-standard `REDACT` command                                                       | In Ergo's git; pending stable release. Required when available. |
-| `draft/metadata-2`         | Native user/channel key-value metadata store (avatars, display names, presence status)                                          | In Ergo's git; pending stable release. Required when available. |
+| `draft/message-redaction`  | Server-enforced message retractions via the IRC-standard `REDACT` command                                                       | Shipped in stable Ergo |
+| `draft/metadata-2`         | Native user/channel key-value metadata store (avatars, display names, presence status)                                          | Stable in Ergo (2.17.0+); requires the `accounts.metadata` config block |
 
 `account-tag` and `echo-message` are critical to Orbit's client-side trust model. `account-tag` is
 the authoritative source of sender identity throughout the Orbit tag system; `echo-message` ensures
@@ -155,21 +159,26 @@ are a channel operator. Clients cannot forge a retraction for another user's mes
   client-side reconstruction: the message is simply absent from history. Orbit clients do not need
   to apply retraction events from the history stream - the server handles this.
 
-> **MVP availability**: `draft/message-redaction` is currently in Ergo's git and pending a stable
-> release. Until it ships, retractions are deferred. No fallback tag-based retraction system is
-> used in the MVP - the `+orbit/msg-retract` tag does not exist.
+> **Availability**: `draft/message-redaction` is shipped in stable Ergo, so retractions are
+> available on the adopted server. No fallback tag-based retraction system is used - the
+> `+orbit/msg-retract` tag does not exist.
 
-**Message editing** (`+orbit/msg-amend`) is post-Uplink and is not covered in this document. There
-is no IRCv3 standard for in-place message editing. This feature is scoped to the Uplink fork.
+**Message editing** (`+orbit/msg-amend`) is not standardized in IRC yet. There is active draft work
+on in-place editing across the IRC ecosystem; Orbit follows it and handles editing at the client and
+tag layer in the meantime. If Ergo or IRCv3 adopts a standard, the Orbit client adopts it too;
+`+orbit/msg-amend` is an interim tag, not a long-term design. Deletion already exists via
+`draft/message-redaction`.
 
 ### Replies
 
-To reply to a message, the client sends a `PRIVMSG` with a `+orbit/msg-reply` tag referencing the
-original `msgid`, with the reply content as the message body. The Orbit client renders the reply
-with an inline excerpt of the original message (if available in the local buffer) and a clickable
-link to navigate to the original. If the original message is not in the buffer, the reply is
-displayed without the excerpt. Pure IRC clients see reply messages as a normal `PRIVMSG` - the
-reply context is invisible to them but the reply text is fully readable.
+To reply to a message, the client sends a `PRIVMSG` with the standard IRCv3 `+draft/reply=<msgid>`
+client tag referencing the original `msgid`, with the reply content as the message body. This is the
+same reply mechanism other IRC clients use, so replies interoperate with any client that understands
+`+draft/reply`. The Orbit client renders the reply with an inline excerpt of the original message (if
+available in the local buffer) and a clickable link to navigate to the original. If the original
+message is not in the buffer, the reply is displayed without the excerpt. Clients without reply
+support see a normal `PRIVMSG` - the reply context is invisible to them but the reply text is fully
+readable.
 
 ### Interaction with Chat History
 
@@ -177,7 +186,7 @@ When a client fetches messages via `chathistory`:
 
 - **Retracted messages** are absent from the response - the server excludes them. Orbit clients do
   not need to process retraction events or reconstruct retracted state from the history stream.
-- **A reply** appears in history as a `PRIVMSG` carrying a `+orbit/msg-reply` tag referencing the
+- **A reply** appears in history as a `PRIVMSG` carrying a `+draft/reply` tag referencing the
   target `msgid`. If the target message is within the loaded history, the client renders the reply
   with an inline excerpt. If the target is outside the loaded window, the reply is displayed without
   the excerpt - the reply text is always self-contained and readable on its own.
@@ -298,29 +307,35 @@ Other trade-offs:
 
 This is an honest trade-off. The sub-channel approach works on any existing IRC server without modification. Orbit clients abstract the mechanics entirely - users see a thread panel, not IRC primitives. The experience is comparable to threading in Slack or Teams, which also took years to mature. Communities that operated without threads (including Discord, which still does not have threaded conversations - its "Threads" are closer to ephemeral sub-channels, and its "Forum" channels are a distinct forum-like structure) demonstrate that threading is a nice-to-have, not a blocker.
 
-## The Uplink Fork
+## Protocol Posture
 
-The MVP runs on stock Ergochat - an excellent production IRC server that requires no patches. The
-planned next step is the **Uplink fork**: a purpose-built IRCd derived from Ergo that extends the
-server with Orbit-native capabilities while maintaining 100% IRC client compatibility.
+Uplink is an abstraction over a stock IRCv3 server, and there is no Orbit fork of Ergo. Orbit
+conforms to IRCv3 and supports whatever stock Ergo implements.
 
-The fork is not contingent on the MVP succeeding in any particular way. It is the natural next step
-once Orbit is established and the team has the capacity to own an IRCd.
+Stock Ergo (current stable v2.18.0) already provides nearly everything Orbit needs natively:
+
+- **Push notifications** via `draft/webpush` (v2.15.0).
+- **OIDC/JWT authentication** via `OAUTHBEARER` + `IRCV3BEARER` SASL and `accounts.jwt-auth`/`oauth2`
+  (v2.14.0). The auth-script bridge is now optional legacy/compat, not required.
+- **User and channel metadata** (avatars, display names, presence status) via stable
+  `draft/metadata-2` (v2.17.0).
+- **Message retraction and deletion** via `draft/message-redaction` (the `REDACT` command, shipped).
+- **HTTP API** (v2.16.0+) and **Postgres/SQLite history backends** (v2.18.0).
+
+For the rest, Orbit follows the IRC ecosystem and handles what is not yet standardized at the client
+layer:
+
+- **Message editing** is not standardized in IRC yet. There is active draft work on it; Orbit
+  handles editing at the client and tag layer and will adopt a standard if Ergo or IRCv3 ships one.
+- **Reactions** work today, handled client-side via message tags. The only concession is that
+  reactions cannot be shown on messages surfaced purely from a search result.
+
+**Federation** needs server-to-server linking that stock Ergo does not provide. It is not a goal for
+now; Ergo may add it or Orbit may help upstream, but nothing depends on it.
 
 The compatibility guarantee is non-negotiable: any IRC client - WeeChat, irssi, Textual, ZNC, any
-compliant third-party client - must continue to work against an Uplink fork without modification.
-The fork extends the protocol surface available to Orbit clients; it does not break the protocol
-surface used by standard clients.
+compliant third-party client - works against Uplink without modification, precisely because Uplink
+is a stock IRCv3 server.
 
-Note that some features previously considered fork-only are already being addressed by Ergo's
-upstream development. `draft/message-redaction` covers server-enforced retractions, and
-`draft/metadata-2` covers user avatars, display names, and presence status. These are largely
-solved before the fork ships.
-
-The Uplink fork extends the server with capabilities that stock Ergochat cannot provide: **atomic message editing** (the server maintains canonical current state; `CHATHISTORY` returns edited versions), **full-text search** over retained channel history, **server-to-server linking** for federation, and **integrated push notifications** for mobile clients. Reactions are also a planned fork capability. Features that already work in the MVP - message retractions via `draft/message-redaction`, threads via client-managed sub-channels, and user metadata via `draft/metadata-2` - carry forward unchanged. If Ergo's stable releases ship these draft extensions before the fork is ready, the fork inherits them; if not, the fork implements the draft specs directly.
-
-The fork is not a day-one decision. Ergochat is the right server for the MVP and well beyond. The
-fork becomes the path when the project is established enough to justify owning an IRCd.
-
-For the full rationale - including why a custom protocol is not the answer - see
-[Design Philosophy](../../01-architecture/02-philosophy.md#the-long-term-path-uplink-as-a-true-ircd).
+For the full rationale, see
+[Design Philosophy - Where Orbit's Value Lives](../../01-architecture/02-philosophy.md#where-orbits-value-lives).

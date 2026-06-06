@@ -12,34 +12,36 @@ A full sober assessment - category by category, with explicit gap calls - is in 
 
 The short version:
 
-| | Orbit MVP | Orbit + Fork |
-|---|---|---|
-| Text chat, DMs, history | + | + |
-| Replies, threads, retractions | + | + |
-| Message editing | - | + |
-| Message reactions | - | + |
-| Full-text search | - | + |
-| Group voice, video, screen share | + | + |
-| P2P 1:1 calls | + | + |
-| Files and inline media | + | + |
-| Presence and rich status | + | + |
-| Desktop + web + PWA | + | + |
-| Embeddable widget | + | + |
-| Mobile native app | - | + |
-| Push notifications | - | + |
-| OIDC / SSO / MFA | + | + |
-| Anonymous guest access | + | + |
-| IRC bot ecosystem | + | + |
-| Webhook / REST integration API | - | + |
-| Self-hosting, open protocol | + | + |
-| Federation | - | + |
-| Role hierarchies | * | * |
-| Enterprise compliance tools | - | - |
-| Application platform | - | - |
+| | Orbit |
+|---|---|
+| Text chat, DMs, history | + |
+| Replies, threads, retractions | + |
+| Message editing | client-side (not yet an IRC standard) |
+| Message reactions | + (client-side via tags) |
+| Full-text search | + (via Ergo Postgres/SQLite history backends) |
+| Group voice, video, screen share | + |
+| P2P 1:1 calls | + |
+| Files and inline media | + |
+| Presence and rich status | + |
+| Desktop + web + PWA | + |
+| Embeddable widget | + |
+| Mobile native app | - |
+| Push notifications | + (native `draft/webpush`) |
+| OIDC / SSO / MFA | + |
+| Anonymous guest access | + |
+| IRC bot ecosystem | + |
+| Webhook / REST integration API | - |
+| Self-hosting, open protocol | + |
+| Federation | - |
+| Role hierarchies | * |
+| Enterprise compliance tools | - |
+| Application platform | - |
 
-**Legend:** + supported · - not yet or not planned · * model difference (covered differently by design)
+**Legend:** + supported, - not yet or not planned, * model difference (covered differently by design)
 
-The two `- -` rows at the bottom are not gaps - they are explicit decisions. See [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md) for the reasoning.
+Orbit does not fork the IRC server. The Uplink is any stock IRCv3 server (Ergo is the reference), and Orbit conforms to IRCv3: whatever Ergo implements, the Orbit client supports. The one text feature IRC has not standardized yet is message editing, which Orbit handles at the client layer until a standard lands.
+
+The two rows marked `-` for enterprise compliance tools and application platform are not gaps - they are explicit decisions. See [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md) for the reasoning.
 
 ## Legend
 
@@ -56,14 +58,16 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 | IRCv3 transport | Stock Ergochat with 17 required extensions (message-tags, chathistory, sasl, echo-message, away-notify, etc.) | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
 | Channel path notation | Slash-separated names (`#dev/frontend`) rendered as collapsible tree - pure client-side | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
 | Message retractions | Server-enforced via `REDACT` / `draft/message-redaction` - tombstone in Orbit, NOTICE fallback for basic IRC clients | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
-| Message replies | `+orbit/msg-reply` tag referencing a `msgid` - inline excerpt if original is in buffer | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
+| Message replies | Standard IRCv3 `+draft/reply` tag referencing a `msgid` - inline excerpt if original is in buffer; interoperates with other IRC clients | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
 | Threads | Client-managed sub-channels (`#parent/t-<msgid>`). IRC clients can `/join` directly | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
 | DMs | Standard IRC `PRIVMSG` with operator-configured retention and always-on mode | [01-uplink/03-dms](spec/02-components/01-uplink/03-dms.md) |
 | Group private conversations | Invite-only private channels (`+s +i`) | [01-uplink/03-dms](spec/02-components/01-uplink/03-dms.md) |
 | Presence | Online / Away / Offline via `away-notify` + `extended-monitor` + `draft/pre-away` | [01-uplink/04-presence](spec/02-components/01-uplink/04-presence.md) |
 | Rich status & avatars | `draft/metadata-2` keys: `orbit.avatar`, `display-name`, `orbit.status` | [01-uplink/04-presence](spec/02-components/01-uplink/04-presence.md) |
 | Read markers | `draft/read-marker` - server-side per-channel read position, synced across devices | [01-uplink/04-presence](spec/02-components/01-uplink/04-presence.md) |
-| `+orbit/*` tag namespace | Sat invites, P2P offers/answers, thread signals, reply refs, file metadata | [01-uplink/02-tags](spec/02-components/01-uplink/02-tags/01-namespace.md) |
+| Full-text search | Available via Ergo Postgres/SQLite history backends + indexer | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
+| Push notifications | Native `draft/webpush` (Ergo v2.15.0+); DMs/mentions to offline users, privacy-first payloads | [04-clients/02-web-app](spec/04-clients/02-web-app.md) |
+| `+orbit/*` tag namespace | Sat invites, P2P offers/answers, thread signals, file metadata (replies use the standard `+draft/reply`) | [01-uplink/02-tags](spec/02-components/01-uplink/02-tags/01-namespace.md) |
 | Tag trust model | Server-asserted vs. client-asserted data; client enforcement rules for spoofing, flooding, unverified senders | [01-uplink/02-tags](spec/02-components/01-uplink/02-tags/02-trust-model.md) |
 
 ### Satellite (Voice & Video)
@@ -86,10 +90,13 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 
 | Feature | Details | Spec |
 |---------|---------|------|
-| S3-compatible storage | MinIO, AWS S3, R2, B2 - thin API (~200-300 lines) | [03-depot](spec/02-components/03-depot.md) |
-| Pre-signed upload flow | Client → `POST /upload/presign` → direct S3 upload → share URL with `+orbit/file` tag | [03-depot](spec/02-components/03-depot.md) |
-| OIDC mode | JWT verification, per-user quotas, file deletion by uploader, audit trail | [03-depot](spec/02-components/03-depot.md) |
-| Open mode | No auth, rate limiting + size caps only - for small trusted communities | [03-depot](spec/02-components/03-depot.md) |
+| Thin storage gateway | Bespoke authority in front of storage; raw S3 alone cannot do OIDC attribution, per-app quotas, app API keys, or recipient scoping | [03-depot](spec/02-components/03-depot.md) |
+| Storage backend toggle | Configurable flag: S3-compatible (MinIO, AWS S3, R2, B2) OR local filesystem | [03-depot](spec/02-components/03-depot.md) |
+| Credential modes | Toggleable accepted credentials: anonymous and/or OIDC JWT and/or user-minted API keys | [03-depot](spec/02-components/03-depot.md) |
+| Upload flow | Pre-signed direct upload (S3 backend) or proxied upload (filesystem backend); share URL with `+orbit/file` tag | [03-depot](spec/02-components/03-depot.md) |
+| Identity-scoped controls | Per-user quotas, deletion by uploader, and audit trail when an identity is present (OIDC or API key) | [03-depot](spec/02-components/03-depot.md) |
+| API key uploads | User-minted API keys enable CLI / cURL / ShareX-style uploads | [03-depot](spec/02-components/03-depot.md) |
+| Recipient-scoped DM uploads (NEXT) | Orbit-specific capability scoping an upload to a DM recipient | [03-depot](spec/02-components/03-depot.md) |
 | Inline previews | Orbit clients render images, audio, video; IRC clients see plain URL | [03-depot](spec/02-components/03-depot.md) |
 | DNS SRV discovery | `_depot._tcp`; missing Depot → file sharing hidden in UI | [03-depot](spec/02-components/03-depot.md) |
 
@@ -135,14 +142,14 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 
 | Feature | Details | Spec |
 |---------|---------|------|
+| Provider role, not Orbit software | Transponder is the OIDC provider role; any compliant provider (Keycloak, Authentik, Zitadel, Supabase) fills it. Orbit does not build it | [04-transponder](spec/02-components/04-transponder.md) |
 | Shared identity layer | Single OIDC issuer consumed by Uplink, Satellite, Depot. One auth, one JWT, verified everywhere | [04-transponder](spec/02-components/04-transponder.md) |
-| Auth-script bridge | ~50-100 line stateless service translating Ergochat's `auth-script` into JWT verification | [04-transponder](spec/02-components/04-transponder.md) |
+| Native Ergo integration (primary) | Stock Ergo verifies OIDC/JWT natively via `OAUTHBEARER` + `IRCV3BEARER` SASL and `accounts.jwt-auth`/`oauth2` (v2.14.0+) - no bridge needed | [04-transponder](spec/02-components/04-transponder.md) |
 | OIDC client auth flow | Authorization Code + PKCE; browser-based login; operator controls UX (password, SSO, passkeys, MFA) | [04-transponder](spec/02-components/04-transponder.md) |
 | Multi-server identity | Per-domain JWTs; each domain = own identity domain | [04-transponder](spec/02-components/04-transponder.md) |
 | `_transponder._tcp` DNS SRV | Identity provider discovery via DNS | [05-infra/01-discovery](spec/05-infrastructure/01-domain-discovery.md) |
 | `/.well-known/orbit/oidc` | OIDC issuer URL discovery for web clients | [05-infra/01-discovery](spec/05-infrastructure/01-domain-discovery.md) |
-| NickServ migration path | Import accounts → disable NickServ → configure auth-script | [04-transponder](spec/02-components/04-transponder.md) |
-| Legacy IRC client support | Auth-script bridge accepts both JWTs and plain passwords (ROPC grant) | [04-transponder](spec/02-components/04-transponder.md) |
+| NickServ migration path | Import accounts → disable NickServ → configure native OIDC/JWT auth | [04-transponder](spec/02-components/04-transponder.md) |
 
 ### IRC Compatibility
 
@@ -164,23 +171,22 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 
 Features planned for post-MVP releases, roughly ordered by expected priority.
 
-### Uplink Fork
+### Message Editing
+
+Message editing is the one text feature IRC has not standardized yet. Orbit conforms to IRCv3: if Ergo or the IRC spec adopts editing, the Orbit client supports it; until then Orbit handles it at the client and tag layer. Reactions already work today (client-side via tags); the only concession is that reactions cannot be shown on messages surfaced purely from a search result.
 
 | Feature | Details | Spec |
 |---------|---------|------|
-| Message editing | Atomic server-canonical state via `+orbit/msg-amend` - no IRCv3 standard exists today | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
-| Message reactions | Server-enforced reaction support | [01-architecture/02-philosophy](spec/01-architecture/02-philosophy.md) |
-| Full-text search | Server-side message search | [01-architecture/02-philosophy](spec/01-architecture/02-philosophy.md) |
-| Integrated push notifications | Uplink-native - leverages session state, online/offline status, DM recipients | [06-next/04-push](spec/06-next/04-push-notifications.md) |
-| Server-to-server linking | Foundation for federation (Layer 1) | [06-next/01-federation](spec/06-next/01-federation.md) |
+| Message editing | Not yet an IRC standard; handled client-side until Ergo or IRCv3 ships it | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md) |
 
-### Federation
+### Federation (deferred, not planned)
+
+Federation requires server-to-server linking that is absent from stock Ergo. It is deferred and not a planned track for now; it is not a reason to fork. See [Out of Scope](spec/0A-decisions/04-out-of-scope.md).
 
 | Feature | Details | Spec |
 |---------|---------|------|
-| Phase 0 - OIDC deployment | Transponder deployed; no IRC linking yet | [06-next/01-federation](spec/06-next/01-federation.md) |
-| Phase 1 - Two-server linking | Linked IRC network via Uplink fork | [06-next/01-federation](spec/06-next/01-federation.md) |
-| Phase 2 - Cross-org federation | Independent OIDC providers; trust chain across organizations | [06-next/01-federation](spec/06-next/01-federation.md) |
+| Server-to-server linking | Not present in stock Ergo; deferred with no current resolution | [06-next/01-federation](spec/06-next/01-federation.md) |
+| Cross-org federation | Independent OIDC providers; trust chain across organizations - exploratory only | [06-next/01-federation](spec/06-next/01-federation.md) |
 
 ### Mobile Clients
 
@@ -212,10 +218,9 @@ Features planned for post-MVP releases, roughly ordered by expected priority.
 
 | Feature | Details | Spec |
 |---------|---------|------|
-| Uplink-native push | DMs to offline users, mentions of offline channel members | [06-next/04-push](spec/06-next/04-push-notifications.md) |
+| Web Push / `draft/webpush` (available in MVP) | Native in Ergo (v2.15.0+); DMs/mentions to offline users, mentions of offline channel members | [04-clients/02-web-app](spec/04-clients/02-web-app.md) |
 | Privacy-first payloads | No message content - sender name and channel only | [06-next/04-push](spec/06-next/04-push-notifications.md) |
-| Multi-backend delivery | FCM (Android), APNs (iOS), UnifiedPush (Google-free Android) | [06-next/04-push](spec/06-next/04-push-notifications.md) |
-| Web Push (PWA) | Web Push API for mentions/DMs when tab is closed | [04-clients/02-web-app](spec/04-clients/02-web-app.md) |
+| Multi-backend mobile delivery | FCM (Android), APNs (iOS), UnifiedPush (Google-free Android) | [06-next/04-push](spec/06-next/04-push-notifications.md) |
 
 ### Satellite Scaling
 
@@ -304,8 +309,10 @@ Key decisions already made. See [0A-decisions](spec/0A-decisions/) for full ADRs
 | Desktop framework | **Tauri v2** over Electron - ~10-15 MB binary, ~30-50 MB idle RAM | [ADR-01](spec/0A-decisions/01-adr-tauri-vs-electron.md) |
 | Frontend framework | **Vue 3 + Vite + VUI** over Leptos, Svelte, Quasar | [ADR-02](spec/0A-decisions/02-adr-vue-alternatives.md) |
 | Protocol | **IRC (Ergochat / IRCv3)** - 30 years of tooling, bot ecosystem, component independence | [02-philosophy](spec/01-architecture/02-philosophy.md) |
+| No IRC server fork | **Do not fork the IRC server.** Run a stock IRCv3 server (Ergo reference) and conform to IRCv3. Push, OIDC, metadata, and redaction are already native; editing is handled client-side until IRC standardizes it. Forking would break IRC compatibility and make features Orbit-only | [Where Orbit's Value Lives](spec/01-architecture/02-philosophy.md#where-orbits-value-lives) |
+| Federation | **Deferred, not planned** - requires server-to-server linking absent from stock Ergo; not a fork reason | [04-out-of-scope](spec/0A-decisions/04-out-of-scope.md) |
 | Media transport | **WebRTC (LiveKit SFU)** - MoQ/Iroh deferred to research | [02-satellite](spec/02-components/02-satellite.md) |
-| Identity provider | **Any OIDC-compliant provider** (Keycloak, Authentik, etc.) - Transponder is a role, not a service | [04-transponder](spec/02-components/04-transponder.md) |
+| Identity provider | **Any OIDC-compliant provider** (Keycloak, Authentik, Zitadel, Supabase) - Transponder is a role, not Orbit-built software; native Ergo `OAUTHBEARER`/`jwt-auth` is the primary integration, the auth-script bridge is an optional legacy/compat path | [04-transponder](spec/02-components/04-transponder.md) |
 | E2E boundary | **1:1 only** - if a server mediates, no E2E. Channels and group voice explicitly excluded | [02-philosophy](spec/01-architecture/02-philosophy.md) |
 | Mobile strategy | **PWA first**, Tauri v2 Mobile second, native Swift/Kotlin left to community | [06-next/02-mobile](spec/06-next/02-mobile-clients.md) |
 
@@ -318,3 +325,4 @@ Items that have been evaluated and deliberately excluded. See [04-out-of-scope](
 - Group E2E encryption (MLS)
 - Native Swift/Kotlin mobile apps (community can build on open protocol)
 - Script-tag widget embed (iframe provides proper origin isolation)
+- Forking the IRC server (Orbit runs a stock IRCv3 server and builds its value in the client layer, Satellite, and Depot)

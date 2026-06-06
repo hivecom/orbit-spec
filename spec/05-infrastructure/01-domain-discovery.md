@@ -37,7 +37,7 @@ DNS discovery applies to desktop clients only. Web clients skip this section ent
 |---|---|---|
 | `irc.example.com` | Uplink (IRC + WebSocket) endpoint | If running IRC |
 | `sat.example.com` | Satellite endpoint | If running Satellite |
-| `depot.example.com` | Depot (object storage) endpoint | If running Depot |
+| `depot.example.com` | Depot (storage gateway) endpoint | If running Depot |
 | `turn.example.com` | TURN server | If running TURN |
 
 These records are the actual host addresses that SRV targets and direct connections resolve to. They may point to entirely separate infrastructure from the community root domain.

@@ -23,7 +23,7 @@ For the full list of `+orbit/*` tags and their payloads, see [Tag Namespace](01-
 | `account-tag`       | Set by the IRC server based on SASL authentication             | Server-asserted | No - the server is authoritative |
 | `msgid`             | Assigned by the IRC server                                     | Server-asserted | No                               |
 | `server-time`       | Set by the IRC server                                          | Server-asserted | No                               |
-| `+orbit/msg-reply`  | Set by the sending client                                      | Client-asserted | Yes                              |
+| `+draft/reply`      | Set by the sending client                                      | Client-asserted | Yes                              |
 | `+orbit/msg-thread` | Set by the sending client                                      | Client-asserted | Yes                              |
 | `+orbit/sat-invite` | Set by the sending client                                      | Client-asserted | Yes                              |
 | `+orbit/p2p-offer`  | Set by the sending client                                      | Client-asserted | Yes                              |
@@ -49,11 +49,11 @@ authoritative source of identity:
    verify file metadata independently (e.g., by checking HTTP headers on download) rather than
    trusting the tag blindly.
 
-4. **Message replies**: A `+orbit/msg-reply` tag references a `target-msgid`. The client SHOULD
-   display the reply with an excerpt of the original message (if available in the local buffer) and
-   a link to navigate to it. No identity verification is required beyond what the server already
-   provides via `account-tag` on the reply message itself. If the target message is not in the
-   client's buffer, the reply is displayed without the excerpt.
+4. **Message replies**: The standard IRCv3 `+draft/reply` tag references a target `msgid`. The client
+   SHOULD display the reply with an excerpt of the original message (if available in the local
+   buffer) and a link to navigate to it. No identity verification is required beyond what the server
+   already provides via `account-tag` on the reply message itself. If the target message is not in
+   the client's buffer, the reply is displayed without the excerpt.
 
 5. **Thread signals**: Accept a `+orbit/msg-thread` TAGMSG as a thread creation signal for the
    referenced `parent_msgid`. This tag is sent only when a thread is first created, not on
@@ -64,7 +64,7 @@ authoritative source of identity:
 
 ## Unverified Senders
 
-Replies (`+orbit/msg-reply`) from unauthenticated users are permitted - a reply is a new message,
+Replies (`+draft/reply`) from unauthenticated users are permitted - a reply is a new message,
 not a modification of an existing one. Thread signals (`+orbit/msg-thread`) from unauthenticated
 users are also permitted for the same reason.
 

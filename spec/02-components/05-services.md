@@ -14,7 +14,7 @@ interface. The guiding principle:
 > unless they explicitly opt into a power-user/raw mode.
 
 This page defines which service interactions Orbit abstracts, how it abstracts them, and what
-stays as a raw IRC fallback. It complements [Transponder](04-transponder.md) (identity bridging)
+stays as a raw IRC fallback. It complements [Transponder](04-transponder.md) (the OIDC identity role)
 and [Permissions](../03-identity/02-permissions.md) (channel modes).
 
 ## Design Principles
@@ -39,8 +39,10 @@ and [Permissions](../03-identity/02-permissions.md) (channel modes).
 ## NickServ
 
 NickServ owns the IRC account: registration, credentials, email, and per-account settings such
-as `always-on`. In an OIDC deployment the account itself is created by the auth-script bridge
-flow (see [Transponder - NickServ and the Identity Provider](04-transponder.md#nickserv-and-the-identity-provider)),
+as `always-on`. In an OIDC deployment the account itself is autocreated on first JWT login -
+verified natively by stock Ergo (`OAUTHBEARER` + `accounts.jwt-auth`), or by the optional
+auth-script bridge in the SASL PLAIN fallback path (see
+[Transponder - NickServ and the Identity Provider](04-transponder.md#nickserv-and-the-identity-provider)) -
 but NickServ remains the surface for the things OIDC does not own: offline delivery configuration
 and email-based account recovery for legacy clients.
 
@@ -96,7 +98,8 @@ The client SHOULD surface three states:
 > **Implementation note - why the claim sequence is `SET EMAIL` then `RESETPASS`, never
 > `SET PASSWORD`.** An OIDC-autocreated account has empty credentials (`PassphraseHash` unset).
 > Ergo blocks `NS SET PASSWORD` on such accounts with `errCredsExternallyManaged` - it treats the
-> account as managed by the auth-script. The email-reset path is the way in: `RESETPASS` calls the
+> account as externally managed (by the OIDC provider, whether verified natively or via the
+> auth-script bridge). The email-reset path is the way in: `RESETPASS` calls the
 > internal `setPassword` with elevated privileges, which bypasses that lock and can set the first
 > password. So `SET EMAIL` -> `VERIFYEMAIL` establishes recovery, and `SENDPASS`/`RESETPASS` is the
 > only self-service route to an actual password on an OIDC-origin account. Re-running `RESETPASS`
@@ -204,7 +207,7 @@ notices are parsed for state and withheld from buffers.
 
 ## Cross-References
 
-- [Transponder](04-transponder.md) - identity bridging, OIDC, NickServ coexistence
+- [Transponder](04-transponder.md) - the OIDC identity role, native Ergo verification, NickServ coexistence
 - [Authentication](../03-identity/01-authentication.md) - SASL, OIDC flow, NickServ compatibility
 - [Permissions](../03-identity/02-permissions.md) - channel modes, identity display
 - [DMs](01-uplink/03-dms.md) - always-on delivery requirement

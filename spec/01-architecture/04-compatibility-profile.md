@@ -1,6 +1,6 @@
 # IRC Compatibility Profile
 
-This page documents what standard IRC clients experience when connecting to an Uplink server (Ergo in the MVP, the Uplink fork in the next step). The goal is to set honest expectations: standard IRC clients are fully supported and get a great experience, but some Orbit-specific features are invisible to them.
+This page documents what standard IRC clients experience when connecting to an Uplink server (a stock IRCv3 server, with Ergo as the reference implementation). The goal is to set honest expectations: standard IRC clients are fully supported and get a great experience, but some Orbit-specific features are invisible to them.
 
 ## Connection and Authentication
 
@@ -13,7 +13,7 @@ Standard IRC clients connect identically to how they connect to any IRCv3 server
 | Text chat | ✓ Full | ✓ Full | ✓ Full |
 | Message history (`chathistory`) | ✓ Full | ✓ Full | Limited (no `chathistory` support) |
 | Message retractions | ✓ Tombstone rendered | ✓ Message removed (via `draft/message-redaction`) | Sees `*** alice retracted a message ***` NOTICE |
-| Message editing | Post-Uplink | Post-Uplink | Post-Uplink |
+| Message editing | Pending upstream IRCv3 | Pending upstream IRCv3 | Pending upstream IRCv3 |
 | Threads | ✓ Thread panel UI | Can `/join` thread channel manually | Can `/join` thread channel manually |
 | Voice / video | ✓ Full | Not available | Not available |
 | File uploads | ✓ Inline preview | Sees plain URL | Sees plain URL |
@@ -31,7 +31,7 @@ Standard IRC clients connect identically to how they connect to any IRCv3 server
 - **Initiate voice/video sessions** - Satellite is WebRTC-based. IRC clients can be invited to a session via a `satellite://` link shared in the channel, which they can open in a browser.
 - **See inline file previews** - they see a plain URL, which is fully functional to open.
 - **Render thread UI** - they can join thread channels directly (`/join #dev/t-abc123`) and read/reply normally.
-- **Edit messages** - post-Uplink feature.
+- **Edit messages** - not yet standardized in IRC; Orbit handles editing at the client layer until a standard lands.
 
 ## What IRC Clients Can Do That Orbit Clients Do
 

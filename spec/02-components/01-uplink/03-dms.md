@@ -18,7 +18,7 @@ DM history uses a two-tier model based on whether end-to-end encryption is activ
 Standard DMs use **operator-configured retention** - the same model as channel history. Ergo stores
 query history according to the operator's configured retention window. Offline delivery is
 guaranteed for registered users via always-on mode. History is available on reconnect via
-`chathistory`. Server-side search over DM history is available post-fork.
+`chathistory`, backed by Ergo's native Postgres/SQLite history backends (v2.18.0).
 
 This is the default mode. DMs behave like any other conversation with history, offline delivery,
 and continuity across sessions.

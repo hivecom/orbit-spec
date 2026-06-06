@@ -129,13 +129,17 @@ the server, synchronized across all connected client sessions:
 
 Orbit clients MUST negotiate `draft/read-marker` and use it for all unread tracking.
 
-## The Uplink Fork
+## Future Upstream Directions
 
-In the Uplink fork (planned next step), presence becomes a first-class server feature:
+Orbit does not fork Ergo. Richer presence capabilities are tracked as potential IRCv3 upstream
+contributions rather than as an Orbit-owned server, so every IRC client benefits and compatibility
+is preserved. Candidates include:
 
 - Richer status states with structured semantics (not just a string).
 - Presence history (when was a user last online).
-- Server-managed avatar storage (Depot dependency removed for avatars).
+
+See [Design Philosophy - Where Orbit's Value Lives](../../01-architecture/02-philosophy.md#where-orbits-value-lives)
+for the no-fork rationale.
 
 ## Cross-References
 

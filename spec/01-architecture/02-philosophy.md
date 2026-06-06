@@ -16,15 +16,30 @@ The missing piece has always been the client. Not the protocol - the client.
 
 Orbit is that client. A desktop application, a web app, an embeddable widget that any website can drop in with an iframe. All of them backed by the same IRC server you could have been running for years. The protocol is unchanged. The ecosystem is unchanged. What changes is that a non-technical user can now join a community from their browser, and a website owner can embed a live chat widget without standing up anything new.
 
-## The Uplink Fork Is the Product
+## Where Orbit's Value Lives
 
-The MVP ships on stock Ergochat. This is not the destination - it is the starting point. The MVP validates the architecture and proves the client layer works. It ships a usable product for communities that want to move today.
+Orbit does not fork the IRC server, and it is not in the business of reimplementing IRC. Orbit's value is the whole experience: a polished client layer together with Satellite and Depot, orchestrated into one cohesive, seamless product. The work is UX and integration - making a thirty-year-old protocol feel modern and effortless - not owning the transport.
 
-**The Uplink fork is the product.** A purpose-built IRCd, forked from Ergo, that remains 100% IRC-compatible at the protocol level while adding the capabilities that stock Ergo cannot provide: atomic message editing, message reactions, full-text search, integrated push notifications, and server-to-server linking for federation. Every architectural decision in this spec is made with the fork in mind. The MVP is step one. The fork is the platform.
+The posture toward the protocol is simple: Orbit conforms to IRCv3, and whatever stock Ergo implements, the Orbit client supports. Much of what a private fork was once imagined for is already native in Ergo (push notifications, OIDC/JWT authentication, user metadata, message retraction, an HTTP API, and pluggable history backends), so there is nothing to fork. Where IRC has not standardized something yet, Orbit follows the same draft work the rest of the ecosystem does and handles the remainder at the client and tag layer. If a capability is standardized in IRCv3, great; if Ergo ships it, Orbit gets it for free; if neither has happened, Orbit adapts. We would contribute upstream where it helps, but the leverage is the product, not the protocol.
 
-The fork does not change the compatibility guarantee. Any IRC client - WeeChat, irssi, Textual, ZNC - connects to an Uplink fork and sees a normal IRCv3 server. Standard clients get text chat, channel modes, SASL, and `chathistory`. Orbit clients get the full experience on top. The fork extends the server. It does not break it.
+Federation is not a goal for now. It would need server-to-server linking that stock IRC servers do not provide; Ergo may add it or Orbit may help upstream, but nothing in Orbit depends on it.
 
-The fork's scope is already narrowing before it begins. `draft/message-redaction` and `draft/metadata-2` - both already in Ergo's git and pending stable release - address message retractions and user metadata without requiring a fork at all. What the fork owns is what Ergo structurally cannot provide on its current architecture: atomic in-place editing, server-side search, server-to-server linking, and native push delivery.
+## Component Classes
+
+Orbit is made of two classes of parts. The distinction is between roles Orbit adopts and software Orbit builds.
+
+**Abstractions** are adopted roles fulfilled by third-party software. Orbit specifies a contract and adopts an implementation; it does not build the substance.
+
+- **Uplink** is any stock IRCv3 server; Ergo is the reference implementation. There is no Uplink fork. Orbit runs the server stock and adapts at the client layer where IRC has gaps.
+- **Transponder** is any OIDC-compliant identity provider (Keycloak, Authentik, Zitadel, Supabase). It is a role, not software Orbit builds.
+
+**Components** are bespoke services Orbit builds and owns.
+
+- **Satellite** is the real-time media product. It embeds LiveKit as the SFU but owns substantial bespoke logic: the session model, 1:1 P2P over IRC tags, moderation, discovery, and Bring Your Own Satellite. LiveKit is a substrate it embeds, not what Satellite is.
+- **Depot** is a thin storage gateway that abstracts an S3-compatible backend or a local filesystem behind one contract: verify a credential, apply policy, and issue a pre-signed S3 URL or a proxied filesystem upload. It is not a UI app.
+- **Clients** are the desktop, web, and widget surfaces where product value lives.
+
+The rule: an abstraction is Uplink or Transponder only. Depot and Satellite are not abstractions; they are bespoke components Orbit builds. Satellite embeds LiveKit and Depot abstracts S3 or disk, but both are built and owned by Orbit.
 
 ## What Orbit Is Not
 
@@ -50,23 +65,23 @@ Orbit stays thin so it stays fast and maintainable. Complexity belongs at the ed
 
 ## Components Are Independent
 
-[Uplink](../02-components/01-uplink/01-overview.md), [Satellite](../02-components/02-satellite.md), [Transponder](../02-components/04-transponder.md), and [Depot](../02-components/03-depot.md) have no runtime dependencies on each other. Uplink is a stock IRC server - it does not know Satellite exists. Satellite is a media server - it does not know IRC exists. Transponder bridges identity between them but neither requires it to function. Depot stores files and answers to no one.
+[Uplink](../02-components/01-uplink/01-overview.md), [Satellite](../02-components/02-satellite.md), [Transponder](../02-components/04-transponder.md), and [Depot](../02-components/03-depot.md) have no runtime dependencies on each other. Uplink is a stock IRC server - it does not know Satellite exists. Satellite is a media server - it does not know IRC exists. Transponder is the adopted OIDC provider; components verify its JWTs natively (Ergo via its own JWT/OAUTHBEARER support), so identity is native-first, with any bridge being optional. Depot stores files and answers to no one.
 
 The Orbit client is the only thing that composes these components into a unified experience - but it does not require all of them. Connect to just Uplink and you have IRC chat. Connect to just a Satellite with a join key and you have voice. Any other client - a web page, a game, a bot - can compose a different subset of the same components using the same interfaces.
 
-This is why a custom protocol is the wrong answer. A custom protocol does not reduce the number of services. Satellite, Depot, Transponder, coturn, Caddy - all of them still exist regardless of what the chat transport is. What a custom protocol does is replace a battle-tested IRC server with something you must maintain forever, eliminate the bot ecosystem, and re-couple every service to every other service. The Uplink path keeps thirty years of tooling and adds what is missing on top. That is strictly better, at the cost of eventually owning an IRCd - a cost paid on a planned schedule, not deferred indefinitely.
+This is why a custom protocol is the wrong answer. A custom protocol does not reduce the number of services. Satellite, Depot, Transponder, coturn, Caddy - all of them still exist regardless of what the chat transport is. What a custom protocol does is replace a battle-tested IRC server with something you must maintain forever, eliminate the bot ecosystem, and re-couple every service to every other service. Adopting a stock IRCv3 server keeps thirty years of tooling and lets Orbit build what is missing on top. That is strictly better: Orbit owns the client layer and two bespoke services, not an IRCd it must maintain forever.
 
 ## Honest Limitations of IRC Today
 
 IRC is the right foundation, but it is honest to name what it does not natively support and how each gap is resolved:
 
-- **Message editing** is not available in the MVP and is not worked around. No IRCv3 standard for in-place message editing exists today. Editing is a fork milestone: the server maintains canonical current message state, and `CHATHISTORY` returns the current version of each message. Until the fork ships it, editing is absent - not shimmed.
-- **Message retractions** use the IRC-standard `REDACT` command via `draft/message-redaction`, already in Ergo's git and pending stable release. Server-enforced. Not a client tag. Orbit clients render a tombstone. IRC clients without the cap receive a `NOTICE` fallback. The gap is narrow and closing.
-- **Reactions** are not in the MVP and are not shimmed. They are a fork milestone.
-- **User metadata** (avatars, display names, presence status) is handled by `draft/metadata-2`, already in Ergo's git and pending stable release. Clients subscribe to keys and receive live push updates.
+- **Message editing** is not standardized in IRC yet. Orbit follows the draft work happening across the IRC ecosystem and handles editing at the client and tag layer; it does not fork the server to add it, and will adopt the standard if and when it lands.
+- **Message retractions** use the IRC-standard `REDACT` command via `draft/message-redaction`, shipped and stable in Ergo. Server-enforced. Not a client tag. Orbit clients render a tombstone. IRC clients without the cap receive a `NOTICE` fallback.
+- **Reactions** work today, handled client-side via message tags. The one concession is historic search: reactions cannot be shown on messages surfaced purely from a search result.
+- **User metadata** (avatars, display names, presence status) is handled by `draft/metadata-2`, stable in Ergo (v2.17.0+). Clients subscribe to keys and receive live push updates.
 - **Presence** beyond `AWAY`/`JOIN`/`QUIT` is handled by `away-notify`, `extended-monitor`, and `draft/pre-away` - all stable in Ergo today. Richer status strings build on `draft/metadata-2`.
 - **Threads** are implemented via client-managed sub-channels and a signaling tag. The server sees a normal channel. Orbit clients render the thread UI. IRC clients can `/join` the thread channel directly. This works on any IRCv3 server without modification and is an honest trade-off for the MVP.
-- **Federation** requires server-to-server linking, which Ergo does not currently support. This is a fork milestone. Single-instance Ergo scales vertically and supports high-availability deployment via Kubernetes in the interim.
+- **Federation** needs server-to-server linking that stock IRC servers do not provide. It is not a goal for now; Ergo may add it or Orbit may help upstream, but nothing depends on it. Single-instance Ergo scales vertically and supports high-availability deployment via Kubernetes.
 
 None of these are reasons to abandon IRC. They are the current state, each with a defined resolution path.
 

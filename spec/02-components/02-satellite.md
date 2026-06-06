@@ -1,5 +1,7 @@
 # Satellite
 
+> **Component class: bespoke component (Orbit-built).** Satellite is software Orbit builds. It embeds [LiveKit](https://livekit.io/) as the SFU for group calls, but it is not "just LiveKit": Satellite owns its own session model, 1:1 P2P (WebRTC negotiated over IRC tags, no LiveKit), moderation, discovery, and Bring Your Own Satellite (BYOS). See [Component Classes](../01-architecture/02-philosophy.md#component-classes).
+
 Satellite is the real-time media component of an Orbit deployment. It handles voice, video, screen sharing, and ephemeral in-session chat. Satellite is completely decoupled from Uplink - it has no dependency on IRC, channels, or message history. A Satellite can be used standalone, without any Uplink instance.
 
 Satellite is an optional component. An Orbit deployment without Satellite is a fully functional IRC-based text chat server. When Satellite is present, it extends the experience with real-time media capabilities.
@@ -221,7 +223,7 @@ Earlier iterations of this design sent full SDP offers over IRC tags. SDPs are l
 
 Each Satellite runs a token service (or gateway, in multi-node deployments) - a small HTTP API that issues LiveKit-compatible JWTs scoped to a room and identity.
 
-- **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](04-transponder.md) role), the token service verifies the client's JWT against the provider's JWKS endpoint. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
+- **OIDC identity verification**: When the domain's OIDC identity provider is configured (the [Transponder](04-transponder.md) role), the token service verifies the client's JWT using standard JWT/JWKS verification against the provider's JWKS endpoint - the same verification any OIDC consumer performs, with no fork or custom protocol. If valid, the issued LiveKit JWT includes `verified: true` and the authenticated account name. If no identity token is presented, the participant joins as unverified.
 - **BYOS Satellites**: The operator controls auth entirely. They issue tokens however they see fit.
 - **Password-protected sessions**: When a session is created with a password, the token service stores the password hash for that room. Clients joining a protected session must include the password in their `/session/join` request. The token service verifies it before issuing a JWT. This is per-session, not per-Satellite - the same Satellite can host both open and protected sessions simultaneously.
 - **No identity provider configured**: The token service issues tokens to anyone who can reach the Satellite. All participants are unverified. Sessions can still be password-protected.
