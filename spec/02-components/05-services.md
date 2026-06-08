@@ -40,8 +40,7 @@ and [Permissions](../03-identity/02-permissions.md) (channel modes).
 
 NickServ owns the IRC account: registration, credentials, email, and per-account settings such
 as `always-on`. In an OIDC deployment the account itself is autocreated on first JWT login -
-verified natively by stock Ergo (`OAUTHBEARER` + `accounts.jwt-auth`), or by the optional
-auth-script bridge in the SASL PLAIN fallback path (see
+verified by the auth-script bridge (`SASL PLAIN`) or Ergo's native `accounts.jwt-auth` (`IRCV3BEARER`) (see
 [Transponder - NickServ and the Identity Provider](04-transponder.md#nickserv-and-the-identity-provider)) -
 but NickServ remains the surface for the things OIDC does not own: offline delivery configuration
 and email-based account recovery for legacy clients.

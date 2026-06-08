@@ -28,7 +28,7 @@ Depot is the storage layer - an S3-compatible object store (MinIO, AWS S3, or eq
 
 ### Transponder
 
-Transponder is a role, not a service. It refers to whatever OIDC-compliant identity provider the server operator deploys (e.g., Keycloak, Authentik, Authelia, Zitadel). Orbit components consume the provider via standard OpenID Connect Discovery - the operator configures a single OIDC issuer URL, and each component discovers endpoints, fetches signing keys (JWKS), and verifies identity tokens independently. Uplink verifies provider JWTs natively (Ergo via its OAUTHBEARER/IRCV3BEARER SASL and jwt-auth/oauth2 config); Satellite and Depot verify JWTs directly against the provider's published keys. Any bridge is optional. Neither Uplink nor Satellite needs to know which provider is in use.
+Transponder is a role, not a service. It refers to whatever OIDC-compliant identity provider the server operator deploys (e.g., Keycloak, Authentik, Authelia, Zitadel). Orbit components consume the provider via standard OpenID Connect Discovery - the operator configures a single OIDC issuer URL, and each component discovers endpoints, fetches signing keys (JWKS), and verifies identity tokens independently. Uplink verifies provider JWTs via the auth-script bridge (any provider/algorithm) or, for RS256/EdDSA/HMAC providers, Ergo's native `accounts.jwt-auth` (`IRCV3BEARER`); Satellite and Depot verify JWTs directly against the provider's published keys. Neither Uplink nor Satellite needs to know which provider is in use.
 
 Transponder is optional: Orbit deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
 

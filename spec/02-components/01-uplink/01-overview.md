@@ -315,8 +315,9 @@ conforms to IRCv3 and supports whatever stock Ergo implements.
 Stock Ergo (current stable v2.18.0) already provides nearly everything Orbit needs natively:
 
 - **Push notifications** via `draft/webpush` (v2.15.0).
-- **OIDC/JWT authentication** via `OAUTHBEARER` + `IRCV3BEARER` SASL and `accounts.jwt-auth`/`oauth2`
-  (v2.14.0). The auth-script bridge is now optional legacy/compat, not required.
+- **OIDC/JWT authentication** - auth-script bridge (`SASL PLAIN`, any provider/algorithm, JWKS-based)
+  or native `accounts.jwt-auth` over `IRCV3BEARER` (RS256/EdDSA/HMAC, static key; no ECDSA/ES256,
+  no JWKS fetch). `accounts.oauth2` (`OAUTHBEARER`) covers token-introspection providers. (v2.14.0+)
 - **User and channel metadata** (avatars, display names, presence status) via stable
   `draft/metadata-2` (v2.17.0).
 - **Message retraction and deletion** via `draft/message-redaction` (the `REDACT` command, shipped).

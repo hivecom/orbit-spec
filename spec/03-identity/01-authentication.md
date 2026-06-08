@@ -36,7 +36,7 @@ The identity provider controls the login experience. If the operator wants usern
 
 Once the client has a JWT, it is reused across all Orbit components for the current domain - the domain whose `/.well-known/orbit/oidc` or DNS SRV records pointed to the identity provider:
 
-- **Uplink (stock Ergo)** - the recommended path is native verification: the client presents the JWT via `OAUTHBEARER` SASL, and Ergo verifies it against the provider's JWKS (`accounts.jwt-auth`), mapping a configured claim (e.g. `preferred_username`) to the account and setting the `account-tag` accordingly. No bridge is involved. As an optional fallback for SASL PLAIN-only clients or older Ergo, the client may send the JWT as the SASL PLAIN password and an auth-script bridge verifies it against the same JWKS, returning the `preferred_username` claim as the account name.
+- **Uplink (stock Ergo)** - via the auth-script bridge (`SASL PLAIN`, any provider/algorithm, JWKS-based), or native `accounts.jwt-auth` over `IRCV3BEARER` for RS256/EdDSA/HMAC providers. The bridge verifies the JWT against the provider's JWKS, validates issuer, audience, and expiration, and returns the `preferred_username` claim as the account name. Native `jwt-auth` verifies locally against a statically pinned key and does not fetch JWKS. See [Transponder - Uplink integration](../02-components/04-transponder.md#uplink-stock-ergo) for path selection guidance.
 - **Satellite** - the client presents the JWT with its session join request. The Satellite token service verifies the JWT against the provider's JWKS and issues a LiveKit JWT with `verified: true`.
 - **Depot** - the client sends the JWT as a Bearer token. Depot verifies it against the same JWKS.
 
@@ -51,9 +51,8 @@ sequenceDiagram
 
     Note over O: Already authenticated - has JWT from OIDC flow
 
-    O->>GC: IRC connect + OAUTHBEARER SASL (provider JWT)
-    Note over GC: Ergo verifies JWT against JWKS (accounts.jwt-auth)
-    Note over GC: Fallback: SASL PLAIN + auth-script bridge
+    O->>GC: IRC connect + SASL PLAIN (provider JWT as password)
+    Note over GC: auth-script bridge verifies JWT against JWKS
     GC-->>O: SASL success, account-tag = claim value
 
     O->>S: POST /session/join {identity_token: JWT, room_id: "..."}
@@ -83,7 +82,7 @@ The refresh token lifetime is set by the identity provider. Operators should con
 
 ## NickServ and the Identity Provider
 
-When an identity provider is configured, OIDC is the authoritative source of truth for accounts. If a user has a valid JWT, it wins - their Hivecom account maps directly to their IRC account via `preferred_username`, enforced by stock Ergo's native JWT verification (`OAUTHBEARER` + `accounts.jwt-auth`), or by the auth-script bridge in the SASL PLAIN fallback path.
+When an identity provider is configured, OIDC is the authoritative source of truth for accounts. If a user has a valid JWT, it wins - their Hivecom account maps directly to their IRC account via `preferred_username`, resolved by the auth-script bridge (`SASL PLAIN`) or Ergo's native `accounts.jwt-auth` (`IRCV3BEARER`).
 
 NickServ registration can remain open as a compatibility layer. This is a deployment choice, not a requirement. The case for keeping it:
 
@@ -94,7 +93,7 @@ The two authentication paths coexist cleanly:
 
 | Client | Auth path | Account |
 |--------|-----------|---------|
-| Web / Orbit client | OAUTHBEARER SASL (provider JWT), Ergo native verification; SASL PLAIN + auth-script bridge as fallback | OIDC account |
+| Web / Orbit client | SASL PLAIN (JWT as password) via auth-script bridge, or IRCV3BEARER via native jwt-auth | OIDC account |
 | Traditional IRC client | NickServ IDENTIFY | NickServ account |
 
 Namespace conflicts are possible but self-inflicted. If a NickServ account registers a nick before an OIDC user first claims it, the OIDC login is logged into that *existing* account (autocreation resolves the name to it) and the pre-existing NickServ password stays valid - effective co-ownership, not an automatic takeover. The signal that this happened is email divergence: the verified NickServ email will not match the user's OIDC email. Orbit clients surface this mismatch as an account-integrity warning and prompt a re-claim. See [IRC Services Abstraction - Account Claim](../02-components/05-services.md#account-claim-email-recovery-readiness).

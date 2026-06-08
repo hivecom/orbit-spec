@@ -24,7 +24,7 @@ The entire system hinges on one configuration value: the **OIDC issuer URL**. Ev
 flowchart TB
     IDP["OIDC Provider (Transponder role)\ne.g., Keycloak, Authentik, etc.\n─────────────────────────────\n/.well-known/openid-configuration\n/protocol/openid-connect/token\n/protocol/openid-connect/certs"]
 
-    IDP -->|native OIDC/JWT verification| GC["Uplink\n(stock Ergo)"]
+    IDP -->|JWT verification (auth-script bridge / jwt-auth)| GC["Uplink\n(stock Ergo)"]
     IDP -->|JWT/JWKS verification| SAT["Satellite"]
     IDP -->|JWT/JWKS verification| DEPOT["Depot\n(S3 API)"]
 ```
@@ -85,8 +85,8 @@ sequenceDiagram
 
     Note over O: Already authenticated - has JWT from OIDC flow
 
-    O->>GC: IRC connect + OAUTHBEARER SASL (provider JWT)
-    Note over GC: Ergo verifies JWT against JWKS (accounts.jwt-auth)
+    O->>GC: IRC connect + SASL PLAIN (provider JWT as password)
+    Note over GC: auth-script bridge verifies JWT against JWKS
     GC-->>O: SASL success, account-tag = claim value
 
     O->>S: POST /session/join {identity_token: JWT, room_id: "..."}
@@ -104,46 +104,19 @@ One authentication, one JWT, verified everywhere. Each component independently v
 
 ### Uplink (stock Ergo)
 
-Stock Ergo verifies provider JWTs **natively** - this is the recommended integration path and requires no Orbit-built component. Since v2.14.0, Ergo ships the `OAUTHBEARER` and `IRCV3BEARER` SASL mechanisms together with the `accounts.jwt-auth` / `accounts.oauth2` configuration. Ergo fetches the provider's JWKS, validates the JWT signature, expiration, issuer, and audience itself, and maps a configured claim to the IRC account. There is no IRC server fork and no bridge in this path.
+Stock Ergo verifies provider JWTs with no IRC server fork - there is no patched server in this path. Two integration paths exist; which one applies depends mainly on how the provider signs its tokens.
 
-The primary flow:
+#### Path A: auth-script bridge (general-purpose, recommended)
 
-1. The Orbit client obtains a JWT from the OIDC provider (via the browser-based Authorization Code flow).
-2. The client connects to IRC and authenticates with `OAUTHBEARER` SASL, carrying the provider JWT.
-3. Ergo validates the JWT against the provider's JWKS (cached after first fetch), checking signature, expiration, and configured issuer/audience.
-4. Ergo maps the configured claim (e.g. `preferred_username`) to the IRC account and sets the `account-tag`.
+Ergo's standard `auth-script` hook calls a small, stateless HTTP service that verifies the JWT against the provider's JWKS and returns the account name. This is the path that works with **any** OIDC provider, because it performs full JWKS-based verification: it fetches and caches the provider's published keys, follows key rotation by `kid`, supports every common signing algorithm (RS256, ES256, EdDSA, HS256), and validates issuer, audience, and expiration. The client authenticates with `SASL PLAIN`, sending the provider JWT as the password.
 
-```mermaid
-sequenceDiagram
-    participant C as Orbit Client
-    participant GC as Uplink (stock Ergo)
-    participant IdP as Identity Provider
+The flow:
 
-    C->>GC: OAUTHBEARER SASL (provider JWT)
-    GC->>IdP: GET /certs (JWKS - cached after first fetch)
-    IdP-->>GC: Public keys
-    GC->>GC: Verify JWT signature, expiration, claims
-    GC->>GC: Map preferred_username claim to account
-    GC-->>C: SASL success
-    GC-->>C: account-tag = zealsprince
-```
-
-Native verification keeps identity entirely inside stock Ergo: no extra process sits in the authentication critical path, and the JWKS is cached so verification is a local cryptographic operation with no per-connect network round-trip.
-
-**Account name mapping:** Ergo's `accounts.jwt-auth` extracts the IRC account name from a configured claim - by convention the `preferred_username` claim (standard OIDC `profile` scope). This claim MUST be present and MUST be a valid IRC nickname. The OIDC provider is responsible for ensuring that `preferred_username` values are unique and conform to IRC nickname rules (no spaces, no leading digits, within length limits). If the configured claim is absent, Ergo MUST reject the authentication attempt. The `sub` claim (which is often an opaque UUID in providers like Keycloak) is NOT used for the IRC account name.
-
-**Without an identity provider:** Ergo uses its built-in NickServ and internal account database for SASL authentication. This is the MVP default and requires no external service.
-
-#### Optional fallback: auth-script bridge (SASL PLAIN)
-
-The **auth-script bridge** is an OPTIONAL fallback, not a required Orbit-built component. It exists for clients or servers that cannot use the native bearer mechanisms - for example SASL PLAIN-only clients, or an older Ergo without `accounts.jwt-auth`. It is a small, stateless HTTP service (~50-100 lines) that translates Ergo's standard `auth-script` credential check into a JWT verification against the provider's JWKS. It does not manage users, issue tokens, or store state.
-
-The fallback flow:
-
-1. The client connects to IRC and sends `SASL PLAIN` with the JWT as the password.
-2. Ergo's `auth-script` calls the bridge.
-3. The bridge verifies the JWT signature against the provider's JWKS, checks expiration and claims.
-4. If valid, the bridge returns the account name from the `preferred_username` claim. Ergo sets the `account-tag` as usual.
+1. The Orbit client obtains a JWT from the OIDC provider (browser-based Authorization Code + PKCE flow).
+2. The client connects to IRC and sends `SASL PLAIN` with the JWT as the password.
+3. Ergo's `auth-script` calls the bridge.
+4. The bridge verifies the JWT signature against the provider's JWKS and checks expiration, issuer, and audience.
+5. If valid, the bridge returns the account name from the configured claim (by convention `preferred_username`). Ergo sets the `account-tag`.
 
 ```mermaid
 sequenceDiagram
@@ -152,31 +125,73 @@ sequenceDiagram
     participant B as Auth-Script Bridge
     participant IdP as Identity Provider
 
-    C->>GC: SASL PLAIN (username, JWT)
+    C->>GC: SASL PLAIN (username, JWT as password)
     GC->>B: auth-script call {username, password=JWT}
-    B->>IdP: GET /certs (JWKS - cached after first fetch)
+    B->>IdP: GET JWKS (cached after first fetch)
     IdP-->>B: Public keys
-    B->>B: Verify JWT signature, expiration, claims
+    B->>B: Verify signature, expiration, issuer, audience
     B-->>GC: {valid: true, account: "zealsprince"}
     GC-->>C: SASL success
     GC-->>C: account-tag = zealsprince
 ```
 
-A real-world prototype runs this path today: the website client authenticates via SASL PLAIN sending a Supabase JWT as the password, verified by an auth-script bridge that returns the `preferred_username` claim as the IRC account. The native migration target is `OAUTHBEARER` + Ergo `accounts.jwt-auth` performing the same claim-to-account mapping with no bridge.
+The bridge is a small, stateless service (~50-100 lines): it does not manage users, issue tokens, or store state - it verifies tokens and returns an account name. Because it sits in the authentication critical path for every JWT-authenticated connection, it is a production dependency (see [Implementation Notes](#implementation-notes)). A real-world deployment runs this path today: the website client authenticates via `SASL PLAIN` sending a Supabase (ES256) JWT as the password, verified by an auth-script bridge that returns the `preferred_username` claim as the IRC account.
+
+#### Path B: native `accounts.jwt-auth` (constrained)
+
+Ergo can verify JWTs internally via `accounts.jwt-auth`, advertised over the `IRCV3BEARER` SASL mechanism, with no helper process. This path needs no extra component, but Ergo's built-in verifier is deliberately minimal, so it is only viable under specific conditions:
+
+- **Signing algorithm must be `hmac` (HS256/384/512), `rsa` (RS256/384/512), or `eddsa` (Ed25519).** Ergo does **not** support ECDSA / ES256. Providers that sign with ES256 - a common default, including Supabase - cannot use this path and must use Path A.
+- **Keys are static.** Ergo does not fetch JWKS; the verifying key is pinned in the config as a literal or a key file. Rotation requires editing the config (list multiple `tokens` entries to overlap during a rotation). JWKS auto-discovery is an open Ergo feature request, not a current capability.
+- **Only signature and `exp`/`nbf` are validated.** `jwt-auth` does not enforce issuer or audience. If those matter, scope the signing key to this use or use Path A.
+
+Configuration maps a claim to the IRC account name:
+
+```yaml
+# ircd.yaml (relevant accounts settings only)
+accounts:
+    jwt-auth:
+        enabled: true
+        autocreate: true
+        tokens:
+            - algorithm: "rsa"            # hmac | rsa | eddsa  (no ECDSA/ES256)
+              key-file: "jwt_pubkey.pem"  # static key; or `key:` inline. No JWKS.
+              account-claims: ["preferred_username"]
+```
+
+```mermaid
+sequenceDiagram
+    participant C as Orbit Client
+    participant GC as Uplink (stock Ergo)
+
+    C->>GC: IRCV3BEARER SASL (provider JWT)
+    GC->>GC: Verify JWT against pinned key (signature, exp/nbf)
+    GC->>GC: Map preferred_username claim to account
+    GC-->>C: SASL success
+    GC-->>C: account-tag = zealsprince
+```
+
+**`OAUTHBEARER` is a different mechanism.** Ergo advertises two bearer-style SASL mechanisms wired to two different backends. `IRCV3BEARER` is served by `accounts.jwt-auth` (local JWT verification, above). `OAUTHBEARER` is served by `accounts.oauth2`, which verifies tokens by calling the provider's OAuth2 **token introspection** endpoint (RFC 7662) at connect time - a per-authentication network round-trip, not local JWKS verification, and a separate integration with its own configuration. Orbit's JWT-based identity uses Path A or `IRCV3BEARER`/`jwt-auth`, not `OAUTHBEARER`.
+
+#### Common to both paths
+
+**Account name mapping:** the IRC account name comes from a configured claim - by convention `preferred_username` (standard OIDC `profile` scope). This claim MUST be present and MUST be a valid IRC nickname. The OIDC provider is responsible for ensuring `preferred_username` values are unique and conform to IRC nickname rules (no spaces, no leading digits, within length limits). If the claim is absent, authentication MUST be rejected. The `sub` claim (often an opaque UUID in providers like Keycloak) is NOT used for the IRC account name.
+
+**Without an identity provider:** Ergo uses its built-in NickServ and internal account database for SASL authentication. This is the MVP default and requires no external service.
 
 ### NickServ and the Identity Provider
 
-When an OIDC provider is configured, OIDC is the **authoritative source of truth for accounts**. A valid JWT always wins: the user's Hivecom account maps directly to their IRC account via `preferred_username`, enforced by Ergo's native `accounts.jwt-auth` (or, in the fallback path, by the auth-script bridge). NickServ does not need to manage these accounts.
+When an OIDC provider is configured, OIDC is the **authoritative source of truth for accounts**. A valid JWT always wins: the user's Hivecom account maps directly to their IRC account via `preferred_username`, resolved by the auth-script bridge (Path A) or Ergo's native `accounts.jwt-auth` (Path B). NickServ does not need to manage these accounts.
 
 This does **not** require disabling NickServ. The two layers coexist cleanly because they own different things: OIDC owns identity and login; NickServ provides a compatibility and recovery surface that OIDC structurally cannot (legacy SASL `IDENTIFY`, self-serve renames, and email-based password recovery). This is a deployment choice, and both configurations are supported:
 
 | Configuration | Account management | Credential verification | Nickname enforcement |
 |---------------|-------------------|------------------------|---------------------|
 | **No identity provider (MVP)** | NickServ handles registration, password changes, email verification | Ergochat's built-in SASL against NickServ's database | NickServ enforces registered nicknames |
-| **Identity provider configured (coexistence, recommended)** | OIDC owns identity; accounts are autocreated on first JWT login. NickServ remains for recovery (email) and legacy `IDENTIFY` | Ergo verifies JWTs natively via `OAUTHBEARER` + `accounts.jwt-auth` (auth-script bridge as fallback); NickServ verifies legacy `IDENTIFY` | Ergo enforces registered nicknames - enforcement is tied to account login, not to NickServ specifically |
-| **Identity provider configured (strict single-source)** | OIDC owns everything; NickServ registration disabled | Native `OAUTHBEARER` + `accounts.jwt-auth` (auth-script bridge as fallback) | Ergo enforces registered nicknames |
+| **Identity provider configured (coexistence, recommended)** | OIDC owns identity; accounts are autocreated on first JWT login. NickServ remains for recovery (email) and legacy `IDENTIFY` | JWT verified by the auth-script bridge (`SASL PLAIN`) or native `accounts.jwt-auth` (`IRCV3BEARER`); NickServ verifies legacy `IDENTIFY` | Ergo enforces registered nicknames - enforcement is tied to account login, not to NickServ specifically |
+| **Identity provider configured (strict single-source)** | OIDC owns everything; NickServ registration disabled | Auth-script bridge (`SASL PLAIN`) or native `accounts.jwt-auth` (`IRCV3BEARER`) | Ergo enforces registered nicknames |
 
-**Autocreation:** For the coexistence model to work seamlessly, Ergo MUST be configured with autocreation enabled (in native JWT auth, or on the auth-script bridge in the fallback path), so a persistent Ergo account and nickname reservation are established on a user's first OIDC login. Without it, OIDC users may not get a persistent account or a reserved nick.
+**Autocreation:** For the coexistence model to work seamlessly, Ergo MUST be configured with autocreation enabled (on the auth-script bridge, or in native `jwt-auth`), so a persistent Ergo account and nickname reservation are established on a user's first OIDC login. Without it, OIDC users may not get a persistent account or a reserved nick.
 
 **Account claim (recovery readiness):** An OIDC-autocreated account starts with no email on its NickServ record. The presence of a *verified* email is the signal that the account is recoverable via NickServ's `SENDPASS`/`RESETPASS` flow from a legacy client, independent of the provider. Orbit clients abstract this as a non-blocking "claim your account" flow (silent `INFO` probe -> `SET EMAIL` -> `VERIFYEMAIL`). The NickServ email is a *recovery channel*, not an identity assertion - identity remains the OIDC `preferred_username` carried in `account-tag`. See [IRC Services Abstraction - NickServ](05-services.md#nickserv).
 
@@ -189,7 +204,7 @@ Operators who want to eliminate this risk entirely choose the strict single-sour
 **Migration from NickServ to an OIDC provider:**
 
 1. Import existing NickServ accounts into the OIDC provider (or connect the provider to the same backing store - e.g., if accounts already live in a database the provider can consume).
-2. Enable autocreation and configure Ergo native `OAUTHBEARER` + `accounts.jwt-auth` against the provider (or, for SASL PLAIN-only clients, point `auth-script` at the bridge).
+2. Enable autocreation and configure the auth-script bridge against the provider (general-purpose), or native `accounts.jwt-auth` if the provider signs with RS256/EdDSA/HMAC.
 3. Decide on coexistence (keep NickServ for recovery/legacy clients) or strict mode (disable registration via `accounts.registration.enabled = false`).
 4. Existing nickname reservations continue to work - Ergo's enforcement mechanism is unchanged, only the credential verification path is swapped.
 
@@ -272,7 +287,7 @@ An identity provider is optional. If a server operator doesn't deploy one, nothi
 
 | Feature | With Identity Provider | Without Identity Provider |
 |---------|----------------------|--------------------------|
-| Text chat | Works - Ergo verifies provider JWTs natively (`OAUTHBEARER` + `accounts.jwt-auth`), auth-script bridge as fallback | Works - Ergo uses built-in NickServ/SASL |
+| Text chat | Works - Ergo verifies provider JWTs via the auth-script bridge or native `accounts.jwt-auth` | Works - Ergo uses built-in NickServ/SASL |
 | Group voice / video | Works, participants verified | Works, all participants unverified |
 | BYOS | Works, users verified | Works, everyone unverified |
 | Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
@@ -310,14 +325,14 @@ services:
     ports:
       - "8080:8080"
 
-  # Optional - only needed for the SASL PLAIN fallback path.
-  # The recommended native path uses Ergo accounts.jwt-auth and needs no bridge.
-  # auth-bridge:
-  #   image: orbit/auth-bridge:latest
-  #   environment:
-  #     OIDC_ISSUER: "https://id.example.com/realms/orbit"
-  #   ports:
-  #     - "9090:9090"
+  # Auth-script bridge: verifies provider JWTs against the provider's JWKS
+  # (any provider, any signing algorithm). General-purpose verification path.
+  auth-bridge:
+    image: orbit/auth-bridge:latest
+    environment:
+      OIDC_ISSUER: "https://id.example.com/realms/orbit"
+    ports:
+      - "9090:9090"
 ```
 
 **2. Configure Keycloak:**
@@ -328,7 +343,9 @@ services:
 
 **3. Point Orbit components at the issuer URL:**
 
-- **Ergo (recommended, native):** configure `accounts.jwt-auth` (and enable the `OAUTHBEARER` SASL mechanism) to verify provider JWTs against `https://id.example.com/realms/orbit`, mapping `preferred_username` to the account:
+- **Ergo via auth-script bridge (general-purpose):** point `auth-script` at the auth-bridge service, which verifies provider JWTs against `https://id.example.com/realms/orbit`. Works with any provider and any signing algorithm. Clients authenticate with `SASL PLAIN`, JWT as the password.
+
+- **Ergo native `accounts.jwt-auth` (RS256/EdDSA/HMAC providers only):** Keycloak signs with RS256 by default, so it can use the native path with no bridge. Pin Keycloak's realm signing public key and map `preferred_username` to the account. Ergo does not fetch JWKS, so the key must be updated on rotation:
 
   ```yaml
   # ircd.yaml (relevant accounts settings only)
@@ -336,13 +353,11 @@ services:
       jwt-auth:
           enabled: true
           autocreate: true
-          token-claim-name: "preferred_username"
-          oidc:
-              - issuer: "https://id.example.com/realms/orbit"
-                # JWKS is discovered from the issuer's /.well-known/openid-configuration
+          tokens:
+              - algorithm: "rsa"
+                key-file: "keycloak_pubkey.pem"   # export from the realm; no JWKS auto-fetch
+                account-claims: ["preferred_username"]
   ```
-
-- **Ergo (alternative, fallback):** for SASL PLAIN-only clients or older Ergo, configure `auth-script` to call the optional auth-bridge service, which verifies JWTs against `https://id.example.com/realms/orbit`.
 - **Satellite** - set `OIDC_ISSUER=https://id.example.com/realms/orbit`. The token service fetches the JWKS and verifies identity tokens.
 - **Depot** - set `OIDC_ISSUER=https://id.example.com/realms/orbit`. Same JWKS verification.
 
@@ -360,13 +375,13 @@ The Orbit client fetches this, discovers the Keycloak instance, and handles the 
 
 ## Implementation Notes
 
-### Auth-Script Bridge (optional fallback)
+### Auth-Script Bridge
 
-The recommended integration is native Ergo JWT verification (`OAUTHBEARER` / `IRCV3BEARER` + `accounts.jwt-auth`), which needs no extra component. The auth-script bridge is an **optional fallback** for SASL PLAIN-only clients or older Ergo without the native mechanisms. It is not a required Orbit-built component. Where it is deployed, it sits in the authentication critical path for every IRC connection that uses the fallback path, so despite its small scope (~50-100 lines of JWT verification logic) it should be treated as a **production dependency**.
+The auth-script bridge is the general-purpose Uplink verification path: it works with any OIDC provider and any signing algorithm (RS256, ES256, EdDSA, HS256), fetches and caches the provider's JWKS, and validates issuer, audience, and expiration. Native `accounts.jwt-auth` avoids the extra component but only applies to RS256/EdDSA/HMAC providers with statically pinned keys (see [Uplink](#uplink-stock-ergo)). Where the bridge is deployed it sits in the authentication critical path for every JWT-authenticated IRC connection, so despite its small scope (~50-100 lines of JWT verification logic) it MUST be treated as a **production dependency**.
 
 The bridge should be published as a standalone container image and binary that operators deploy alongside Ergo. Configuration is a single environment variable: the OIDC issuer URL (`OIDC_ISSUER`).
 
-**Requirements (when the fallback is deployed):**
+**Requirements (when deployed):**
 
 - **Health checks**: The bridge MUST expose a health endpoint (e.g., `/healthz`) that verifies it can reach the OIDC provider's JWKS endpoint. Container orchestrators and monitoring should use this to detect failures.
 - **Structured logging**: All authentication attempts (successes and failures) MUST be logged with structured fields (timestamp, account name, failure reason). This is the operator's primary audit trail for identity-related issues.
@@ -374,7 +389,7 @@ The bridge should be published as a standalone container image and binary that o
 
 ### JWKS Caching and Key Rotation
 
-All components that verify JWTs (Ergo native jwt-auth, the optional auth-script bridge, the Satellite token service, and Depot) MUST cache the JWKS with a reasonable TTL (default: 1 hour). When an incoming JWT contains a `kid` (key ID) that doesn't match any cached key, the component MUST re-fetch the JWKS immediately. This handles key rotation gracefully - keys can be rotated at the provider without restarting any Orbit component.
+All components that verify JWTs against the provider's JWKS (the auth-script bridge, the Satellite token service, and Depot) MUST cache the JWKS with a reasonable TTL (default: 1 hour). When an incoming JWT contains a `kid` (key ID) that doesn't match any cached key, the component MUST re-fetch the JWKS immediately. This handles key rotation gracefully - keys can be rotated at the provider without restarting these components. Native Ergo `accounts.jwt-auth` is the exception: it uses a statically configured key and does not fetch JWKS, so rotating keys there is a manual config change (multiple `tokens` entries can overlap during a rotation).
 
 If the JWKS re-fetch fails (provider temporarily unreachable), the component should continue using the cached keyset and log a warning. JWTs signed with an unknown `kid` are rejected, but JWTs matching a cached key continue to verify successfully. This provides resilience against transient provider outages.
 
@@ -382,7 +397,7 @@ If the JWKS re-fetch fails (provider temporarily unreachable), the component sho
 
 If the OIDC provider is unreachable and the cached JWKS has expired:
 
-- **Uplink (Ergo)**: Ergo native JWT verification (or the auth-script bridge in the fallback path) rejects the SASL attempt with a standard error. The client displays "Authentication failed" - not a silent hang. Already-connected IRC sessions are unaffected (SASL is only checked at connection time).
+- **Uplink (Ergo)**: The auth-script bridge rejects the SASL attempt with a standard error (native `accounts.jwt-auth` is unaffected by provider downtime, since it verifies against a pinned key with no network call). The client displays "Authentication failed" - not a silent hang. Already-connected IRC sessions are unaffected (SASL is only checked at connection time).
 - **Satellite token service**: Falls back to the unverified join flow. Users can still join sessions but appear as unverified participants.
 - **Depot**: Rejects authenticated upload requests. Users see a clear error. Downloads (which are public/unauthenticated) are unaffected.
 
@@ -403,7 +418,7 @@ The Transponder role (external OIDC identity provider) ships with the MVP. Deplo
 ## Cross-References
 
 - [Satellite](../02-components/02-satellite.md) - Satellite authentication context and the public join key model that verified identity supersedes
-- [Uplink](../02-components/01-uplink/01-overview.md) - Ergo configuration, native `OAUTHBEARER`/`accounts.jwt-auth` verification and optional `auth-script` fallback
+- [Uplink](../02-components/01-uplink/01-overview.md) - Ergo configuration, the auth-script bridge and native `accounts.jwt-auth` verification paths
 - [IRC Services Abstraction](05-services.md) - NickServ/ChanServ intent mapping, claim flow, always-on, service-notice suppression
 - [DNS & Service Discovery](../05-infrastructure/01-domain-discovery.md) - identity provider discovery and DNS SRV records
 - [Research: Federation](../06-next/01-federation.md) - the full federation research track, including IRC network linking, trust models, and evaluation criteria

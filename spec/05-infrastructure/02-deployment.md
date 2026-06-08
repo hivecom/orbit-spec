@@ -12,11 +12,11 @@ For the full client-side DNS resolution algorithm and per-service discovery beha
 | Satellite | Go + thin HTTP API | 1 vCPU, 512 MB RAM (scales with users) | No (optional) |
 | Depot (storage gateway) | Go, thin gateway over S3-compatible storage (MinIO/AWS S3) or a local filesystem | Storage-dependent | No (only for file uploads) |
 | coturn (STUN/TURN) | C, single binary | 1 vCPU, 128 MB RAM | No (only for NAT traversal) |
-| Auth-script bridge | Rust or Go, single binary | Negligible (stateless JWT verification) | No (optional legacy fallback; Ergo verifies OIDC/JWT natively) |
+| Auth-script bridge | Rust or Go, single binary | Negligible (stateless JWT verification) | No (required for ES256/ECDSA providers; optional for RS256/EdDSA/HMAC with native jwt-auth) |
 | **Total minimum (text-only)** | | **~$5/month VPS** | |
 | **Total with voice** | | **~$10/month VPS** | |
 
-A community can run Orbit text-only with just Uplink (Ergo). Satellite and Depot are optional components added as needed. Identity verification uses Ergo's native OIDC/JWT support (OAUTHBEARER/`jwt-auth`); the auth-script bridge is only needed as an optional compatibility fallback.
+A community can run Orbit text-only with just Uplink (Ergo). Satellite and Depot are optional components added as needed. Identity verification uses the auth-script bridge (general-purpose, any provider/algorithm) or Ergo's native `accounts.jwt-auth` (RS256/EdDSA/HMAC, static key). See [Transponder](../02-components/04-transponder.md#uplink-stock-ergo) for path selection.
 
 See [../02-components/01-uplink/01-overview.md](../02-components/01-uplink/01-overview.md), [../02-components/02-satellite.md](../02-components/02-satellite.md), and [../02-components/03-depot.md](../02-components/03-depot.md) for per-component architecture detail.
 
@@ -64,7 +64,7 @@ A reference `docker-compose.yml` is provided for self-hosters. It includes:
 - **LiveKit + token service** (Satellite) - **optional**; can be removed for text-only deployments.
 - **Depot** (storage gateway) - **optional**; only required if file uploads are needed. The thin gateway runs against either an S3-compatible backend (a bundled MinIO container, or external AWS S3) or a local filesystem driver (a mounted volume). Single-box deployments can use the local filesystem driver and skip MinIO entirely; deployments that need scale or off-host storage point Depot at S3/MinIO.
 - **coturn** (STUN/TURN) - for NAT traversal.
-- **Auth-script bridge** (optional Transponder fallback) - **optional**; not needed in the default setup because Ergo verifies OIDC/JWT natively (OAUTHBEARER/`jwt-auth`). Include it only for legacy/compat setups that require the auth-script path. See [Transponder](../02-components/04-transponder.md).
+- **Auth-script bridge** - required when the OIDC provider signs with ES256 (or any algorithm not supported by Ergo's native `jwt-auth`); optional when using native `jwt-auth` with an RS256/EdDSA/HMAC provider. See [Transponder](../02-components/04-transponder.md#uplink-stock-ergo).
 - **Caddy** (reverse proxy) - terminates TLS via Let's Encrypt, routes WebSocket and API requests to Ergo and Satellite, and serves `/.well-known/orbit/services.json` as a static file for web client service discovery.
 
 One `docker compose up` produces a fully functional Orbit instance. Configuration is done via a single `.env` file and an `orbit.toml` for server-specific settings (domain, channel list). Satellite discovery is handled via DNS SRV records configured at the domain level - no IRC channel configuration is needed.

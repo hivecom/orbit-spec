@@ -144,12 +144,12 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 |---------|---------|------|
 | Provider role, not Orbit software | Transponder is the OIDC provider role; any compliant provider (Keycloak, Authentik, Zitadel, Supabase) fills it. Orbit does not build it | [04-transponder](spec/02-components/04-transponder.md) |
 | Shared identity layer | Single OIDC issuer consumed by Uplink, Satellite, Depot. One auth, one JWT, verified everywhere | [04-transponder](spec/02-components/04-transponder.md) |
-| Native Ergo integration (primary) | Stock Ergo verifies OIDC/JWT natively via `OAUTHBEARER` + `IRCV3BEARER` SASL and `accounts.jwt-auth`/`oauth2` (v2.14.0+) - no bridge needed | [04-transponder](spec/02-components/04-transponder.md) |
+| Ergo JWT verification paths | Auth-script bridge (`SASL PLAIN`, any provider/algorithm, JWKS-based) as the general path; native `accounts.jwt-auth` via `IRCV3BEARER` for RS256/EdDSA/HMAC providers (static key; no ECDSA/ES256, no JWKS) | [04-transponder](spec/02-components/04-transponder.md) |
 | OIDC client auth flow | Authorization Code + PKCE; browser-based login; operator controls UX (password, SSO, passkeys, MFA) | [04-transponder](spec/02-components/04-transponder.md) |
 | Multi-server identity | Per-domain JWTs; each domain = own identity domain | [04-transponder](spec/02-components/04-transponder.md) |
 | `_transponder._tcp` DNS SRV | Identity provider discovery via DNS | [05-infra/01-discovery](spec/05-infrastructure/01-domain-discovery.md) |
 | `/.well-known/orbit/oidc` | OIDC issuer URL discovery for web clients | [05-infra/01-discovery](spec/05-infrastructure/01-domain-discovery.md) |
-| NickServ migration path | Import accounts → disable NickServ → configure native OIDC/JWT auth | [04-transponder](spec/02-components/04-transponder.md) |
+| NickServ migration path | Import accounts → disable NickServ → configure JWT verification (bridge or native `jwt-auth`) | [04-transponder](spec/02-components/04-transponder.md) |
 
 ### IRC Compatibility
 
@@ -312,7 +312,7 @@ Key decisions already made. See [0A-decisions](spec/0A-decisions/) for full ADRs
 | No IRC server fork | **Do not fork the IRC server.** Run a stock IRCv3 server (Ergo reference) and conform to IRCv3. Push, OIDC, metadata, and redaction are already native; editing is handled client-side until IRC standardizes it. Forking would break IRC compatibility and make features Orbit-only | [Where Orbit's Value Lives](spec/01-architecture/02-philosophy.md#where-orbits-value-lives) |
 | Federation | **Deferred, not planned** - requires server-to-server linking absent from stock Ergo; not a fork reason | [04-out-of-scope](spec/0A-decisions/04-out-of-scope.md) |
 | Media transport | **WebRTC (LiveKit SFU)** - MoQ/Iroh deferred to research | [02-satellite](spec/02-components/02-satellite.md) |
-| Identity provider | **Any OIDC-compliant provider** (Keycloak, Authentik, Zitadel, Supabase) - Transponder is a role, not Orbit-built software; native Ergo `OAUTHBEARER`/`jwt-auth` is the primary integration, the auth-script bridge is an optional legacy/compat path | [04-transponder](spec/02-components/04-transponder.md) |
+| Identity provider | **Any OIDC-compliant provider** (Keycloak, Authentik, Zitadel, Supabase) - Transponder is a role, not Orbit-built software; the auth-script bridge is the general-purpose JWT verification path (any provider/algorithm), with native Ergo `accounts.jwt-auth` as an option for RS256/EdDSA/HMAC providers | [04-transponder](spec/02-components/04-transponder.md) |
 | E2E boundary | **1:1 only** - if a server mediates, no E2E. Channels and group voice explicitly excluded | [02-philosophy](spec/01-architecture/02-philosophy.md) |
 | Mobile strategy | **PWA first**, Tauri v2 Mobile second, native Swift/Kotlin left to community | [06-next/02-mobile](spec/06-next/02-mobile-clients.md) |
 

@@ -41,7 +41,7 @@ The identity bridging mechanism is **Transponder** - a role filled by any OIDC-c
 
 This means identity assertions are **per-component and independent**. If an Orbit-compatible service points at an OIDC issuer URL, it can verify user identity - regardless of whether it's an Uplink instance, a Satellite, a Depot server, or a third-party service built on the Orbit ecosystem. There is no central broker, no token relay, and no coupling between components. The OIDC provider is the single source of truth; every consumer verifies against it directly.
 
-- **Uplink** verifies identity natively. Stock Ergo supports OIDC/JWT authentication directly via OAUTHBEARER and IRCV3BEARER SASL with `accounts.jwt-auth`/`oauth2`, validating tokens against the provider's JWKS with no extra component. This is the primary integration. The legacy `auth-script` bridge remains available as an optional compatibility fallback for setups that need it. Either way, the IRC server is not modified beyond standard configuration.
+- **Uplink** verifies identity via the auth-script bridge (any provider/algorithm, JWKS-based) or Ergo's native `accounts.jwt-auth` over `IRCV3BEARER` (RS256/EdDSA/HMAC, static key). Either way, the IRC server is not modified beyond standard configuration.
 - **Satellite** verifies identity tokens directly against the JWKS endpoint. No Orbit-specific code - standard JWT verification.
 - **Depot** verifies Bearer tokens against the same JWKS endpoint. Same pattern, same keys.
 - **Any future component** follows the same model: point at the OIDC issuer URL, fetch the JWKS, verify JWTs locally. That's it.
@@ -74,7 +74,7 @@ An identity provider is **optional**. If a server operator doesn't deploy one, n
 
 | Feature | With Identity Provider | Without Identity Provider |
 |---------|----------------------|--------------------------|
-| Text chat | Works - Ergo verifies OIDC/JWT natively (auth-script bridge optional fallback) | Works - Ergo uses built-in NickServ/SASL |
+| Text chat | Works - Ergo verifies JWTs via auth-script bridge or native `accounts.jwt-auth` | Works - Ergo uses built-in NickServ/SASL |
 | Group voice / video | Works, participants verified | Works, all participants unverified |
 | BYOS | Works, IRC users verified | Works, everyone unverified |
 | Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
@@ -98,7 +98,7 @@ Because the identity layer is standard OIDC - not a custom protocol - federated 
 
 ## Rollout Plan
 
-1. **Phase 0 (identity bridging, achievable today)**: Deploy an OIDC-compliant identity provider (e.g., Keycloak). Configure Ergo to verify OIDC/JWT natively via OAUTHBEARER/`jwt-auth` (the optional auth-script bridge is available as a fallback). Point Satellite and Depot at the same OIDC issuer URL for JWT verification against the provider's JWKS. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. This is valuable on its own, independent of federation - it gives every component verified identity via standard OIDC, with each component verifying independently. Phase 0 is native and unblocked.
+1. **Phase 0 (identity bridging, achievable today)**: Deploy an OIDC-compliant identity provider (e.g., Keycloak). Deploy the auth-script bridge against the provider (general-purpose), or configure native `accounts.jwt-auth` for RS256/EdDSA/HMAC providers. Point Satellite and Depot at the same OIDC issuer URL for JWT verification against the provider's JWKS. This replaces the "public join key" model from the MVP for verified users while keeping join key / password access for unverified users. This is valuable on its own, independent of federation - it gives every component verified identity via standard OIDC, with each component verifying independently. Phase 0 is native and unblocked.
 2. **Phase 1 (IRC linking) - blocked**: Set up a two-server linked network. This phase cannot start because no stock IRCv3 server Orbit can adopt supports server-to-server linking, and there is no planned Orbit fork to add it. It would become reachable only if upstream Ergo (or an alternative stock server) ships linking. Treat as deferred.
 3. **Phase 2 (cross-org federation) - blocked**: Independent servers with independent OIDC providers and independent keys, with trust store management in each component that verifies identity (Satellite, Depot, etc.) and an evaluation of TOFU vs. directory vs. DNS-based trust models. Depends on Phase 1, which is itself blocked.
 
@@ -120,7 +120,7 @@ Phases 1 and 2 are not on the roadmap. Phase 0 is the only part that proceeds to
 **Identity bridging (Phase 0):**
 
 - Deploy an OIDC provider (e.g., Keycloak) with an `orbit` realm/tenant, create an `orbit-client` application with Authorization Code + PKCE flow.
-- Configure Ergo's native OIDC/JWT verification (OAUTHBEARER/`jwt-auth`) against the provider's JWKS; optionally deploy the auth-script bridge as a compatibility fallback.
+- Deploy the auth-script bridge (general-purpose) or configure native `accounts.jwt-auth` (RS256/EdDSA/HMAC providers) for Ergo JWT verification.
 - Configure Satellite and Depot to verify JWTs against the provider's JWKS endpoint.
 - Verify that a user authenticated on IRC receives a verified LiveKit JWT, and that a user with only a join key receives an unverified JWT.
 - Verify that the Orbit client displays verified and unverified participants distinctly.

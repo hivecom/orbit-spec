@@ -75,7 +75,7 @@ Orbit stays thin so it stays fast and maintainable. Complexity belongs at the ed
 
 ## Components Are Independent
 
-[Uplink](../02-components/01-uplink/01-overview.md), [Satellite](../02-components/02-satellite.md), [Transponder](../02-components/04-transponder.md), and [Depot](../02-components/03-depot.md) have no runtime dependencies on each other. Uplink is a stock IRC server - it does not know Satellite exists. Satellite is a media server - it does not know IRC exists. Transponder is the adopted OIDC provider; components verify its JWTs natively (Ergo via its own JWT/OAUTHBEARER support), so identity is native-first, with any bridge being optional. Depot stores files and answers to no one.
+[Uplink](../02-components/01-uplink/01-overview.md), [Satellite](../02-components/02-satellite.md), [Transponder](../02-components/04-transponder.md), and [Depot](../02-components/03-depot.md) have no runtime dependencies on each other. Uplink is a stock IRC server - it does not know Satellite exists. Satellite is a media server - it does not know IRC exists. Transponder is the adopted OIDC provider; components verify its JWTs against the provider's published keys (Satellite and Depot directly via JWKS; Uplink via the auth-script bridge or, for RS256/EdDSA/HMAC providers, Ergo's native `accounts.jwt-auth`). Depot stores files and answers to no one.
 
 The Orbit client is the only thing that composes these components into a unified experience - but it does not require all of them. Connect to just Uplink and you have IRC chat. Connect to just a Satellite with a join key and you have voice. Any other client - a web page, a game, a bot - can compose a different subset of the same components using the same interfaces.
 
