@@ -84,17 +84,20 @@ avatars are overwritten - one avatar per account.
 
 ### Server Configuration
 
-`draft/metadata-2` is **disabled by default**. Ergo only advertises it when the operator adds an
-`accounts.metadata` block to the config; if the block is absent, metadata is off and `SUB`/`SET`
-commands fail. Operators enabling it should set the relevant limits:
+`draft/metadata-2` is **disabled by default**. Ergo only advertises it when the operator adds a
+top-level `metadata` block to the config; if the block is absent, metadata is off and `SUB`/`SET`
+commands fail. Operators enabling it should use the following config:
 
 ```yaml
-accounts:
-  metadata:
-    # max-keys: keys a client may set on itself
-    # max-subs: keys a client may subscribe to
-    # max-value-bytes: maximum value size
-    # operator-only-modification: false   # leave off for self-service profiles
+metadata:
+  enabled: true
+  operator-only-modification: false   # leave off for self-service profiles
+  max-subs: 100   # how many keys a client may subscribe to
+  max-keys: 100   # how many keys can be stored per entity
+  client-throttle:  # rate-limit METADATA SET to prevent abuse
+    enabled: true
+    duration: 2m
+    max-attempts: 10
 ```
 
 `operator-only-modification` (Ergo 2.18.0+) is a *global* switch - it gates all metadata writes
