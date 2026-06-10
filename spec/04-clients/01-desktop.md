@@ -61,6 +61,42 @@ The following channel name patterns have defined rendering behavior:
 
 These are client-side rendering decisions only. The IRC server sees the channel names as-is. No channel name is rejected or modified by the client - only its position in the rendered tree changes.
 
+### Subchannel Authorization
+
+Slash-notation channels use client-side naming conventions, which means anyone can create `#dev/malicious` to impersonate the `#dev` tree. Orbit clients address this with a **subchannel allowlist** stored in the parent channel's `draft/metadata-2` metadata.
+
+The parent channel operator sets a `subchannels` metadata key (a comma-separated list of authorized child segment names):
+
+```
+METADATA #dev SET subchannels :frontend,backend,infrastructure
+```
+
+When Orbit clients render the channel list, they check each slash-notation channel against its parent's `subchannels` allowlist:
+
+- If the parent channel has a `subchannels` key and the child segment is listed, the channel is rendered normally.
+- If the parent has a `subchannels` key but the child segment is **not** listed, or if the parent has no `subchannels` key at all, the channel is shown with an **unverified indicator** (a visual warning in the channel list and channel header).
+
+Because only channel operators can set `draft/metadata-2` keys on a channel (see [Uplink Overview - Ergochat Configuration](../02-components/01-uplink/01-overview.md)), the allowlist is operator-controlled. A user cannot register `#dev/malicious` and then add themselves to `#dev`'s allowlist - they would need operator access to `#dev` to do so.
+
+This check is recursive for deeper paths: `#a/b/c` requires both `#a`'s `subchannels` to include `b` and `#a/b`'s `subchannels` to include `c`. A missing allowlist at any level in the chain marks the channel as unverified.
+
+The `subchannels` key is fetched lazily for unjoined parent channels via `METADATA <parent> GET subchannels`. For joined parent channels, the metadata arrives in the join burst automatically.
+
+### Channel Metadata Keys
+
+Beyond subchannel authorization, Orbit clients use `draft/metadata-2` to store display metadata on channels. These keys are set by channel operators via the channel settings UI and are used for richer channel display throughout the client.
+
+| Key | Content | Example |
+|---|---|---|
+| `display-name` | Friendly human-readable channel name (separate from the IRC channel name) | `Frontend` |
+| `avatar` | URL of the channel's avatar image | `https://depot.example.com/avatars/ch-abc123/avatar.webp` |
+| `color` | Accent color for the channel (hex, without `#`) | `3b82f6` |
+| `homepage` | URL associated with the channel (project page, docs, etc.) | `https://example.com/docs` |
+| `markdown` | Rich channel description, stored as Markdown | `Welcome to **#dev/frontend**...` |
+| `subchannels` | Comma-separated list of authorized direct child segment names | `frontend, backend, infra` |
+
+These keys follow the same trust rules as user metadata: they are set by clients and relayed by the server without validation. Because only operators can set metadata on a channel, the values are operator-controlled but not server-verified. Clients SHOULD sanitize URLs and MUST NOT treat any metadata value as a capability or permission claim - display metadata is cosmetic only. See [Tag Trust Model - Metadata Is Not an Identity Signal](../02-components/05-services.md#metadata-is-not-an-identity-signal) for the general rule.
+
 ### Voice & Video
 
 - Satellite selector: server Satellites shown with verified badge, BYOS (Bring Your Own Satellite) Satellites shown with community label.

@@ -30,11 +30,14 @@ For Ergochat's tag relay configuration, see [Uplink Overview](../01-overview.md)
 | `+orbit/p2p-answer`  | P2P handshake response: ICE credentials + DTLS fingerprint + candidate (base64 JSON)              | Client → Client   |
 | `+orbit/msg-thread`  | `parent_msgid` + thread channel name (base64 JSON)                                                | Client → Channel  |
 | `+orbit/file`        | File metadata: name, size, type (base64 JSON)                                                     | Client → Channel  |
+| `+orbit/msg-amend`  | Edited message body + original `msgid` (base64 JSON)                                             | Client → Channel  |
 | `+orbit/e2e`         | Sender key ID / fingerprint (base64)                                                              | Client → Client   |
 
 > **Replies are not an Orbit tag.** Message replies use the standard IRCv3 `+draft/reply=<msgid>`
 > client tag, the same mechanism other IRC clients use. There is no `+orbit/` reply tag, so replies
 > interoperate with any client that understands `+draft/reply`.
+
+> **Note on `+orbit/msg-amend`**: This tag is an **interim mechanism** for in-place message editing, used until the IRC ecosystem standardizes message editing (active draft work is ongoing). The payload is base64 JSON: `{ "msgid": "<original-msgid>", "body": "<new-message-body>" }`. Receiving clients that understand this tag SHOULD update the displayed message body and render an "edited" indicator. Clients that do not understand the tag see nothing - the edit is invisible to them. If Ergo or IRCv3 adopts a standard editing mechanism, Orbit clients will adopt it and retire this tag.
 
 > **Note on `+orbit/msg-thread`**: This tag is a **creation signal only**. It is sent to the parent
 > channel - not the thread channel - when a thread is first created. It is NOT sent on subsequent
@@ -117,3 +120,18 @@ extensions; they are IRC bots.
 - A **permissions bot** that implements role hierarchies beyond IRC modes.
 - A **reminder bot** that posts scheduled messages to channels.
 - A **moderation bot** with auto-mod rules, word filters, and spam detection.
+
+## Standard IRCv3 Client Tags
+
+Orbit clients handle the following standard IRCv3 client-only tags in addition to the `+orbit/*` namespace. These are defined by the IRCv3 working group and interoperate with any compliant client.
+
+| Tag | Spec | Purpose |
+|---|---|---|
+| `+draft/reply` / `+reply` | [IRCv3 message-replies](https://ircv3.net/specs/extensions/message-replies) | Reference the `msgid` of the message being replied to. Always sent as a client tag on the `PRIVMSG`. Orbit renders an inline excerpt of the original message and a navigation link. |
+| `+draft/react` / `+react` | [IRCv3 react](https://ircv3.net/specs/client-tags/react) | Emoji reaction on a message. Always paired with `+reply` pointing at the parent `msgid`. Orbit renders the reaction inline on the original message. |
+| `+draft/unreact` / `+unreact` | [IRCv3 react](https://ircv3.net/specs/client-tags/react) | Remove a previously sent emoji reaction. Always paired with `+reply`. Orbit removes the reaction from the inline display. |
+| `+typing` | [IRCv3 typing](https://ircv3.net/specs/client-tags/typing) | Typing notification with value `active`, `paused`, or `done`. Sent as a `TAGMSG` to the channel or user. Orbit renders a typing indicator in the composer area. |
+
+These tags are transported as `TAGMSG` messages (reactions, typing) or as client tags on `PRIVMSG` (replies). They are subject to the same `account-tag`-based identity display rules as `PRIVMSG` content - see [Identity Display](../../../03-identity/02-permissions.md#identity-display). They are also subject to Ergochat's standard fakelag flood protection identically to `PRIVMSG`.
+
+> **Reactions and replies interop:** Because `+draft/reply` and the react tags are IRCv3 standards, other clients that implement these specs will interoperate with Orbit clients automatically. A third-party IRC client that understands `+draft/reply` will render replies; one that understands `+draft/react` will render reactions. Orbit does not define custom alternatives for these features.

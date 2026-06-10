@@ -128,6 +128,29 @@ This is intentionally separate from IRC: ephemeral messages are not persisted, n
 not visible to IRC clients. Persistent, historical chat belongs in Uplink. Throwaway, in-session
 chat belongs in Satellite.
 
+### Channel Metadata Keys (`draft/metadata-2`)
+
+Orbit clients use `draft/metadata-2` to store structured display metadata directly on channels. These keys are set by channel operators and fetched on channel join as part of the metadata burst. For unjoined parent channels (e.g. for slash-notation tree verification), clients request metadata explicitly:
+
+```
+METADATA #dev GET subchannels
+```
+
+The channel metadata keys Orbit defines:
+
+| Key | Content | Set by |
+|---|---|---|
+| `display-name` | Friendly human-readable name separate from the IRC channel name | Operator |
+| `avatar` | URL of the channel's avatar image (Depot URL or external) | Operator |
+| `color` | Accent color for the channel as a hex string (without `#`) | Operator |
+| `homepage` | URL for the channel's associated project, docs, or community page | Operator |
+| `markdown` | Rich channel description, stored as Markdown | Operator |
+| `subchannels` | Comma-separated authorized direct child segment names for slash-notation trees | Operator |
+
+These keys are channel-scoped and distinct from the user metadata keys (`avatar`, `display-name`, `orbit.status`) documented in [Presence](04-presence.md). Channels and users share the same `draft/metadata-2` extension but have separate key namespaces in practice - a `METADATA GET` on `#channel` returns channel keys; a `METADATA GET` on a nick returns user keys.
+
+The `subchannels` key is the mechanism for subchannel authorization in slash-notation trees. For the full authorization model and client enforcement rules, see [Desktop Client - Subchannel Authorization](../../04-clients/01-desktop.md#subchannel-authorization).
+
 ## Message Retractions and Replies
 
 Each message has a unique ID assigned by Ergochat via the `message-ids` extension. The
