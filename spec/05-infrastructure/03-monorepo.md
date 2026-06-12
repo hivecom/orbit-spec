@@ -33,6 +33,39 @@ orbit
 - The platform adapter is the only code that differs between targets, and it is selected at the app boot of each entrypoint.
 - `apps/web` is a `vite build` with `vite-plugin-pwa` configured. `apps/desktop` is `tauri build`, which calls `vite build` internally against the same `packages/core` source with a different platform adapter export.
 
+## Naming conventions
+
+Directories and files should be named after the code they contain and export.
+
+Each package should contain a single root-level index.ts file that serves as the package's public export. No other index.ts files should exist within the package.
+
+Example structure
+
+```
+core
+  src/
+    components
+    style
+    lib/
+      platform/
+        types.ts
+        composables.ts
+        constants.ts
+      environment.ts
+```
+
+1. If an internal module is complex and requires multiple files, those files should be named according to their purpose. Do not introduce an `index.ts` file within the library directory to re-export them.
+2. If an internal module has a singular purpose, it may be implemented as a single file.
+3. Re-exports should only occur from the package's root-level index.ts
+
+When adding a new app or package, declare all workspace packages that it depends on in its dependencies (the CI will ask you). Only packages listed as dependencies should be imported.
+
+```ts
+// In this example, app/website should declare both platform and core as dependencies in package.json
+import { usePlatform } from "platform"
+import { createOrbitApp } from "core"
+```
+
 ## Toolchain & Build Commands
 
 The workspace uses **pnpm** (with a dependency `catalog:` in `pnpm-workspace.yaml`) and **[vite-plus](https://github.com/vitejs/vite-plus)** (`vp`) as the task runner. There is no npm; commands below assume pnpm + `vp`.
