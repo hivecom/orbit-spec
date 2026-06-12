@@ -117,7 +117,6 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 | Desktop client (Tauri v2 + Vue) | Full-featured: IRC, voice/video, file uploads, system tray, notifications, `orbit://` deep links | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
 | Web app / PWA | Same Vue codebase; WebSocket to Ergochat; installable PWA with offline shell | [04-clients/02-web-app](spec/04-clients/02-web-app.md) |
 | Embedded widget | Same web app in `?mode=widget` iframe; compact single-channel view; theming via URL params | [04-clients/03-widget](spec/04-clients/03-widget.md) |
-| Platform adapter | Thin TypeScript interface (`tauri.ts` / `web.ts`) selected at build time via `VITE_TARGET` | [04-clients/02-web-app](spec/04-clients/02-web-app.md) |
 | Rich rendering | Link previews, image thumbnails, emoji, basic Markdown (bold, italic, code, strikethrough) | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
 | Voice UI | Satellite selector, participant list, mute/deafen, per-user volume, push-to-talk, grid/speaker layouts | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
 | Message outbox | Messages held during disconnection, sent on reconnect, cleared after server ack | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
@@ -133,8 +132,8 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 | Reference Docker Compose | Ergochat + Caddy (always); LiveKit, MinIO, coturn optional. Single `docker compose up` | [05-infra/02-deployment](spec/05-infrastructure/02-deployment.md) |
 | TLS everywhere | No plaintext, ever. Let's Encrypt for public; self-signed for dev only | [05-infra/02-deployment](spec/05-infrastructure/02-deployment.md) |
 | DNS SRV + well-known discovery | `_satellite._tcp`, `_depot._tcp`; `/.well-known/orbit/services.json` for web clients | [05-infra/01-discovery](spec/05-infrastructure/01-domain-discovery.md) |
-| Monorepo structure | `apps/desktop/`, `apps/web/`, `lib/core/`, `lib/platform/` | [05-infra/03-monorepo](spec/05-infrastructure/03-monorepo.md) |
-| CI pipeline | Test `lib/core` → build web + desktop → release artifacts for Linux/Windows/macOS | [05-infra/03-monorepo](spec/05-infrastructure/03-monorepo.md) |
+| Monorepo structure | `apps/desktop/`, `apps/web/`, `packages/core/`, `packages/platform/`; pnpm workspaces + vite-plus | [05-infra/03-monorepo](spec/05-infrastructure/03-monorepo.md) |
+| CI pipeline | Test `packages/core` → build web + desktop → release artifacts for Linux/Windows/macOS | [05-infra/03-monorepo](spec/05-infrastructure/03-monorepo.md) |
 | Health checks & monitoring | Health endpoints for all components; Uptime Kuma recommended | [05-infra/02-deployment](spec/05-infrastructure/02-deployment.md) |
 | Backup guidance | Ergochat SQLite, MinIO buckets, Depot metadata, config files | [05-infra/02-deployment](spec/05-infrastructure/02-deployment.md) |
 
@@ -245,6 +244,7 @@ Federation requires server-to-server linking that is absent from stock Ergo. It 
 | Custom role / permission system | Extend beyond IRC modes via Extension API + bots | [0A-decisions/04-out-of-scope](spec/0A-decisions/04-out-of-scope.md) |
 | E2E encrypted file uploads | Client-side encryption before Depot upload | [03-depot](spec/02-components/03-depot.md) |
 | Richer presence | Presence history (last online), structured status states, server-managed avatars | [01-uplink/04-presence](spec/02-components/01-uplink/04-presence.md) |
+| Channel renaming | Optional, capability-gated (`draft/channel-rename`); blocked on registered channels, so `display-name` metadata is the rename path for established channels | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md#channel-renaming) |
 
 ## Research
 

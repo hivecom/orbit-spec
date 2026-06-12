@@ -56,7 +56,7 @@ The following extensions MUST be enabled on any Ergochat instance serving as Upl
 | `draft/pre-away`           | Clients signal they are about to go away, enabling smoother presence transitions                                                | Stable                |
 | `draft/read-marker`        | Server-side read position tracking, synced across all client sessions                                                           | Stable                |
 | `setname`                  | Users can set a display name separate from their nickname (superseded by `display-name` metadata key when `draft/metadata-2` is available, but kept for compatibility) | Stable |
-| `draft/message-redaction`  | Server-enforced message retractions via the IRC-standard `REDACT` command                                                       | Shipped in stable Ergo |
+| `draft/message-redaction`  | Server-enforced message retractions via the IRC-standard `REDACT` command                                                       | Shipped in stable Ergo; requires `history.retention.allow-individual-delete: true` (Ergo does not advertise the cap otherwise) |
 | `draft/metadata-2`         | Native user/channel key-value metadata store (avatars, display names, presence status)                                          | Stable in Ergo (2.17.0+); requires the `accounts.metadata` config block |
 
 `account-tag` and `echo-message` are critical to Orbit's client-side trust model. `account-tag` is
@@ -151,6 +151,59 @@ These keys are channel-scoped and distinct from the user metadata keys (`avatar`
 
 The `subchannels` key is the mechanism for subchannel authorization in slash-notation trees. For the full authorization model and client enforcement rules, see [Desktop Client - Subchannel Authorization](../../04-clients/01-desktop.md#subchannel-authorization).
 
+### Channel Renaming
+
+IRC has a work-in-progress extension, `draft/channel-rename` (the `RENAME` command), that renames a
+channel in place while preserving its membership, modes, topic, and ban/invite/exception lists,
+instead of forcing everyone to leave one channel and recreate another. Stock Ergo implements it, so
+Orbit can support it - but the IRCv3 working group still marks the extension experimental and advises
+against relying on it in production. Orbit therefore treats channel renaming as an optional,
+capability-gated convenience, not a guaranteed feature, and never depends on it.
+
+The more important point is that native renaming is **not** the tool for the common case. Several
+caveats constrain it:
+
+- **Registered channels cannot be renamed.** Ergo refuses to rename a channel that carries persistent
+  history, and in practice every channel meant to last is registered. Native `RENAME` is effectively
+  limited to ephemeral, unregistered channels - the throwaway kind that nobody usually needs to
+  rename. An established community channel cannot be renamed this way without first dropping its
+  registration, which sacrifices exactly the persistence that made the channel worth keeping.
+- **Slash-notation hierarchy does not follow the rename.** Because the folder tree is a pure
+  client-side rendering convention (see [Channels](#channels) above), a rename that changes a path
+  segment detaches the channel from its rendered parent and orphans any parent/child grouping the
+  client tracks. The server moves a flat name; it has no concept of the hierarchy to migrate, so the
+  client must reconcile the tree itself.
+- **Clients without the capability see a fallback.** A client that has not negotiated
+  `draft/channel-rename` is informed of the change through a synthesized leave-then-rejoin sequence.
+  A client relying on that fallback tears down and rebuilds the channel locally and loses in-place
+  continuity (read position, scroll, unbroken history under one name); only a client that negotiates
+  the capability gets the clean single-event rename. Case-only renames skip the fallback by spec.
+- **Operator privilege is required**, and the server rejects unprivileged attempts.
+
+For the routine "this channel should have a different name" intent, the right mechanism is the
+`display-name` channel metadata key carried over `draft/metadata-2`, the same key clients already use
+to show a friendly label in place of the raw `#slug`. Editing `display-name` changes the name every
+Orbit client renders without touching the underlying channel name, its history, its registration, or
+its position in the slash-notation tree. It works on registered channels, needs no capability
+negotiation, and carries none of the caveats above. Orbit clients SHOULD steer ordinary rename
+intent toward `display-name` and reserve native `RENAME` for the narrow ephemeral case where actually
+changing the protocol-level channel name is the goal.
+
+A client that does choose to expose native renaming should:
+
+- Negotiate `draft/channel-rename` during the CAP exchange, so the server delivers the single rename
+  event rather than the leave/rejoin fallback.
+- Treat the server's rename notification as an in-place migration of local state: carry the existing
+  channel's messages, member list, modes, topic, and list-mode entries onto the new name, and re-key
+  everything else that is keyed by channel name - read markers, cached metadata, the active-channel
+  pointer, and any persisted auto-join target - so nothing resets or double-counts.
+- Resolve a channel's registration status before offering the action, and present native renaming
+  only where the server can actually honour it. Everywhere else, present `display-name` editing
+  instead and explain why, rather than letting the user attempt a rename the server will reject.
+- Surface the standardized failure replies (name already in use, cannot rename, insufficient
+  privilege) to the user, since the operation round-trips through the server and can fail after the
+  request is sent.
+
 ## Message Retractions and Replies
 
 Each message has a unique ID assigned by Ergochat via the `message-ids` extension. The
@@ -178,13 +231,26 @@ are a channel operator. Clients cannot forge a retraction for another user's mes
   ```
   *** alice retracted a message ***
   ```
-- **On reconnect**, `chathistory` responses exclude redacted messages entirely. There is no
-  client-side reconstruction: the message is simply absent from history. Orbit clients do not need
-  to apply retraction events from the history stream - the server handles this.
+- **On reconnect**, the IRCv3 spec lets a server either drop redacted messages from `chathistory`
+  entirely or replay them followed by a `REDACT` event. Orbit clients therefore handle `REDACT`
+  inside `chathistory` batches the same way they handle a live one (rendering the tombstone) rather
+  than assuming the message is simply absent. Either server behaviour converges on the same
+  rendered result.
 
 > **Availability**: `draft/message-redaction` is shipped in stable Ergo, so retractions are
 > available on the adopted server. No fallback tag-based retraction system is used - the
 > `+orbit/msg-retract` tag does not exist.
+
+> **Operator requirement**: Ergo gates `REDACT` behind `history.retention.allow-individual-delete`.
+> When this is `false` (Ergo's recommended default), Ergo does **not** advertise the
+> `draft/message-redaction` capability ([ergochat/ergo#2215](https://github.com/ergochat/ergo/issues/2215)),
+> so Orbit clients see no deletion affordance and `REDACT` commands are rejected. Operators who want
+> retractions must set `allow-individual-delete: true`. That single flag enables the full permission
+> model described above - authors deleting their own messages **and** channel operators deleting
+> others' - and lets redactions persist and replay through `chathistory`. It is independent of
+> `enable-account-indexing`, which governs only bulk per-account history purges and is not required
+> for per-message redaction. Toggling it on requires an Ergo restart (not just a rehash) before the
+> capability is re-advertised.
 
 **Message editing** (`+orbit/msg-amend`) is not standardized in IRC yet. There is active draft work
 on in-place editing across the IRC ecosystem; Orbit follows it and handles editing at the client and
@@ -207,8 +273,11 @@ readable.
 
 When a client fetches messages via `chathistory`:
 
-- **Retracted messages** are absent from the response - the server excludes them. Orbit clients do
-  not need to process retraction events or reconstruct retracted state from the history stream.
+- **Retracted messages**: the server either excludes them from the response or replays them
+  followed by a `REDACT` event (the IRCv3 spec permits both). Orbit clients handle a `REDACT` event
+  in a `chathistory` batch the same way they handle a live one - rendering the tombstone - so both
+  server behaviours converge on the same result. Clients never reconstruct retracted *content*; the
+  original message body is not recoverable from history.
 - **A reply** appears in history as a `PRIVMSG` carrying a `+draft/reply` tag referencing the
   target `msgid`. If the target message is within the loaded history, the client renders the reply
   with an inline excerpt. If the target is outside the loaded window, the reply is displayed without

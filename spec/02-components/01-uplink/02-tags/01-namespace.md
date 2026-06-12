@@ -90,13 +90,13 @@ payload format.
 
 ### Orbit Extensions
 
-An Orbit extension is a true application-level plugin for the Orbit client (orbit-app). Extensions
+An Orbit extension is a true application-level plugin for the Orbit client (Orbit application). Extensions
 are installed into the client and extend its UI and behavior. They interact with Uplink and
 Satellite through the standard Orbit tag namespace and may define their own sub-namespace for
 custom tags (e.g., `+orbit-ext/<name>/*`). Extensions are scoped to the Orbit client - they do
 not run on the server, and they do not modify Satellite infrastructure.
 
-The orbit-app extension API is **deferred to post-MVP**. For the MVP, extensions are a design
+The Orbit application extension API is **deferred to post-MVP**. For the MVP, extensions are a design
 target, not a shipping feature.
 
 **Examples of future Orbit extensions:**

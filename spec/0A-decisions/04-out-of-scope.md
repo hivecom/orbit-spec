@@ -19,4 +19,4 @@ Items are deferred because they require significant research, have unresolved de
 | Message editing (amend) | Not yet standardized in IRC; Orbit handles editing at the client layer until Ergo or IRCv3 ships a standard | Message Editing (next) |
 | Message retractions | Available in MVP via native `draft/message-redaction` (`REDACT`, shipped in stock Ergo) | - |
 | Push notifications | Available in MVP via native `draft/webpush` (stock Ergo v2.15.0+); additional mobile delivery backends are NEXT | [Push Notifications](../06-next/04-push-notifications.md) |
-| Orbit extension API (orbit-app plugins) | Extension architecture is defined; the client-side plugin host and API surface are post-MVP | [Bot API](../06-next/03-bot-api.md) |
+| Orbit extension API (Orbit application plugins) | Extension architecture is defined; the client-side plugin host and API surface are post-MVP | [Bot API](../06-next/03-bot-api.md) |

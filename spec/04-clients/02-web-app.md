@@ -12,17 +12,33 @@ This means there are effectively **two builds**: the Tauri binary and the web ap
 
 ## The Platform Adapter
 
-The Tauri desktop client and the web app share the entire Vue component tree. The only divergence is a thin **platform adapter** - a TypeScript interface the Vue app calls for capabilities that differ between environments:
+The desktop, web, and mobile clients share the entire Vue component tree. The only divergence is a thin **platform adapter** - a TypeScript interface the shared code calls for capabilities that differ between environments.
+
+The seam is shaped by **capability, not by platform**. `packages/core` owns the `Platform` contract and never asks "am I running in Tauri"; it asks a capability port to do a thing. Each app entrypoint supplies a concrete adapter and injects it once at boot.
 
 ```
-src/platform/index.ts   ← re-exports tauri.ts or web.ts based on VITE_TARGET
-src/platform/tauri.ts   ← calls @tauri-apps/api (desktop only)
-src/platform/web.ts     ← uses browser APIs or gracefully stubs missing features
+packages/core/src/platform/index.ts   ← the Platform contract (capability ports) + injection hook
+packages/platform/src/web.ts          ← browser APIs, or gracefully stubs absent capabilities
+packages/platform/src/tauri.ts        ← calls @tauri-apps/api (desktop)
+packages/platform/src/tauri-mobile.ts ← reuses the Tauri adapter, overrides only what differs
 ```
 
-Vue components never import from `@tauri-apps/api` directly. They call the adapter. This keeps the component tree environment-agnostic and means the web app is a natural output of the same source, not a separate port.
+The contract is a set of capability ports. A port that an environment cannot provide is `null`, and core degrades explicitly rather than scattering platform checks:
 
-The platform-specific surface is small:
+```ts
+export interface Platform {
+  notifications: NotificationPort
+  tray: TrayPort | null         // null on web/widget; core hides tray affordances
+  audioDevices: AudioDevicePort
+  deepLinks: DeepLinkPort | null // null in the browser
+  fileTransfer: FileTransferPort
+  dns: DnsPort | null            // null in the browser; resolver endpoint used instead
+}
+```
+
+Vue components and stores never import from `@tauri-apps/api` or call raw `navigator.*` directly - they go through the injected `Platform`. This keeps the component tree environment-agnostic, keeps `packages/core` headlessly testable against a mock `Platform`, and means each new target (web, desktop, mobile) is a new adapter rather than a fork. A lint boundary forbidding platform imports inside `packages/core` is what enforces this discipline cheaply.
+
+The platform-specific surface is small. Each row maps to one capability port:
 
 | Capability                  | Desktop (tauri.ts)                                    | Web (web.ts)                                                            |
 |-----------------------------|-------------------------------------------------------|-------------------------------------------------------------------------|

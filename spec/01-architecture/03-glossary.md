@@ -44,7 +44,7 @@ The Orbit client is the application that composes the named services into a unif
 
 ### Orbit Extensions
 
-Orbit extensions are client-side plugins for orbit-app that build on top of the Orbit tag namespace. They add UI and behavior to the desktop and web clients without modifying the core. Extensions may define their own `+orbit-ext/<name>/*` tag sub-namespace and may pair with IRC bots for server-side logic. Extensions are the correct place for features that are explicitly out of scope for the core - custom moderation UI, game integrations, event calendars, role color schemes.
+Orbit extensions are client-side plugins for the Orbit application that build on top of the Orbit tag namespace. They add UI and behavior to the desktop and web clients without modifying the core. Extensions may define their own `+orbit-ext/<name>/*` tag sub-namespace and may pair with IRC bots for server-side logic. Extensions are the correct place for features that are explicitly out of scope for the core - custom moderation UI, game integrations, event calendars, role color schemes.
 
 ### IRC Bots
 
@@ -64,7 +64,7 @@ This section lists the IRCv3 capabilities Orbit relies on and their availability
 | `extended-monitor` | Track online/offline state for a list of nicks | Stable in Ergo |
 | `draft/pre-away` | Signal impending disconnect before it happens | Stable in Ergo |
 | `draft/read-marker` | Server-side read state synced across devices | Stable in Ergo |
-| `draft/message-redaction` | Server-enforced message retractions (`REDACT` command) | Shipped/stable in Ergo |
+| `draft/message-redaction` | Server-enforced message retractions (`REDACT` command) | Shipped/stable in Ergo; only advertised when `history.retention.allow-individual-delete` is enabled |
 | `draft/metadata-2` | Native key/value store per user and channel (avatars, display names, status) | Shipped/stable in Ergo (2.17.0+); requires the `accounts.metadata` config block |
 | `draft/webpush` | Native push notification delivery | Stable in Ergo (2.15.0+) |
 | In-place message editing | Edited message state | Not yet standardized in IRC; handled client-side |
@@ -78,7 +78,7 @@ Direct messages are standard IRC `PRIVMSG` to a nickname. The server stores DM h
 
 ### Message Retractions
 
-Message retractions in the MVP use the IRC-standard `REDACT` command via `draft/message-redaction` (shipped and stable in Ergo). This is server-enforced, not a client-only tag. Orbit clients render a tombstone in place of the retracted message. IRC clients that implement the cap see the message removed. IRC clients without the cap receive a server NOTICE fallback: `*** alice retracted a message ***`.
+Message retractions in the MVP use the IRC-standard `REDACT` command via `draft/message-redaction` (shipped and stable in Ergo). This is server-enforced, not a client-only tag. Orbit clients render a tombstone in place of the retracted message. IRC clients that implement the cap see the message removed. IRC clients without the cap receive a server NOTICE fallback: `*** alice retracted a message ***`. Note that Ergo only advertises the capability when `history.retention.allow-individual-delete: true`; see [Uplink Overview - Message Retractions](../02-components/01-uplink/01-overview.md#message-retractions-and-replies) for the operator requirement.
 
 ### Message Storage
 

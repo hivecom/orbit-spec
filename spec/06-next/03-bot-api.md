@@ -36,7 +36,7 @@ This will be phased incrementally to avoid over-engineering:
 
 ### Orbit Extension API
 
-The **Orbit Extension API (orbit-app plugins)** - client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Uplink via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace (see [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md)) - is considered high-value and will be designed early in the post-MVP phase.
+The **Orbit Extension API (Orbit application plugins)** - client-side plugins for the Orbit desktop and web clients that add UI and behavior, interact with Uplink via the tag namespace, and may define their own `+orbit-ext/<name>/*` sub-namespace (see [Tag Namespace](../02-components/01-uplink/02-tags/01-namespace.md)) - is considered high-value and will be designed early in the post-MVP phase.
 
 The combination of an IRC bot (server-side logic) and an Orbit extension (UI integration) is the Orbit equivalent of a Discord bot with slash commands and embeds. This is the path to a rich integration ecosystem without requiring Orbit itself to implement every feature.
 

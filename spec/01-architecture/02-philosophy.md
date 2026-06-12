@@ -69,7 +69,7 @@ The transition from one platform to another is always different from what you ha
 
 ## Orbit Is a Transport Layer and Client, Not an Application Platform
 
-The core handles four things: text chat, real-time media, identity, and client UX. Everything else - calendars, events, custom moderation workflows, rich permission systems, game integrations - is an extension. **Orbit extensions** are client-side plugins for orbit-app that build on top of the Orbit tag namespace. **IRC bots** handle server-side automation as first-class citizens of the IRC ecosystem. Both extend Orbit at the edges without touching the core.
+The core handles four things: text chat, real-time media, identity, and client UX. Everything else - calendars, events, custom moderation workflows, rich permission systems, game integrations - is an extension. **Orbit extensions** are client-side plugins for the Orbit application that build on top of the Orbit tag namespace. **IRC bots** handle server-side automation as first-class citizens of the IRC ecosystem. Both extend Orbit at the edges without touching the core.
 
 Orbit stays thin so it stays fast and maintainable. Complexity belongs at the edges.
 
@@ -111,6 +111,17 @@ The principled summary: Orbit is infrastructure. For private content, it archite
 ## Message Storage
 
 Channel history uses operator-configured retention. Ergo supports this today - operators set how long history is kept per channel. There is no mandate to store everything forever, and no mandated default. DMs use the same model. When E2E encryption is active, the server stores ciphertext with the same retention and delivery mechanics; it just cannot read the content.
+
+### Data Protection and Erasure (GDPR)
+
+Orbit ships no compliance *product* - DLP, eDiscovery, and audit exports are explicitly [out of scope](../0A-decisions/04-out-of-scope.md). But because Orbit is self-hosted infrastructure, the operator is the data controller and carries any legal obligations (GDPR, CCPA, and similar) for the instance they run. Orbit's posture is to give operators the technical levers to meet those obligations, not to make the decisions for them:
+
+- **Time-bounded retention.** Per-channel and per-DM retention windows mean personal data is not kept indefinitely by default - data minimisation and storage limitation are a config setting, not a custom build.
+- **Per-message erasure.** `draft/message-redaction` (`REDACT`) lets users delete their own messages and operators delete others', satisfying targeted takedown and correction requests. Requires `history.retention.allow-individual-delete`.
+- **Account-wide erasure ("right to be forgotten").** An account can be unregistered and its stored messages purged. Ergo's `history.retention.enable-account-indexing` is what makes account-scoped erasure complete and efficient; operators expecting to honour erasure requests should enable it, weighing the storage/privacy trade-off of the index itself.
+- **Architectural non-retention.** For 1:1 P2P calls and (post-MVP) E2E DMs, the operator never holds plaintext or media at all - the strongest erasure guarantee is simply never having the data.
+
+Whether to enable any of these, and how to configure them, is a deliberate operator choice. A hobby instance among friends and an EU-facing public deployment will reasonably configure retention and erasure very differently; Orbit does not impose a default that presumes either.
 
 ## Security Model: Transport vs. End-to-End
 

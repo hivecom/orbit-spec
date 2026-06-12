@@ -60,7 +60,7 @@ For the full client-side resolution algorithm and service discovery behaviour, s
 
 A reference `docker-compose.yml` is provided for self-hosters. It includes:
 
-- **Ergo** - the adopted IRC server filling the Uplink role - with WebSocket enabled, SASL configured, and chat history enabled.
+- **Ergo** - the adopted IRC server filling the Uplink role - with WebSocket enabled, SASL configured, and chat history enabled. Set `history.retention.allow-individual-delete: true` to enable message retractions; Ergo only advertises `draft/message-redaction` (and only accepts `REDACT`) when this is on. See [Uplink Overview - Message Retractions](../02-components/01-uplink/01-overview.md#message-retractions-and-replies). Operators with data-protection obligations (GDPR and similar) should also review `history.retention.enable-account-indexing` for account-wide erasure - see [Data Protection and Erasure](../01-architecture/02-philosophy.md#data-protection-and-erasure-gdpr).
 - **LiveKit + token service** (Satellite) - **optional**; can be removed for text-only deployments.
 - **Depot** (storage gateway) - **optional**; only required if file uploads are needed. The thin gateway runs against either an S3-compatible backend (a bundled MinIO container, or external AWS S3) or a local filesystem driver (a mounted volume). Single-box deployments can use the local filesystem driver and skip MinIO entirely; deployments that need scale or off-host storage point Depot at S3/MinIO.
 - **coturn** (STUN/TURN) - for NAT traversal.
