@@ -17,14 +17,14 @@ Three workspace packages and the thin app entrypoints, with dependencies pointin
 graph TD
     subgraph Entrypoints
       web["apps/web/main.ts"]:::accent0
-      desktop["apps/desktop/main.ts (NEXT)"]:::accent0
-      mobile["apps/mobile/main.ts (NEXT)"]:::accent0
+      desktop["apps/desktop/main.ts"]:::accent0
+      mobile["apps/mobile/main.ts"]:::accent0
     end
 
     subgraph Adapters
       pweb["platform: createWebPlatform()"]:::accent1
-      ptauri["platform: createTauriPlatform() (NEXT)"]:::accent1
-      pmobile["platform: createTauriMobilePlatform() (NEXT)"]:::accent1
+      ptauri["platform: createTauriPlatform()"]:::accent1
+      pmobile["platform: createTauriMobilePlatform()"]:::accent1
     end
 
     core["core: OrbitApp, router, Platform contract"]:::accent2
