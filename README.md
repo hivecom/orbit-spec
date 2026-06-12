@@ -46,3 +46,11 @@ Start with the [Platform Comparison](spec/01-architecture/05-platform-comparison
 ## Status
 
 Living documents. Designs change based on prototyping, community feedback, and what ships in stock Ergo and the IRCv3 ecosystem.
+
+## LLM Policy
+
+Code, documentation, architecture, and project structure must be designed and created by humans.
+
+Developers may consult an LLM or chat agent when researching a problem. However, LLM-generated output should be treated as guidance only. Developers are expected to understand, evaluate, and implement solutions themselves rather than allowing the LLM to be in the driver's seat.
+
+This project should be built with intention and judgement. Human finess is the key.
