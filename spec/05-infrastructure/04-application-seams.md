@@ -8,6 +8,7 @@ Cross-references:
 - [03-monorepo.md](03-monorepo.md) - Directory structure, build commands, CI
 - [../04-clients/02-web-app.md](../04-clients/02-web-app.md) - The capability matrix and the platform adapter from the client's perspective
 - [../04-clients/01-desktop.md](../04-clients/01-desktop.md) - The Tauri shell that backs the desktop adapter
+- [../04-clients/04-local-cache.md](../04-clients/04-local-cache.md) - The `HistoryCachePort` capability (IndexedDB on web, SQLite on desktop)
 
 ## Dependency Direction
 
@@ -57,7 +58,7 @@ import { createWebPlatform } from "platform"
 
 `packages/core/src/platform/index.ts` is the seam. It is the one file `core` and every adapter both agree on. It defines:
 
-1. **Capability ports** - small interfaces, one per capability that differs across environments (`NotificationPort`, `TrayPort`, `AudioDevicePort`, `DeepLinkPort`, `FileTransferPort`, `DnsPort`).
+1. **Capability ports** - small interfaces, one per capability that differs across environments (`NotificationPort`, `TrayPort`, `AudioDevicePort`, `DeepLinkPort`, `FileTransferPort`, `DnsPort`, `HistoryCachePort`).
 2. **The `Platform` interface** - an object holding one instance of each port, plus a `target` discriminator. A port an environment cannot provide is `null`.
 3. **The injection plumbing** - a Vue `InjectionKey`, `providePlatform(app, platform)`, and `usePlatform()`.
 
@@ -70,6 +71,7 @@ export interface Platform {
   readonly deepLinks: DeepLinkPort | null  // null in the browser
   readonly fileTransfer: FileTransferPort
   readonly dns: DnsPort | null             // null in the browser
+  readonly historyCache: HistoryCachePort | null // IndexedDB (web) / SQLite (desktop); null when storage is blocked
 }
 
 export const PLATFORM_KEY: InjectionKey<Platform> = Symbol("orbit-platform")
@@ -101,6 +103,7 @@ export function createWebPlatform(): Platform {
     deepLinks: null,      // no orbit:// handler in the browser
     fileTransfer: createFileTransferPort(),
     dns: null,            // resolver endpoint used instead
+    historyCache: createIndexedDbCachePort(), // null if IndexedDB is unavailable
   }
 }
 ```
@@ -192,6 +195,7 @@ const platform: Platform = {
   deepLinks: null,
   fileTransfer: { download: async () => {} },
   dns: null,
+  historyCache: null,
 }
 // provide(PLATFORM_KEY, platform) in the test harness, then mount the component.
 ```

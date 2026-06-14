@@ -121,6 +121,8 @@ Everything below ships in the first usable release. The MVP is deliberately narr
 | Voice UI | Satellite selector, participant list, mute/deafen, per-user volume, push-to-talk, grid/speaker layouts | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
 | Message outbox | Messages held during disconnection, sent on reconnect, cleared after server ack | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
 | Memory discipline | Paginated chat (200 msgs/channel in DOM), image resizing via Rust, debounced resizes | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
+| Local history cache | On-device persistent cache (IndexedDB on web, SQLite on desktop); cache-first prefill, progressive rendering, sliding window; offloads `chathistory` from Uplink | [04-clients/04-local-cache](spec/04-clients/04-local-cache.md) |
+| Storage management | Settings -> Storage: per-buffer stats, eviction, JSON export, configurable per-buffer cap | [04-clients/04-local-cache](spec/04-clients/04-local-cache.md) |
 | `orbit://` + `satellite://` URI schemes | Deep links to server/channel/voice; standalone Satellite links | [04-clients/01-desktop](spec/04-clients/01-desktop.md) |
 | Screen sharing | Share screen in voice sessions | [02-satellite](spec/02-components/02-satellite.md) |
 | Multi-server client | Connect to multiple Orbit servers simultaneously | - |
@@ -245,6 +247,8 @@ Federation requires server-to-server linking that is absent from stock Ergo. It 
 | E2E encrypted file uploads | Client-side encryption before Depot upload | [03-depot](spec/02-components/03-depot.md) |
 | Richer presence | Presence history (last online), structured status states, server-managed avatars | [01-uplink/04-presence](spec/02-components/01-uplink/04-presence.md) |
 | Channel renaming | Optional, capability-gated (`draft/channel-rename`); blocked on registered channels, so `display-name` metadata is the rename path for established channels | [01-uplink/01-overview](spec/02-components/01-uplink/01-overview.md#channel-renaming) |
+| Client-side search index | Local inverted index / SQLite FTS5 over the on-device cache; answers most searches offline and offloads the server's history backend | [04-clients/04-local-cache](spec/04-clients/04-local-cache.md#evaluation-performance-and-limits) |
+| Chat list virtualization | Mount only the visible message range to push effective DOM cost below the live-window cap for very large buffers | [04-clients/04-local-cache](spec/04-clients/04-local-cache.md#evaluation-performance-and-limits) |
 
 ## Research
 

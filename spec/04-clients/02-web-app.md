@@ -33,6 +33,7 @@ export interface Platform {
   deepLinks: DeepLinkPort | null // null in the browser
   fileTransfer: FileTransferPort
   dns: DnsPort | null            // null in the browser; resolver endpoint used instead
+  historyCache: HistoryCachePort | null // IndexedDB on web, SQLite on desktop; null when storage is blocked
 }
 ```
 
@@ -93,6 +94,7 @@ The complete capability comparison across all three surfaces:
 |------------------------------------------|--------------------------------|---------------------------------------------|----------------------------------------|
 | Text chat (full)                         | Yes                            | Yes                                         | Yes                                    |
 | Message history / scrollback             | Yes                            | Yes                                         | Yes (limited to recent on load)        |
+| Persistent local history cache           | Yes (SQLite, disk-bounded)     | Yes (IndexedDB, quota-bounded, best-effort) | Ephemeral (in-memory; cache may be `null`) |
 | Message retractions                      | MVP (via `draft/message-redaction`) | MVP (via `draft/message-redaction`)    | MVP (via `draft/message-redaction`)    |
 | Message editing                          | Post-Uplink                    | Post-Uplink                                 | Post-Uplink                            |
 | Rich rendering (links, images, Markdown) | Yes                            | Yes                                         | Yes                                    |
