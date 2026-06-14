@@ -108,7 +108,7 @@ sequenceDiagram
     V->>S: CHATHISTORY LATEST channel newest-cached-msgid *
     S-->>V: delta batch (messages since tip)
     V->>C: upsert delta (dedupe by msgid)
-    Note over V: Reconcile tail; cache and view converge
+    Note over V: Reconcile tail - cache and view converge
 ```
 
 The buffer paints from disk on the frame the user clicks; reconciliation only fills the gap between
