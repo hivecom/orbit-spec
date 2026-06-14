@@ -35,6 +35,7 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Desktop](04-clients/01-desktop.md) - Tauri v2 + Vue desktop client: features, URI scheme, memory discipline, reconnection
 - [Web App](04-clients/02-web-app.md) - Web app and PWA: platform adapter, service worker, capability matrix
 - [Widget](04-clients/03-widget.md) - Embeddable iframe widget mode
+- [Local History Cache & Storage](04-clients/04-local-cache.md) - On-device history cache, progressive loading, IndexedDB/SQLite seam, storage management
 
 ## Infrastructure
 

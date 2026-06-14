@@ -35,7 +35,7 @@ The `spec/` directory contains the full design spec:
 | [Architecture](spec/01-architecture/) | System overview, design philosophy, component glossary, platform comparison |
 | [Components](spec/02-components/) | Uplink (incl. tag namespace and trust model), Satellite, Depot, Transponder |
 | [Identity and Auth](spec/03-identity/) | Authentication, permissions |
-| [Clients](spec/04-clients/) | Desktop, web app, widget |
+| [Clients](spec/04-clients/) | Desktop, web app, widget, local history cache |
 | [Infrastructure](spec/05-infrastructure/) | DNS discovery, deployment, monorepo |
 | [Next](spec/06-next/) | Mobile, bot API, push delivery, E2E encryption, server discovery, Satellite gateway |
 | [Decisions](spec/0A-decisions/) | ADRs, open questions, out-of-scope |
