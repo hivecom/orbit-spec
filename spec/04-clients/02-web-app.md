@@ -44,7 +44,7 @@ The platform-specific surface is small. Each row maps to one capability port:
 |-----------------------------|-------------------------------------------------------|-------------------------------------------------------------------------|
 | System tray + badge         | Native OS tray via Tauri plugin                       | `document.title` badge count; favicon overlay                           |
 | OS notifications            | Tauri notification plugin                             | Web Notifications API (with permission prompt)                          |
-| Audio device management     | `cpal` via Rust IPC command                           | MediaDevices API (`navigator.mediaDevices.enumerateDevices()`)          |
+| Audio device management     | `cubeb` via Rust IPC command                          | MediaDevices API (`navigator.mediaDevices.enumerateDevices()`)          |
 | `orbit://` URI handling     | Registered OS scheme; Tauri single-instance focus     | Stubbed - not available in browser                                      |
 | DNS SRV resolution          | Rust DNS resolver via IPC                             | Not available; user enters host directly or a server-side resolver endpoint is used |
 | File I/O / large IPC        | Tauri custom protocol handler                         | Standard `fetch` + pre-signed S3 URLs                                   |
