@@ -19,9 +19,13 @@ The IRC history model is unusually cache-friendly:
   post-delivery mutations are retractions (rendered as a *tombstone* overlay, never a content edit -
   see [Retractions](../02-components/01-uplink/01-overview.md#retractions)) and, post-MVP, editing.
   It is a write-once store with rare overlay events, not a cache-coherence problem.
-- **There is a stable server-assigned dedup key.** Every message carries a `msgid` (`message-ids`,
-  the primary/dedup key) and an authoritative `server-time` (the sort key). Live messages,
-  `echo-message` self-copies, and `chathistory` replays all collapse to one record by `msgid`.
+- **There is a stable server-assigned dedup key for content.** Every `PRIVMSG`/`NOTICE` carries a
+  `msgid` (`message-ids`, the primary/dedup key) and an authoritative `server-time` (the sort key).
+  Live messages, `echo-message` self-copies, and `chathistory` replays all collapse to one record by
+  `msgid`. The exceptions are lines with no `msgid` - presence events (`JOIN`/`PART`) from
+  `event-playback`, and replays from servers that omit the tag. Those get a deterministic synthetic
+  key and dedupe by a `type + author + text + server-time` signature, so the same event from any
+  delivery path still collapses to one record.
 - **Delivery is already batched.** `chathistory` responses arrive inside a `batch`, pre-chunked by
   the server. The cache writes a batch as a unit; the renderer consumes it incrementally.
 
@@ -56,27 +60,32 @@ from colliding. Two logical stores:
 
 | Store      | Key                          | Holds |
 |------------|------------------------------|-------|
-| `messages` | `msgid` (with a `[target, server_time]` index) | One record per delivered message |
+| `messages` | `msgid` - server `msgid`, or a synthetic `evt:*` key for keyless lines (with a `[target, server_time]` index) | One record per delivered line |
 | `buffers`  | `target` (channel/DM name)   | Per-target metadata: oldest/newest cached `msgid` and timestamp, cached count, last reconcile time, cap override |
 
 A `messages` record stores exactly what the renderer and search need:
 
 ```ts
 interface CachedMessage {
-  msgid: string            // primary key, server-assigned (message-ids)
+  msgid: string            // primary key: server msgid, or a synthetic evt:* key for keyless lines
   target: string           // channel or DM this belongs to
   serverTime: number       // sort key, from server-time (epoch ms)
   account: string | null   // server-asserted author identity (account-tag), null for unauthenticated
   nick: string             // nick at send time (display only; account is authoritative)
-  type: "privmsg" | "notice" | "action"
+  type: "privmsg" | "notice" | "action" | "join" | "part"
   text: string
   tags: Record<string, string> // surviving +orbit/* and +draft/* tags (reply ref, reactions, etc.)
   redacted?: boolean       // tombstone overlay; original text is NOT retained when set
+  edited?: boolean         // set when text was edited in place (post-MVP)
 }
 ```
 
-Dedup is always by `msgid`: the live socket path and the `chathistory` path upsert into the same
-store, so overlaps resolve to a single record rather than a visible duplicate.
+Dedup is by `msgid` wherever the server provides one: the live socket path and the `chathistory`
+path upsert into the same store, so overlaps resolve to a single record rather than a visible
+duplicate. Keyless lines (presence events, msgid-less replays) carry a deterministic synthetic key
+and additionally collapse by a content + `server-time` signature, giving the same single-record
+guarantee. The synthetic key is never surfaced as a real `msgid`, so it cannot anchor a
+`CHATHISTORY` request.
 
 ## Seeding, Paging, and the Sliding Window
 
@@ -205,7 +214,15 @@ never what is *persisted*.
   amortize transaction overhead (IndexedDB setup, SQLite write locks).
 - Retractions call `markRedacted(msgid)`, setting the tombstone flag and dropping stored `text`;
   original content is never retained, matching the server contract.
-- Edits (post-MVP) update the record's `text` in place, keyed by `msgid`.
+- Edits (post-MVP) update the record's `text` in place, keyed by `msgid`. The `edited` flag is
+  reserved on `CachedMessage` so the overlay is representable ahead of the feature.
+- Presence events (`JOIN`/`PART`) from `event-playback` are persisted too, keyed on their synthetic
+  `evt:*` id, so scrollback renders them consistently rather than only when a live replay happens to
+  include them.
+- `server-time` is the sort key, not arrival order. `event-playback` can deliver an old-stamped line
+  live, so the live window inserts it at its `server-time` position rather than appending (see
+  [Memory Discipline](01-desktop.md#memory-discipline)); cache reads are already
+  `[target, server_time]`-ordered, so prefill and paging return correct order for free.
 
 **Invalidation and clearing.** Records are immutable, so there is almost nothing to invalidate. Two
 clearing paths: **user-initiated** (the [Storage management surface](#storage-management-surface))
@@ -264,7 +281,7 @@ What the design gets right:
 - **Instant target switches** via prefill; network only fills the tail delta.
 - **Bounded DOM** regardless of buffer size via the sliding window plus incremental rendering.
 - **Reduced server load** - scrollback and reconnection are deltas, not full re-pulls.
-- **Trivial coherence** - immutable, `msgid`-keyed records with tombstone overlays; no invalidation graph.
+- **Trivial coherence** - immutable, stably-keyed records (`msgid`, or a synthetic key for keyless lines) with tombstone overlays; no invalidation graph.
 
 Tracked follow-ups (not MVP blockers):
 
