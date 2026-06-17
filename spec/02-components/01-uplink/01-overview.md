@@ -254,9 +254,7 @@ are a channel operator. Clients cannot forge a retraction for another user's mes
 
 **Message editing** (`+orbit/msg-amend`) is not standardized in IRC yet. There is active draft work
 on in-place editing across the IRC ecosystem; Orbit follows it and handles editing at the client and
-tag layer in the meantime. If Ergo or IRCv3 adopts a standard, the Orbit client adopts it too;
-`+orbit/msg-amend` is an interim tag, not a long-term design. Deletion already exists via
-`draft/message-redaction`.
+tag layer in the meantime. If Ergo or IRCv3 adopts a standard, the Orbit client adopts it too.
 
 ### Replies
 
@@ -337,7 +335,7 @@ is sent to the parent channel on subsequent replies.
 ### The `+orbit/msg-thread` Signal Tag
 
 The `+orbit/msg-thread` tag is sent as a `TAGMSG` to the parent channel **only when the thread is
-first created** - not on every reply. This is a creation signal, not an activity signal.
+first created**.
 
 Its purpose is **discovery**: Orbit clients loading history via `chathistory` can find existing
 threads by scanning for `+orbit/msg-thread` TAGMSGs. The `chathistory` stream for the parent
@@ -397,7 +395,7 @@ Other trade-offs:
 - **Client-managed lifecycle.** Thread creation (JOIN, mode setting, TOPIC, TAGMSG) is orchestrated by the Orbit client. If a client crashes mid-creation, the thread channel may exist in a partially-initialized state. This is recoverable - subsequent clients joining the same thread channel will set the correct state.
 - **IRC clients see flat channels.** An IRC user who discovers a thread channel sees it as an ordinary channel with a message as its topic. This is functional but lacks the visual context that Orbit clients provide.
 
-This is an honest trade-off. The sub-channel approach works on any existing IRC server without modification. Orbit clients abstract the mechanics entirely - users see a thread panel, not IRC primitives. The experience is comparable to threading in Slack or Teams, which also took years to mature. Communities that operated without threads (including Discord, which still does not have threaded conversations - its "Threads" are closer to ephemeral sub-channels, and its "Forum" channels are a distinct forum-like structure) demonstrate that threading is a nice-to-have, not a blocker.
+This is an honest trade-off. The sub-channel approach works on any existing IRC server without modification. Orbit clients abstract the mechanics entirely - users see a thread panel. The experience is comparable to threading in Slack or Teams, which also took years to mature. Communities that operated without threads (including Discord, which still does not have threaded conversations - its "Threads" are closer to ephemeral sub-channels, and its "Forum" channels are a distinct forum-like structure) demonstrate that threading is a nice-to-have, not a blocker.
 
 ## Protocol Posture
 

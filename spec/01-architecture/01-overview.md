@@ -72,6 +72,8 @@ sequenceDiagram
 
 [Satellite](../02-components/02-satellite.md) is a fully independent media service. Clients negotiate directly with the Satellite. Satellite can also be used **entirely without Uplink** - a third-party app or website can connect directly via a `satellite://` link with no IRC involvement.
 
+**There is no orchestrator bot.** Satellite is an independent service that clients talk to directly.
+
 ### Via Uplink (IRC-signaled)
 
 ```mermaid
