@@ -89,6 +89,7 @@ pnpm ready              # gate: vp check && vp run -r test && vp run -r build
 pnpm dev                # web dev server (Vite, runs apps/web)
 vp run -r build         # build every package and app
 vp run -r test          # run every test suite
+vp create               # create a new app/package
 ```
 
 Per target, build/dev are scoped to the workspace package:
