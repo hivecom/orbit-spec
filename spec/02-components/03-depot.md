@@ -238,7 +238,7 @@ Depot verifies the credential, checks the metadata store to confirm the authenti
 
 ### By server operators
 
-Operators can always delete files at the backend level (MinIO console, AWS S3 management, `mc rm`, or simply removing files from disk under the `fs` driver) regardless of credential configuration. Depot does not gate operator-level access. When an operator deletes a file out of band, the metadata row (if any) becomes orphaned and the periodic cleanup job reconciles it automatically.
+Operators can always delete files at the backend level (MinIO console, AWS S3 management, `mc rm`, or simply removing files from disk under the `fs` driver) regardless of credential configuration. Depot does not gate operator-level access. When an operator deletes a file out of band, the metadata row (if any) becomes orphaned and [reconciliation](#metadata-reconciliation) prunes it automatically.
 
 ### Anonymous uploads
 
@@ -313,13 +313,45 @@ When any stateful capability is enabled (quotas, deletion, audit, API keys, reci
 | `content_type` | MIME type |
 | `original_filename` | Original filename as provided by the client |
 | `uploaded_at` | Timestamp of presign URL issuance |
+| `completed` | Whether the upload finished; drives [reconciliation](#metadata-reconciliation) |
 | `allowed_recipients` | (NEXT) account subs permitted to download a private file |
 
 SQLite is sufficient for most single-server deployments. Postgres is supported for operators who already have one.
 
-The metadata row is written at **presign time**, not at upload completion. The presigned URL constrains the upload (size, content type, expiry), so the row is a reliable record of intent. If the client never completes the upload, the row is orphaned; a periodic cleanup job reconciles metadata against actual stored objects and prunes stale rows.
+The metadata row is written at **presign time**, not at upload completion. The presigned URL constrains the upload (size, content type, expiry), so the row is a reliable record of intent. If the client never completes the upload, the row is orphaned; [reconciliation](#metadata-reconciliation) prunes it.
 
 When only `anonymous` is enabled, no metadata is stored and Depot is stateless.
+
+## Metadata Reconciliation
+
+Because the metadata row is written at presign time, the set of rows and the set of actually-stored objects can drift apart. Depot reconciles them with a background job. Two kinds of drift occur:
+
+- **Orphaned row** - a row with no stored object. The usual cause is an upload that was presigned but never completed (the client cancelled, failed, or let the URL expire). It also happens when an operator deletes an object out of band at the backend. Until reconciled, an orphaned row counts against the uploader's quota for bytes that do not exist.
+- **Orphaned object** - a stored object with no row. This happens if a delete removes the row but the subsequent object delete fails, or from out-of-band writes. The object is untracked: attributed to no account and counted in no quota.
+
+### Record completion instead of scanning
+
+The naive approach - list every row and probe the backend for each object - is correct but scales poorly. The design instead records upload completion, so finding orphans is a cheap indexed query rather than a full set-difference:
+
+- **`fs` driver** - Depot proxies the bytes, so it observes the PUT finishing and marks the row `completed` inline.
+- **`s3` driver** - Depot is out of the data path and never sees the transfer, so completion is driven by an S3 event notification (or equivalent) fired when the object lands; Depot marks the row `completed` on that event.
+
+Finding orphaned rows then reduces to `completed = false AND uploaded_at < now - grace`, a query over a small tail of recent rows. A full scan remains available as an occasional integrity check, not the hot path.
+
+### The grace period
+
+Reconciliation MUST act only on rows older than the presigned URL's lifetime plus a margin. A freshly presigned row legitimately has no object yet - the client may still be uploading - so pruning it would delete the metadata of an in-flight upload. Because `uploaded_at` is the presign timestamp, the rule is: a row is a deletion candidate only when `now - uploaded_at > presign_ttl + margin`. The same caution applies when deleting orphaned objects, where a concurrent upload may create the object between the existence check and the delete.
+
+### Coordination at scale
+
+In a horizontally scaled deployment, reconciliation must not run redundantly on every instance:
+
+- The work list is the metadata store itself; it is never copied elsewhere. Instances page through it with a keyset cursor.
+- Mutual exclusion is the baseline: a single leader runs the sweep, held by a Postgres advisory lock (already present in the scale shape) or a Redis lock, so instances do not race to delete the same rows.
+- Within an instance, the per-object backend checks fan out across a worker pool.
+- Only if one instance cannot keep up is the key space partitioned across instances (for example by `object_key` hash range) via the coordination layer. This is a last resort, not the default.
+
+Consistent with the rest of Depot, the metadata store is the source of truth and the coordination layer (Redis) only coordinates the work, never holds it.
 
 ## Upload Destinations (Places)
 
