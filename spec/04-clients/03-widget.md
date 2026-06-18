@@ -52,7 +52,7 @@ Widget embedders can customize the widget's appearance to match their site by pa
 
 ```html
 <iframe
-  src="https://app.hivecom.net/?mode=widget&server=irc.hivecom.net&channel=general&theme[accent]=3b82f6&theme[background]=1e1e2e"
+  src="https://app.hivecom.net/?mode=widget&server=irc.hivecom.net&channel=general&theme[accent]=3b82f6&theme[light-mode]=dark"
   width="400"
   height="600"
   allow="microphone; camera"
@@ -61,18 +61,13 @@ Widget embedders can customize the widget's appearance to match their site by pa
 
 **Supported theme parameters:**
 
-| Parameter | VUI token | Default |
-|---|---|---|
-| `theme[accent]` | `--color-accent` | VUI default |
-| `theme[background]` | `--color-background` | VUI default |
-| `theme[surface]` | `--color-surface` | VUI default |
-| `theme[text]` | `--color-text` | VUI default |
-| `theme[radius]` | `--border-radius-base` | VUI default |
+| Parameter | Default | Type |
+|---|---|--|
+| `theme[color-mode]` | `system` | `light`, `dark`, `system` |
+| `theme[light-accent]` | `#000000` | `CSSHexColor` |
+| `theme[dark-accent]` | `#FFFFFFF`| `CSSHexColor` |
+| `theme[radius]` | `8px`| `CSSValue` | 
 
-Values are interpreted as hex color strings (without the `#`) for color tokens, and as CSS values for non-color tokens. The widget applies these as inline CSS custom property overrides on its root element, scoped to the iframe's document - they have no effect on the host page.
+Values are interpreted as hex color strings (without the `#`) for color tokens, and as CSS values for non-color tokens.
 
 Only the tokens listed above are exposed as theme parameters. Full VUI token override is not supported - embedders who need deeper customization should self-host the web app and modify the VUI theme directly.
-
-## Script-Tag Embed Option (Dropped)
-
-The script-tag embed approach (previously referred to as Option B in earlier drafts) is dropped. An iframe is the correct primitive for embedding a full interactive application - it provides origin isolation, its own JS context, and browser-managed permissions. A script-tag approach would require injecting the app into the host page's DOM and sharing its JS environment, which creates security and compatibility surface that is not warranted.
