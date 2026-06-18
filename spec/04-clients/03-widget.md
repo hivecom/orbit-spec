@@ -64,8 +64,8 @@ Widget embedders can customize the widget's appearance to match their site by pa
 | Parameter | Default | Type |
 |---|---|--|
 | `theme[color-mode]` | `system` | `light`, `dark`, `system` |
-| `theme[light-accent]` | `#000000` | `CSSHexColor` |
-| `theme[dark-accent]` | `#FFFFFFF`| `CSSHexColor` |
+| `theme[light-accent]` | `#93EFD8` | `CSSHexColor` |
+| `theme[dark-accent]` | `#93EFD8`| `CSSHexColor` |
 | `theme[radius]` | `8px`| `CSSValue` | 
 
 Values are interpreted as hex color strings (without the `#`) for color tokens, and as CSS values for non-color tokens.
