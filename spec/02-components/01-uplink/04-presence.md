@@ -79,8 +79,10 @@ all visible users without additional requests.
 5. All clients sharing a channel with this user receive the update immediately via
    `draft/metadata-2` subscription.
 
-Avatars are stored in Depot under a conventional path: `avatars/{account_hash}/avatar.webp`. Old
-avatars are overwritten - one avatar per account.
+Avatars are stored in a Depot [place](../03-depot.md#upload-destinations-places) configured with the
+`account` key strategy, so each user maps to a single deterministic key (e.g. `avatars/{owner}/avatar.webp`)
+and a re-upload overwrites the previous one. The `{owner}` segment derives from the stable account
+subject, so a rename does not orphan the avatar. See [Object Key Structure](../03-depot.md#object-key-structure).
 
 ### Server Configuration
 

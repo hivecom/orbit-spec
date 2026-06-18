@@ -95,7 +95,8 @@ Authorization: Bearer <JWT>        # when oidc or api_key credential is used
 {
   "filename": "screenshot.png",
   "size": 2048576,
-  "content_type": "image/png"
+  "content_type": "image/png",
+  "place": "uploads"                 # optional; falls back to default_place
 }
 ```
 
@@ -320,22 +321,48 @@ The metadata row is written at **presign time**, not at upload completion. The p
 
 When only `anonymous` is enabled, no metadata is stored and Depot is stateless.
 
+## Upload Destinations (Places)
+
+A *place* is a named upload destination with its own policy. The client names a place in the presign request; it never names the object key. Depot derives the key from the verified identity, so a caller can only ever write within their own namespace.
+
+Every place is configured - there is no built-in default place. This keeps Depot versatile: a deployment can offer a permissive catch-all, or expose only tightly-scoped destinations (avatars, banners) and refuse everything else. A place carries:
+
+| Field | Purpose |
+|-------|---------|
+| `prefix` | Object-key prefix bytes land under (e.g. `orbit/user-content/avatars`). Defaults to the place name. |
+| `key` | Key strategy: `dump` (random per upload; place-link-forget) or `account` (deterministic per account; re-upload overwrites). Defaults to `dump`. |
+| `max_size` | Per-place size cap; falls back to `limits.max_file_size`. |
+| `allowed_mime` | MIME whitelist; empty means any. |
+| `require_identity` | Reject anonymous uploads. Implied by `key = "account"`. |
+
+A permissive place (dump strategy, no MIME restriction) is the catch-all. An operator may name one as `default_place`, used when a presign request omits a place; leaving `default_place` unset forces every request to name one explicitly. Restricted places are pure configuration and need no code changes - a bot extension or a new content class is just another entry.
+
 ## Object Key Structure
 
-The object key encodes the uploader identity for easy grouping, admin tooling, and backend-level lifecycle policies:
+The client never supplies the object key. Depot derives it from the resolved place and the verified identity, so placement always encodes who the uploader is and which destination they targeted.
+
+For the `dump` strategy:
 
 ```
-uploads/{account_hash}/{timestamp}-{random}/{filename}
+{place.prefix}/{owner}/{timestamp}-{random}/{filename}
+```
+
+For the `account` strategy (deterministic, so a re-upload replaces the previous object):
+
+```
+{place.prefix}/{owner}/{filename}
 ```
 
 | Segment | Purpose |
 |---------|---------|
-| `uploads/` | Top-level prefix; separates user uploads from other contents (avatars, etc.) |
-| `{account_hash}` | A short hash of the uploader's account name; groups files by user at the backend level without exposing the raw account name in the URL |
-| `{timestamp}-{random}` | Collision-free directory per upload; timestamp enables chronological listing |
+| `{place.prefix}` | The target place's prefix; separates content classes (uploads, avatars, ...) |
+| `{owner}` | Identifies the uploader (see below); groups a user's files for admin tooling without exposing the raw account name in the URL |
+| `{timestamp}-{random}` | Collision-free directory per upload; the timestamp sorts lexically, so a listing is chronological (dump strategy only) |
 | `{filename}` | Original filename, sanitized; preserves human-readable context in the URL |
 
-For anonymous uploads (no identity), `{account_hash}` is replaced with `_anonymous`.
+The `{owner}` segment is a short hash of the uploader's **stable account subject** (the OIDC `sub` claim) together with the issuer - never the username. A user can rename without moving any of their files, and the same username on two different identity providers stays distinct. For anonymous uploads (no identity), `{owner}` is the reserved segment `_anonymous`, which cannot collide with a real account hash.
+
+Ownership is not load-bearing in the path for authorization - it is recorded in the [metadata store](#metadata-store), the source of truth for quota, deletion, and audit. The path encodes owner and time for admin grouping and per-user chronological listing; cross-cutting queries (newest across all users) are answered by the store.
 
 ## The +orbit/file Tag
 
@@ -368,7 +395,8 @@ Orbit clients discover a domain's Depot instance via a `_depot._tcp` DNS SRV rec
 ```toml
 [depot]
 # Axis 1: storage driver - where bytes live
-driver = "s3"                       # "s3" | "fs"
+driver        = "s3"                # "s3" | "fs"
+default_place = "uploads"           # place used when a request omits one; unset = always require a named place
 
 [depot.s3]                           # used when driver = "s3"
 endpoint = "https://s3.example.com"
@@ -393,6 +421,19 @@ oneshot_rate_limit  = "10/min"       # /upload proxies bytes; throttle harder
 
 [depot.quota_overrides]
 "botaccount" = "5GB"
+
+# Upload destinations. Every place is declared; there is no built-in default.
+# A permissive place (no allowed_mime, dump key) is the catch-all; restricted
+# places add their own rules for specific content classes.
+[depot.places.uploads]
+# key defaults to "dump"; prefix defaults to the place name ("uploads")
+
+[depot.places.avatars]
+prefix           = "orbit/user-content/avatars"
+key              = "account"         # deterministic per account; re-upload overwrites
+max_size         = "2MB"
+allowed_mime     = ["image/png", "image/jpeg", "image/webp"]
+require_identity = true              # implied by key = "account"
 
 [depot.store]
 backend = "sqlite"                   # "sqlite" | "postgres"; only needed for stateful capabilities
