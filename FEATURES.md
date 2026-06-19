@@ -24,7 +24,7 @@ The short version:
 | Files and inline media | + |
 | Presence and rich status | + |
 | Desktop + web + PWA | + |
-| Embeddable widget | + |
+| Embeddable widget | + (as iframe) |
 | Mobile native app | - |
 | Push notifications | + (native `draft/webpush`) |
 | OIDC / SSO / MFA | + |
@@ -41,7 +41,7 @@ The short version:
 
 Orbit does not fork the IRC server. The Uplink is any stock IRCv3 server (Ergo is the reference), and Orbit conforms to IRCv3: whatever Ergo implements, the Orbit client supports. The one text feature IRC has not standardized yet is message editing, which Orbit handles at the client layer until a standard lands.
 
-The two rows marked `-` for enterprise compliance tools and application platform are not gaps - they are explicit decisions. See [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md) for the reasoning.
+For information about enterprise tool support, see [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md).
 
 ## Legend
 
