@@ -5,8 +5,7 @@ management), and HistServ (history access). These are the standard IRC services 
 a user sends commands to a service bot via `PRIVMSG NickServ :IDENTIFY ...` and reads its
 replies as `NOTICE`s. Decades of IRC clients drive these services by typing raw commands.
 
-Orbit treats services as **implementation details of the Uplink deployment**, not as a user
-interface. The guiding principle:
+Orbit treats services as **implementation details of the Uplink deployment**.
 
 > Orbit clients express user **intent** (claim my account, stay reachable offline, ban a user,
 > register a channel). The client translates intent into the appropriate service commands behind
@@ -184,7 +183,7 @@ Because the abstraction depends on never leaking service chatter, clients MUST h
 | Source | Trigger | Routing |
 |---|---|---|
 | NickServ/ChanServ | Reply to a client-initiated background op (probe, `SET`) | Parsed silently; never opens a buffer |
-| NickServ/ChanServ | Unsolicited (server-initiated reminder, e.g. unverified-email notice) | Reflected as structured UI state; not raw text |
+| NickServ/ChanServ | Unsolicited (server-initiated reminder, e.g. unverified-email notice) | Reflected as structured UI state|
 | HistServ | Any | Suppressed from unread/mention/badge state |
 | Any service | Power-user/raw mode explicitly enabled | Shown verbatim in a service query buffer |
 

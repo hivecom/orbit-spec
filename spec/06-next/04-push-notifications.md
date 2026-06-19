@@ -35,7 +35,7 @@ The delivery layer carries Ergo's `draft/webpush` events to the appropriate plat
 - **UnifiedPush** - Android FOSS alternative to FCM; enables fully Google-free push delivery on Android
 - **Web Push** - the PWA subscribes via the standard browser Push API and receives notifications through the same `draft/webpush` flow
 
-All of these are configured by the server operator. Hivecom is not in the notification delivery path.
+All of these are configured by the server operator.
 
 For Android, UnifiedPush support means operators can route notifications through any compatible distributor (e.g., ntfy, Gotify), removing the FCM dependency entirely. This makes a fully FOSS, Google-free push stack possible.
 
