@@ -60,7 +60,7 @@ from colliding. Two logical stores:
 
 | Store      | Key                          | Holds |
 |------------|------------------------------|-------|
-| `messages` | `msgid` - server `msgid`, or a synthetic `evt:*` key for keyless lines (with a `[target, server_time]` index) | One record per delivered line |
+| `messages` | `msgid` - server `msgid`, or a synthetic `evt:*` key for keyless lines (with a `[target, server_time, msgid]` index) | One record per delivered line |
 | `buffers`  | `target` (channel/DM name)   | Per-target metadata: oldest/newest cached `msgid` and timestamp, cached count, last reconcile time, cap override |
 
 A `messages` record stores exactly what the renderer and search need:
@@ -69,7 +69,7 @@ A `messages` record stores exactly what the renderer and search need:
 interface CachedMessage {
   msgid: string            // primary key: server msgid, or a synthetic evt:* key for keyless lines
   target: string           // channel or DM this belongs to
-  serverTime: number       // sort key, from server-time (epoch ms)
+  serverTime: number       // sort key, from server-time (epoch ms); msgid is the tiebreaker
   account: string | null   // server-asserted author identity (account-tag), null for unauthenticated
   nick: string             // nick at send time (display only; account is authoritative)
   type: "privmsg" | "notice" | "action" | "join" | "part"
@@ -82,10 +82,13 @@ interface CachedMessage {
 
 Dedup is by `msgid` wherever the server provides one: the live socket path and the `chathistory`
 path upsert into the same store, so overlaps resolve to a single record rather than a visible
-duplicate. Keyless lines (presence events, msgid-less replays) carry a deterministic synthetic key
-and additionally collapse by a content + `server-time` signature, giving the same single-record
-guarantee. The synthetic key is never surfaced as a real `msgid`, so it cannot anchor a
-`CHATHISTORY` request.
+duplicate. `server-time` has millisecond resolution, so collisions are expected (a burst, or two
+servers replaying the same second); the ordering index is `[target, server_time, msgid]`, with
+`msgid` as a stable secondary sort key so equal timestamps still yield a deterministic, repeatable
+order across paging and reconnects. Keyless lines (presence events, msgid-less replays) carry a
+deterministic synthetic key and additionally collapse by a content + `server-time` signature, giving
+the same single-record guarantee. The synthetic key is never surfaced as a real `msgid`, so it
+cannot anchor a `CHATHISTORY` request.
 
 ## Seeding, Paging, and the Sliding Window
 
