@@ -4,15 +4,13 @@
 
 Orbit is a modern client layer built on IRC. It targets communities, gaming groups, and privacy-conscious users who want to own their infrastructure without giving up the accessibility that made centralized platforms the default. A single Uplink instance hosts many communities simultaneously. Channels are lightweight and porous - users belong to many at once. There are no walled-off servers, no per-community bureaucracy, and no proprietary protocol underneath.
 
-The system is composed of four independent named layers. **Uplink** is the IRC backbone - an Ergo instance running IRCv3, handling text messaging, presence, channel state, and signaling. Uplink is an adopted role, not software Orbit builds: any stock IRCv3 server, with Ergo as the reference implementation. There is no Uplink fork; Orbit runs the server stock and builds its value in the client layer, Satellite, and Depot. **Satellite** is the real-time media layer - an independent WebRTC service (LiveKit SFU) handling voice, video, and streaming. **Depot** is the storage layer - a thin gateway over an S3-compatible backend or local disk for file uploads and avatars. A fourth named role, **Transponder**, refers to any OIDC-compliant identity provider the operator deploys; both Uplink and Satellite can consume it independently for identity verification. Deployments without a Transponder degrade gracefully to Ergo's built-in NickServ/SASL.
+The system is composed of four independent layers. **Uplink** is the IRC backbone - an Ergo instance running IRCv3, handling text messaging, presence, channel state, and signaling. Uplink is an adopted role: any stock IRCv3 server, with Ergo as the reference implementation. There is no Uplink fork; Orbit runs the server stock and builds its value in the client layer, Satellite, and Depot. **Satellite** is the real-time media layer - an independent WebRTC service (LiveKit SFU) handling voice, video, and streaming. **Depot** is the storage layer - a thin gateway over an S3-compatible backend or local disk for file uploads and avatars. A fourth named role, **Transponder**, refers to any OIDC-compliant identity provider the operator deploys; both Uplink and Satellite can consume it independently for identity verification. Deployments without a Transponder degrade gracefully to Ergo's built-in NickServ/SASL.
 
-The goal of the MVP is to ship a working product - not a prototype, not a demo. Text chat with history, group voice via Satellite, an anonymous web widget for embedding on external sites, and a lightweight desktop client. Every component must be functional enough for a small community to use daily.
+The goal of the MVP is to ship a working product. Text chat with history, group voice via Satellite, an anonymous web widget for embedding on external sites, and a lightweight desktop client. Every component must be functional enough for a small community to use daily.
 
 This document covers the MVP architecture. Advanced features - gaming overlays, Media over QUIC transport, Leptos/WASM rewrites, federation, mobile clients, and end-to-end encryption - are deferred to the research roadmap. If a feature is not in this document, it is not in the MVP.
 
 ## System Diagram
-
-Orbit is composed of four named services, each operating independently. The Orbit client (desktop or web) is the only thing that composes them - no service depends on another at runtime.
 
 ```mermaid
 flowchart LR
@@ -39,8 +37,6 @@ flowchart LR
 ```
 ## Components
 
-Each of the four named services operates independently. Below is a brief summary; see each component page for full detail.
-
 | Component | Role | MVP Status |
 |-----------|------|------------|
 | [Uplink](../02-components/01-uplink/01-overview.md) | IRC text layer (Ergochat/IRCv3) - text chat, presence, channel state, and media signaling | MVP |
@@ -50,7 +46,7 @@ Each of the four named services operates independently. Below is a brief summary
 
 ## IRC Communication
 
-All text, presence, and signaling flows through [Uplink](../02-components/01-uplink/01-overview.md) over a standard IRC connection. Orbit clients connect the same way any IRCv3 client does - there is no proprietary gateway.
+All text, presence, and signaling flows through [Uplink](../02-components/01-uplink/01-overview.md) over a standard IRC connection. Orbit clients connect the same way any IRCv3 client does.
 
 ```mermaid
 sequenceDiagram
@@ -74,9 +70,9 @@ sequenceDiagram
 
 ## Satellite Session Flow
 
-[Satellite](../02-components/02-satellite.md) is a fully independent media service. Uplink carries only the invite signal - it never touches media. Clients negotiate directly with the Satellite. Satellite can also be used **entirely without Uplink** - a third-party app or website can connect directly via a `satellite://` link with no IRC involvement.
+[Satellite](../02-components/02-satellite.md) is a fully independent media service. Clients negotiate directly with the Satellite. Satellite can also be used **entirely without Uplink** - a third-party app or website can connect directly via a `satellite://` link with no IRC involvement.
 
-**There is no orchestrator bot.** Satellite is an independent service. Clients talk to them directly. Uplink handles text transport and signaling only.
+**There is no orchestrator bot.** Satellite is an independent service that clients talk to directly.
 
 ### Via Uplink (IRC-signaled)
 

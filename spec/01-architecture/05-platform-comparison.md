@@ -55,7 +55,7 @@ Where Orbit is behind, this document says so plainly. The goal is to give operat
 
 ### Text chat basics
 
-Orbit covers channels, DMs, group private conversations, persistent server-side history, read markers synced across devices, basic Markdown, emoji, and link/media previews. This is functionally on par with the competition at MVP. Channel hierarchy is rendered client-side using slash notation (`#dev/frontend`), which is an Orbit convention layered over standard IRC channel names - not a server-enforced namespace.
+Orbit covers channels, DMs, group private conversations, persistent server-side history, read markers synced across devices, basic Markdown, emoji, and link/media previews. This is functionally on par with the competition at MVP. Channel hierarchy is rendered client-side using slash notation (`#dev/frontend`), which is an Orbit convention layered over standard IRC channel names.
 
 ### Message actions
 
@@ -63,7 +63,7 @@ Orbit covers channels, DMs, group private conversations, persistent server-side 
 
 ### Files and media
 
-S3-compatible storage with inline image, audio, and video previews is in MVP. Per-user quotas are supported in OIDC mode; open-access instances use rate limiting. Operator-controlled storage backend (MinIO, AWS S3, R2, B2) is a meaningful advantage over hosted platforms where storage costs and policies are opaque. No file versioning or collaborative editing - that is not planned.
+S3-compatible storage with inline image, audio, and video previews is in MVP. Per-user quotas are supported in OIDC mode; open-access instances use rate limiting. Operator-controlled storage backend (MinIO, AWS S3, R2, B2) is a meaningful advantage over hosted platforms where storage costs and policies are opaque. File versioning or collaborative editing is not planned.
 
 ### Voice and video
 
@@ -79,15 +79,15 @@ This is a model difference, not a gap. Orbit uses IRC channel modes (`+o`, `+v`,
 
 ### Platform reach
 
-Desktop (Tauri v2, Linux/Windows/macOS, ~10-15 MB binary), web app, and PWA are in MVP. An embeddable iframe widget with anonymous guest access is in MVP - something none of the three competitors offer. Native mobile apps (iOS/Android via Tauri v2 Mobile) are a NEXT-track item; the PWA works today on mobile but is not a substitute for a native app in terms of notifications and background behavior.
+Desktop (Tauri v2, Linux/Windows/macOS, ~20 MB binary), web app, and PWA are in MVP. An embeddable iframe widget with anonymous guest access is in MVP - something none of the three competitors offer. Native mobile apps (iOS/Android via Tauri v2 Mobile) are a NEXT-track item; the PWA works today on mobile but is not a substitute for a native app in terms of notifications and background behavior.
 
 ### Notifications
 
-Push notifications are available now: stock Ergo ships native Web Push via `draft/webpush`. In-app notifications also work. Native mobile delivery (FCM, APNs, UnifiedPush) pairs with the NEXT-track native mobile apps, but Web Push covers the web and desktop surfaces today. This is no longer a gap and is not a model difference.
+Push notifications are available now: stock Ergo ships native Web Push via `draft/webpush`. In-app notifications also work. Native mobile delivery (FCM, APNs, UnifiedPush) pairs with the NEXT-track native mobile apps, but Web Push covers the web and desktop surfaces today.
 
 ### Bots and integrations
 
-Any IRC bot, in any language, on any framework works with Orbit on day one - no Orbit-specific API required. This is a meaningful advantage: the IRC bot ecosystem is decades old and large. A webhook bridge and REST API gateway for Discord/Slack-style integrations are NEXT-track items. Until the webhook gateway ships, teams relying heavily on Slack-style workflow automations will need to adapt or bridge.
+Any IRC bot, in any language, on any framework works with Orbit on day one. This is a meaningful advantage: the IRC bot ecosystem is decades old and large. A webhook bridge and REST API gateway for Discord/Slack-style integrations are NEXT-track items. Until the webhook gateway ships, teams relying heavily on Slack-style workflow automations will need to adapt or bridge.
 
 ### Identity and auth
 
@@ -95,7 +95,7 @@ SASL PLAIN, SCRAM-SHA-256, SASL ANONYMOUS (guests), and OIDC via any compliant p
 
 ### Self-hosting and openness
 
-Orbit is fully self-hostable. The IRC transport is an open, standardized protocol. Any IRCv3-compatible client can connect. No vendor lock-in on the message store, identity provider, file storage, or voice infrastructure. Discord, Slack, and Teams are closed SaaS platforms with no self-hosting path. This is a structural difference, not a feature comparison.
+Orbit is fully self-hostable. The IRC transport is an open, standardized protocol. Any IRCv3-compatible client can connect. No vendor lock-in on the message store, identity provider, file storage, or voice infrastructure. Discord, Slack, and Teams are closed SaaS platforms with no self-hosting path.
 
 ### Community / server model
 
