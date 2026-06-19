@@ -2,8 +2,6 @@
 
 ## Overview
 
-> **Status: deferred / exploratory.** Federation is not a planned track for now. The text-layer of federation depends on IRC server-to-server linking, which stock IRCv3 servers (including Ergo) do not provide, and there is no planned Orbit fork to deliver it. The identity layer below (Layer 2) is real, standards-based, and useful on its own today, but cross-server federation as a whole has no current implementation path. This document records the conceptual design so it is ready if an implementation path appears, not because it is scheduled.
-
 The MVP is single-server. All users in a community connect to one Orbit server instance. Users on server A cannot communicate with users on server B. Communities are isolated islands. Federation will connect these islands, enabling cross-server communication while preserving each community's autonomy.
 
 A key requirement for federation is **identity bridging**. IRC handles user authentication within its own protocol boundary (SASL, NickServ, `account-tag`), but those assertions are server-scoped. They don't travel outside the IRC connection. When a user connects to a Satellite (a completely separate service), the Satellite has no native way to verify that this person is the same user who is authenticated on IRC. The MVP uses a public join key model, but that model cannot support federation, cross-server trust, or even basic identity display in voice sessions. Identity bridging solves this.
@@ -21,7 +19,7 @@ Two layers:
 
 IRC was designed for multi-server networks from the very beginning - this is one of the reasons it was chosen as the protocol foundation. However, [Ergo](https://ergo.chat/) (Uplink's adopted IRC server) **does not currently support server-to-server linking**. Per the Ergo manual: *"Ergo does not currently support server-to-server linking (federation), meaning that all clients must connect to the same instance."* Horizontal scalability is on the Ergo roadmap but is not scheduled for development in the near term.
 
-Layer 1 is therefore not achievable with stock Ergo today, and there is **no planned Orbit fork** to deliver it. Orbit adopts a stock IRCv3 server rather than maintaining a fork (see [Design Philosophy - Where Orbit's Value Lives](../01-architecture/02-philosophy.md#where-orbits-value-lives)), so server-to-server linking has no current implementation path on Orbit's side. It would arrive only if upstream Ergo (or an alternative stock IRCv3 server) implements linking. Until then, Layer 1 - and federation as a whole - is deferred. The design below is recorded as a conceptual target, not as scheduled work.
+Layer 1 is therefore not achievable with stock Ergo today, and there is **no planned Orbit fork** to deliver it. Orbit adopts a stock IRCv3 server rather than maintaining a fork (see [Design Philosophy - Where Orbit's Value Lives](../01-architecture/02-philosophy.md#where-orbits-value-lives)), so server-to-server linking has no current implementation path on Orbit's side. It would arrive only if upstream Ergo (or an alternative stock IRCv3 server) implements linking. The design below is recorded as a conceptual target.
 
 Basic IRC linking (multiple servers forming one logical network) is not the same as true federation (independent organizations running independent servers that interoperate as peers). True federation raises hard questions:
 
