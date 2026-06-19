@@ -3,7 +3,7 @@
 
 Platform defines a target-agnostic API interface, which the `core` can consume. It does not need to conditionally implement logic based on the platform, it will simply call the method. If said API is not available? Then it's a noop. It is heavily encouraged to never perform conditional logic like that inside `core` - but in some cases it's necessary. Like not rendering a part of UI if the platform does not support it.
 
-Here's an example of a the Platform interface (subject to change):
+Here's an example of the Platform interface (subject to change):
 
 ```ts
 export interface Platform {
@@ -17,7 +17,7 @@ export interface Platform {
 }
 ```
 
-The `core` can anywhere within call the `usePlatform` composable which exposes the globally injected interface based on the active platform. This is what keeps the component tree environment-agnostic and `core` headlessly testable.
+The `core` can call the `usePlatform` composable anywhere, which exposes the globally injected interface based on the active platform. This is what keeps the component tree environment-agnostic and `core` headlessly testable.
 
 The factory adapter simply nulls out what the current platform cannot do:
 
@@ -37,7 +37,7 @@ export function createWebPlatform(): Platform {
 
 ## Targets
 
-The platform adapters allows application to only differ in their initialization - the `main.ts` file. 
+The platform adapters allow applications to differ only in their initialization - the `main.ts` file.
 
 
 ```ts
@@ -46,10 +46,10 @@ import { createOrbitApp } from "core"
 import { createWebPlatform } from "platform"
 import App from "./App.vue"
 
-// Platform exposes the create web platform interface
+// Platform exposes the create web platform factory
 const platform = createWebPlatform()
 
-// Orbit core (or ui) exposes an enhanced vue creation app composable which automatically provides the platform, routing and globals  
+// Orbit core (or ui) exposes an enhanced Vue app creation composable which automatically provides the platform, routing, and globals
 const app = createOrbitApp(App, platform)
 
 // This is where the application starts, for safety we define it explicitly
@@ -86,7 +86,7 @@ const platform = usePlatform()
 
 - **No platform imports inside `core`.** A lint boundary forbidding `@tauri-apps/api`, and discouraging raw `navigator.*`/`window.*` capability access, inside `packages/core` is the cheap mechanical guard. If core needs a capability, add a port to the contract.
 - **No deep imports across packages.** Consume `core` and `platform` through their package entrypoints (`packages/*/src/index.ts`)
-- **Adapters own all the messy parts.** Permission prompts, `enumerateDevices()`, anchor-click downloads, Tauri IPC - all of it lives in their respectable packages
+- **Adapters own all the messy parts.** Permission prompts, `enumerateDevices()`, anchor-click downloads, Tauri IPC - all of it lives in their respective packages
 
 ## Testability
 
