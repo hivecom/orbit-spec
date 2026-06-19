@@ -41,7 +41,7 @@ The short version:
 
 Orbit does not fork the IRC server. The Uplink is any stock IRCv3 server (Ergo is the reference), and Orbit conforms to IRCv3: whatever Ergo implements, the Orbit client supports. The one text feature IRC has not standardized yet is message editing, which Orbit handles at the client layer until a standard lands.
 
-For information about enterprise tool support, see [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md).
+For information about enterprise tools, see [Platform Comparison](spec/01-architecture/05-platform-comparison.md) and [Out of Scope](spec/0A-decisions/04-out-of-scope.md).
 
 ## Legend
 
