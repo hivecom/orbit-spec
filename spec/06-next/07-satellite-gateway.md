@@ -114,4 +114,4 @@ K8s is not required. The gateway works equally well with a static set of nodes d
 
 ## Timeline
 
-The gateway is built when communities outgrow single-node capacity. The single-node Satellite ships first and establishes the API surface that the gateway preserves. Once operators need horizontal scaling, the gateway is the path forward - no client changes, no protocol changes, just a new layer in front of the same nodes.
+The gateway is built when communities outgrow single-node capacity. The single-node Satellite ships first and establishes the API surface that the gateway preserves. Once operators need horizontal scaling, the gateway is the path forward.

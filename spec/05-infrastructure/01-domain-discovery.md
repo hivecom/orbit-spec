@@ -90,8 +90,6 @@ This mechanism is **optional but RECOMMENDED** for any community that wants web 
 
 ### Uplink Resolution
 
-> **Note:** The original spec contained a mismatch: the client resolution logic (§7.4) tried bare `example.com:6697` first, while operator setup guidance (§9.3) told operators to create an `irc.example.com` A record. The resolution order below reconciles both sections.
-
 Resolution behaviour differs by client type.
 
 **Desktop clients** resolve Uplink in this order:

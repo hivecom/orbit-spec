@@ -6,7 +6,7 @@ This page defines the named components and core concepts used throughout the Orb
 
 ### Uplink
 
-Uplink is the IRC layer of an Orbit deployment - an adopted role, not software Orbit builds. Uplink is any stock IRCv3 server; [Ergo](https://ergo.chat/) is the reference implementation, run with no Orbit-specific patches. All persistent communication - messages, channel membership, message history, user identity - flows through Uplink. It is a standard IRCv3 server: no Orbit-specific plugins, no knowledge of Satellite or Depot at the protocol level. Orbit clients and plain IRC clients connect identically. There is no Uplink fork; Orbit runs the server stock and conforms to IRCv3, supporting whatever stock Ergo implements.
+Uplink is the IRC layer of an Orbit deployment - any stock IRCv3 server; [Ergo](https://ergo.chat/) is the reference implementation, run with no Orbit-specific patches. All persistent communication - messages, channel membership, message history, user identity - flows through Uplink.
 
 -> See [Uplink](../02-components/01-uplink/01-overview.md) for the full specification.
 
@@ -28,7 +28,7 @@ Depot is the storage layer - an S3-compatible object store (MinIO, AWS S3, or eq
 
 ### Transponder
 
-Transponder is a role, not a service. It refers to whatever OIDC-compliant identity provider the server operator deploys (e.g., Keycloak, Authentik, Authelia, Zitadel). Orbit components consume the provider via standard OpenID Connect Discovery - the operator configures a single OIDC issuer URL, and each component discovers endpoints, fetches signing keys (JWKS), and verifies identity tokens independently. Uplink verifies provider JWTs via the auth-script bridge (any provider/algorithm) or, for RS256/EdDSA/HMAC providers, Ergo's native `accounts.jwt-auth` (`IRCV3BEARER`); Satellite and Depot verify JWTs directly against the provider's published keys. Neither Uplink nor Satellite needs to know which provider is in use.
+Transponder refers to whatever OIDC-compliant identity provider the server operator deploys (e.g., Keycloak, Authentik, Authelia, Zitadel). Orbit components consume the provider via standard OpenID Connect Discovery - the operator configures a single OIDC issuer URL, and each component discovers endpoints, fetches signing keys (JWKS), and verifies identity tokens independently. Uplink verifies provider JWTs via the auth-script bridge (any provider/algorithm) or, for RS256/EdDSA/HMAC providers, Ergo's native `accounts.jwt-auth` (`IRCV3BEARER`); Satellite and Depot verify JWTs directly against the provider's published keys.
 
 Transponder is optional: Orbit deployments without an identity provider use Ergochat's built-in NickServ/SASL for IRC authentication and degrade gracefully - voice and video still function, but all Satellite participants appear unverified.
 
@@ -40,7 +40,7 @@ Transponder is optional: Orbit deployments without an identity provider use Ergo
 
 ### Orbit Client
 
-The Orbit client is the application that composes the named services into a unified user experience. It comes in two forms: the [desktop client](../04-clients/01-desktop.md) (Tauri v2 + Vue, targeting Windows, macOS, and Linux) and the [web client / widget](../04-clients/02-web-app.md) (Vue, deployable as a full web app, PWA, or embeddable iframe widget). The Orbit client is the only component that has knowledge of all services - it speaks IRC to Uplink, WebRTC to Satellite, and HTTP to Depot. Third-party clients that speak IRCv3 can interoperate with Uplink without using the Orbit client at all.
+The Orbit client is the application that composes the named services into a unified user experience. It comes in two forms: the [desktop client](../04-clients/01-desktop.md) (Tauri v2 + Vue, targeting Windows, macOS, Linux and mobile) and the [web client / widget](../04-clients/02-web-app.md) (Vue, deployable as a full web app, PWA, or embeddable iframe widget). The Orbit client is the only component that has knowledge of all services - it speaks IRC to Uplink, WebRTC to Satellite, and HTTP to Depot. Third-party clients that speak IRCv3 can interoperate with Uplink without using the Orbit client at all.
 
 ### Orbit Extensions
 
@@ -78,7 +78,7 @@ Direct messages are standard IRC `PRIVMSG` to a nickname. The server stores DM h
 
 ### Message Retractions
 
-Message retractions in the MVP use the IRC-standard `REDACT` command via `draft/message-redaction` (shipped and stable in Ergo). This is server-enforced, not a client-only tag. Orbit clients render a tombstone in place of the retracted message. IRC clients that implement the cap see the message removed. IRC clients without the cap receive a server NOTICE fallback: `*** alice retracted a message ***`. Note that Ergo only advertises the capability when `history.retention.allow-individual-delete: true`; see [Uplink Overview - Message Retractions](../02-components/01-uplink/01-overview.md#message-retractions-and-replies) for the operator requirement.
+Message retractions in the MVP use the IRC-standard `REDACT` command via `draft/message-redaction` and is server-enforced. Orbit clients render a tombstone in place of the retracted message. IRC clients that implement the cap see the message removed. IRC clients without the cap receive a server NOTICE fallback: `*** alice retracted a message ***`. Note that Ergo's `history.retention.allow-individual-delete` must be set to `true`. See [Uplink Overview - Message Retractions](../02-components/01-uplink/01-overview.md#message-retractions-and-replies).
 
 ### Message Storage
 

@@ -42,7 +42,7 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Domain Discovery](05-infrastructure/01-domain-discovery.md) - DNS SRV records, resolution algorithm, per-service discovery
 - [Deployment](05-infrastructure/02-deployment.md) - Component resource requirements, TLS, reference Docker Compose
 - [Monorepo](05-infrastructure/03-monorepo.md) - Monorepo structure, build commands, CI pipeline
-- [Application Seams](05-infrastructure/04-application-seams.md) - How core, platform adapters, and entrypoints hang together at runtime
+- [Platform](05-infrastructure/04-platform.md) - How core, platform adapters, and entrypoints hang together at runtime
 
 ## Next
 

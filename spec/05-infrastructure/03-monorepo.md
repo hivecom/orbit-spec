@@ -5,12 +5,12 @@ The frontend, Tauri shell, and shared modules live in a single monorepo. This is
 There are two build outputs: the Tauri binary (desktop) and the web app / PWA (web). There are three runtime contexts: desktop, web, and widget. All three are served from the same `packages/core` source with a different platform adapter from `packages/platform`.
 
 Cross-references:
-- [04-application-seams.md](04-application-seams.md) - How the packages and entrypoints wire together at runtime
+- [04-platform.md](04-platform.md) - How the packages and entrypoints wire together at runtime
 - [../04-clients/01-desktop.md](../04-clients/01-desktop.md) - Tauri desktop target
 - [../04-clients/02-web-app.md](../04-clients/02-web-app.md) - Web / PWA target
 - [../04-clients/03-widget.md](../04-clients/03-widget.md) - Widget mode
 
-## Recommended Directory Structure
+## Directory Structure
 
 ```
 orbit
@@ -25,13 +25,25 @@ orbit
   pnpm-workspace.yaml # Workspace + dependency catalog
 ```
 
-> **Naming note:** The directory tree above is canonical and matches the on-disk scaffold. Earlier drafts proposed a `lib/core` / `lib/platform` layout; that has been dropped in favour of `packages/`, which is the standard pnpm workspace convention and avoids fighting the toolchain. The platform adapters live alongside core as `packages/platform`.
+`apps/desktop`, `apps/web`, and `apps/mobile` are thin entrypoints. They import everything from the workspace packages defined in the `/packages` directory, which can import code the same way we'd do with npm packages.
 
-`apps/desktop`, `apps/web`, and `apps/mobile` are thin entrypoints. They import everything from `packages/core` and wire in a concrete platform adapter from `packages/platform`. The actual application logic lives entirely in `packages/core`. This means:
+If an app (or another package) wants to consume exports from a specific package, it simply needs to reference it inits own `package.json`.
 
-- A bug fix in the IRC message parser in `packages/core` is automatically present in the next desktop build, the next web deploy, and the next widget session - no porting required.
-- The platform adapter is the only code that differs between targets, and it is selected at the app boot of each entrypoint.
-- `apps/web` is a `vite build` with `vite-plugin-pwa` configured. `apps/desktop` is `tauri build`, which calls `vite build` internally against the same `packages/core` source with a different platform adapter export.
+```json
+{
+  "dependencies": {
+    "platform": "workspace:*",
+  }
+}
+```
+
+Only exports defined within a package's `index.ts` will be available.
+
+```ts
+import { createWebPlatform } from "platform"
+```
+
+
 
 ## Naming conventions
 
@@ -77,6 +89,7 @@ pnpm ready              # gate: vp check && vp run -r test && vp run -r build
 pnpm dev                # web dev server (Vite, runs apps/web)
 vp run -r build         # build every package and app
 vp run -r test          # run every test suite
+vp create               # create a new app/package
 ```
 
 Per target, build/dev are scoped to the workspace package:

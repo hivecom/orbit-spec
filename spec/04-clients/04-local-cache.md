@@ -9,7 +9,7 @@ Cross-references:
 - [Desktop - Memory Discipline](01-desktop.md#memory-discipline) - the in-DOM live window this cache feeds
 - [Desktop - Reconnection Flow](01-desktop.md#reconnection-flow) - `CHATHISTORY` reconciliation the cache piggybacks on
 - [Uplink - Interaction with Chat History](../02-components/01-uplink/01-overview.md#interaction-with-chat-history) - how retractions and replies replay through `chathistory`
-- [Application Seams](../05-infrastructure/04-application-seams.md) - the capability-port pattern the cache is implemented as
+- [Platform](../05-infrastructure/04-platform.md) - the capability-port pattern the cache is implemented as
 
 ## Why a Local Cache Fits IRC
 
@@ -159,7 +159,7 @@ thread. Clients render the seed **incrementally**:
 ## The Cache as a Platform Capability
 
 Persistent storage is exactly the environment-specific capability the
-[Application Seams](../05-infrastructure/04-application-seams.md) model targets. The cache is a
+[Platform](../05-infrastructure/04-platform.md) model targets. The cache is a
 **capability port** on the `Platform` contract, not an `if (isTauri)` branch. `core` calls the port
 and never knows whether records land in IndexedDB or SQLite.
 

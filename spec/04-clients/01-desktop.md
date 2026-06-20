@@ -176,9 +176,9 @@ DNS SRV resolution is handled by the desktop client's Rust resolver. For the ful
 |--------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
 | Chat history       | Paginated loading. Keep at most 200 messages per channel in the DOM (the *live window*). Older messages are evicted from the DOM and served from the on-device [local cache](04-local-cache.md), which falls back to `chathistory` only when the cache is exhausted. |
 | Image rendering    | Images are proxied and resized by the Rust backend (or server-side) before display. No raw multi-MB images loaded into the WebView.        |
-| Large IPC payloads | File downloads and bulk history loads are served via Tauri's custom protocol handler (`tauri://`), not JSON-serialized IPC.                |
+| Large IPC payloads | File downloads and bulk history loads are served via Tauri's custom protocol handler (`tauri://`).                |
 | Layout thrashing   | Resize events are debounced aggressively (200ms minimum). This works around a known WebKitGTK memory leak on Linux triggered by rapid resize cycles. |
-| Audio buffers      | Managed entirely in the Rust backend via `cpal`. No Web Audio API overhead in the WebView.                                                 |
+| Audio buffers      | Managed entirely in the Rust backend via `cubeb`. No Web Audio API overhead in the WebView.                                                |
 
 ## Offline Messages and Reconnection
 

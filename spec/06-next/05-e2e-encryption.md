@@ -10,8 +10,7 @@ E2E encryption in Orbit applies to exactly two contexts:
 - **1:1 DMs** (`PRIVMSG` between two registered users)
 - **P2P calls** (WebRTC direct connections via `+orbit/p2p-offer` / `+orbit/p2p-answer`)
 
-It does not apply to channels or group voice sessions, and this is not a gap - it is a deliberate
-design boundary.
+It intentionally does not apply to channels or group voice sessions.
 
 E2E-encrypted DMs coexist with the server's standard DM storage model. The server stores and
 delivers encrypted messages using the same retention and delivery mechanisms as plaintext DMs -
@@ -47,7 +46,7 @@ TLS protects against network eavesdroppers. Nobody on the wire between the clien
 read the content.
 
 **E2E encryption** protects against the server operator. The server terminates TLS, so the operator
-can see plaintext content at the server level. For channels, this is accepted by design. For 1:1
+can see plaintext content at the server level. For channels, this is accepted. For 1:1
 DMs, E2E means the operator sees ciphertext it cannot read. The server stores and delivers
 encrypted messages using operator-configured retention - the same mechanics as plaintext DMs - but
 cannot read the content.

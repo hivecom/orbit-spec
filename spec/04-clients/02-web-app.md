@@ -6,21 +6,19 @@ The Orbit frontend is a single Vue + Vite + VUI application that runs in three c
 
 1. **Inside Tauri** - the desktop client. The Rust backend provides OS integrations; the Vue frontend is otherwise identical to the web version. See [Desktop Client](01-desktop.md).
 2. **As a standalone web app / PWA** - deployed to a static host. Full feature parity with the desktop client except for the small set of capabilities that require the Rust backend.
-3. **As an embedded widget** - the same web app, loaded in an iframe and passed a `mode=widget` URL parameter. No separate bundle, no separate codebase. See [Widget Mode](03-widget.md).
+3. **As an embedded widget** - the same web app, loaded in an iframe and passed a `mode=widget` URL parameter. See [Widget Mode](03-widget.md).
 
-This means there are effectively **two builds**: the Tauri binary and the web app. The widget is not a build - it is a runtime mode.
+This means there are effectively **two builds**: the Tauri binary and the web app.
 
 ## The Platform Adapter
 
-The desktop, web, and mobile clients share the entire Vue component tree. The only divergence is a thin **platform adapter** - a TypeScript interface the shared code calls for capabilities that differ between environments.
-
-The seam is shaped by **capability, not by platform**. `packages/core` owns the `Platform` contract and never asks "am I running in Tauri"; it asks a capability port to do a thing. Each app entrypoint supplies a concrete adapter and injects it once at boot.
+The desktop, web, and mobile clients share the entire Vue component tree. The only divergence is a thin **platform adapter** - a TypeScript interface the shared code calls for capabilities that differ between environments. This is implemented as an internal package, which apps import during initialization.
 
 ```
-packages/core/src/platform/index.ts   ← the Platform contract (capability ports) + injection hook
+packages/paltform/src/composable.ts   ← the Platform contract (capability ports) + injection hook
 packages/platform/src/web.ts          ← browser APIs, or gracefully stubs absent capabilities
 packages/platform/src/tauri.ts        ← calls @tauri-apps/api (desktop)
-packages/platform/src/tauri-mobile.ts ← reuses the Tauri adapter, overrides only what differs
+packages/platform/src/mobile.ts       ← reuses the Tauri adapter, overrides only what differs
 ```
 
 The contract is a set of capability ports. A port that an environment cannot provide is `null`, and core degrades explicitly rather than scattering platform checks:
@@ -37,7 +35,7 @@ export interface Platform {
 }
 ```
 
-Vue components and stores never import from `@tauri-apps/api` or call raw `navigator.*` directly - they go through the injected `Platform`. This keeps the component tree environment-agnostic, keeps `packages/core` headlessly testable against a mock `Platform`, and means each new target (web, desktop, mobile) is a new adapter rather than a fork. A lint boundary forbidding platform imports inside `packages/core` is what enforces this discipline cheaply.
+Vue components and stores never import from `@tauri-apps/api` or call raw `navigator.*` directly - they go through the injected `Platform`. This keeps the component tree environment-agnostic, keeps `packages/core` headlessly testable against a mock `Platform`, and means each new target (web, desktop, mobile) is a new adapter rather than a fork. Because `platform` is a separate monorepo package, the `core` can only import what it exposes, preventing the developers from importing platform internals in other packages.
 
 The platform-specific surface is small. Each row maps to one capability port:
 
@@ -45,7 +43,7 @@ The platform-specific surface is small. Each row maps to one capability port:
 |-----------------------------|-------------------------------------------------------|-------------------------------------------------------------------------|
 | System tray + badge         | Native OS tray via Tauri plugin                       | `document.title` badge count; favicon overlay                           |
 | OS notifications            | Tauri notification plugin                             | Web Notifications API (with permission prompt)                          |
-| Audio device management     | `cpal` via Rust IPC command                           | MediaDevices API (`navigator.mediaDevices.enumerateDevices()`)          |
+| Audio device management     | `cubeb` via Rust IPC command                          | MediaDevices API (`navigator.mediaDevices.enumerateDevices()`)          |
 | `orbit://` URI handling     | Registered OS scheme; Tauri single-instance focus     | Stubbed - not available in browser                                      |
 | DNS SRV resolution          | Rust DNS resolver via IPC                             | Not available; user enters host directly or a server-side resolver endpoint is used |
 | File I/O / large IPC        | Tauri custom protocol handler                         | Standard `fetch` + pre-signed S3 URLs                                   |

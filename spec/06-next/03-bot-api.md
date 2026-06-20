@@ -27,9 +27,6 @@ A formal Orbit Bot API will layer additional capabilities on top of the IRC foun
 This will be phased incrementally to avoid over-engineering:
 
 1. **Phase 0 (day-one, ships with MVP)**: Write documentation on how to build IRC bots against Ergo. Provide example bots in Rust, Python, and JavaScript. This is **zero engineering cost** and enables the community immediately.
-
-   > **Note**: Phase 0 is documentation-only - no new services, no new APIs, no new infrastructure. It should be treated as part of the MVP launch checklist (write docs, publish examples), not as a post-MVP engineering track. Its "MVP" status means it must be ready on the day Orbit ships publicly, not that it requires any engineering work beyond writing.
-
 2. **Phase 1**: Build an HTTP webhook bridge - a lightweight service that connects to Uplink as an IRC client, listens for configurable events, and fires HTTP POST requests to registered webhook endpoints. This is a small, self-contained service.
 3. **Phase 2**: Build a REST API gateway that wraps common IRC commands (send message, join channel, set topic, kick user, query WHOIS) in HTTP endpoints with JSON request/response bodies.
 4. **Phase 3**: Formalize as a versioned API specification (OpenAPI). Add authentication scoping, rate limiting, and developer documentation portal.

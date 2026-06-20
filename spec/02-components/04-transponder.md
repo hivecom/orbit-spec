@@ -2,7 +2,7 @@
 
 > **Component class: abstraction (adopted role).** Transponder is not software Orbit builds - it is any OIDC-compliant identity provider the operator runs. Orbit specifies the contract (standard OIDC) and consumes it. See [Component Classes](../01-architecture/02-philosophy.md#component-classes).
 
-Transponder is not a service - it is a **role**. In the Orbit ecosystem, "Transponder" refers to whatever OIDC-compliant identity provider the server operator deploys. This can be [Keycloak](https://www.keycloak.org/), [Authentik](https://goauthentik.io/), [Authelia](https://www.authelia.com/), [Zitadel](https://zitadel.com/), or any other provider that implements [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html). Orbit does not ship its own identity service - it consumes standard OIDC.
+In the Orbit ecosystem, "Transponder" refers to whatever OIDC-compliant identity provider the server operator deploys. This can be [Keycloak](https://www.keycloak.org/), [Authentik](https://goauthentik.io/), [Authelia](https://www.authelia.com/), [Zitadel](https://zitadel.com/), or any other provider that implements [OpenID Connect Discovery](https://openid.net/specs/openid-connect-discovery-1_0.html). Orbit does not ship its own identity service.
 
 The operator deploys an identity provider, points Orbit components at its issuer URL, and everything else - credential verification, token issuance, key publication - is handled by the provider. Uplink, Satellite, Depot, and any future service all consume the same identity layer without custom adapters or glue code.
 
@@ -181,7 +181,7 @@ sequenceDiagram
 
 ### NickServ and the Identity Provider
 
-When an OIDC provider is configured, OIDC is the **authoritative source of truth for accounts**. A valid JWT always wins: the user's Hivecom account maps directly to their IRC account via `preferred_username`, resolved by the auth-script bridge (Path A) or Ergo's native `accounts.jwt-auth` (Path B). NickServ does not need to manage these accounts.
+When an OIDC provider is configured, OIDC is the **authoritative source of truth for accounts**. A valid JWT always wins: A valid JWT always wins: the user's OIDC account maps directly to their IRC account via `preferred_username`, resolved by the auth-script bridge (Path A) or Ergo's native `accounts.jwt-auth` (Path B). NickServ does not need to manage these accounts.
 
 This does **not** require disabling NickServ. The two layers coexist cleanly because they own different things: OIDC owns identity and login; NickServ provides a compatibility and recovery surface that OIDC structurally cannot (legacy SASL `IDENTIFY`, self-serve renames, and email-based password recovery). This is a deployment choice, and both configurations are supported:
 
@@ -288,8 +288,8 @@ An identity provider is optional. If a server operator doesn't deploy one, nothi
 | Feature | With Identity Provider | Without Identity Provider |
 |---------|----------------------|--------------------------|
 | Text chat | Works - Ergo verifies provider JWTs via the auth-script bridge or native `accounts.jwt-auth` | Works - Ergo uses built-in NickServ/SASL |
-| Group voice / video | Works, participants verified | Works, all participants unverified |
-| BYOS | Works, users verified | Works, everyone unverified |
+| Group voice / video | Works, participants verified | Works, everyone unverified |
+| BYOS | Works, participants verified | Works, everyone unverified |
 | Web widget | Works (guests use SASL ANONYMOUS regardless) | Works (guests use SASL ANONYMOUS regardless) |
 | P2P calls | Works, caller identity verified | Works, caller identity unverified |
 

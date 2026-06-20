@@ -62,8 +62,6 @@ StorageDriver {
 
 ### Tradeoff
 
-State this honestly:
-
 - **`s3`** keeps Depot stateless and bandwidth-free; the storage backend carries all transfer load. This is the path to scale.
 - **`fs`** puts Depot directly in the data path, consuming its bandwidth and CPU, which makes Depot a bottleneck. In exchange it needs no object storage at all.
 
