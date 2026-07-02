@@ -35,13 +35,14 @@ This directory contains the full set of Orbit design specifications, organized i
 - [Desktop](04-clients/01-desktop.md) - Tauri v2 + Vue desktop client: features, URI scheme, memory discipline, reconnection
 - [Web App](04-clients/02-web-app.md) - Web app and PWA: platform adapter, service worker, capability matrix
 - [Widget](04-clients/03-widget.md) - Embeddable iframe widget mode
+- [Local History Cache & Storage](04-clients/04-local-cache.md) - On-device history cache, progressive loading, IndexedDB/SQLite seam, storage management
 
 ## Infrastructure
 
 - [Domain Discovery](05-infrastructure/01-domain-discovery.md) - DNS SRV records, resolution algorithm, per-service discovery
 - [Deployment](05-infrastructure/02-deployment.md) - Component resource requirements, TLS, reference Docker Compose
 - [Monorepo](05-infrastructure/03-monorepo.md) - Monorepo structure, build commands, CI pipeline
-- [Application Seams](05-infrastructure/04-application-seams.md) - How core, platform adapters, and entrypoints hang together at runtime
+- [Platform](05-infrastructure/04-platform.md) - How core, platform adapters, and entrypoints hang together at runtime
 
 ## Next
 
