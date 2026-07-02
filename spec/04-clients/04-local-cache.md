@@ -21,11 +21,13 @@ The IRC history model is unusually cache-friendly:
   It is a write-once store with rare overlay events, not a cache-coherence problem.
 - **There is a stable server-assigned dedup key for content.** Every `PRIVMSG`/`NOTICE` carries a
   `msgid` (`message-ids`, the primary/dedup key) and an authoritative `server-time` (the sort key).
-  Live messages, `echo-message` self-copies, and `chathistory` replays all collapse to one record by
-  `msgid`. The exceptions are lines with no `msgid` - presence events (`JOIN`/`PART`) from
+  Dedup is per message, not per batch. A given line keeps the same `msgid` whether it arrives live,
+  as an `echo-message` self-copy, or in a later `chathistory` replay, so those copies of it merge
+  into one cached record. A replay of 200 messages still writes 200 records; it just skips the ones
+  already cached. Lines with no `msgid` are the exception: presence events (`JOIN`/`PART`) from
   `event-playback`, and replays from servers that omit the tag. Those get a deterministic synthetic
-  key and dedupe by a `type + author + text + server-time` signature, so the same event from any
-  delivery path still collapses to one record.
+  key and dedupe by a `type + author + text + server-time` signature, so the same event still
+  collapses to one record whichever path delivered it.
 - **Delivery is already batched.** `chathistory` responses arrive inside a `batch`, pre-chunked by
   the server. The cache writes a batch as a unit; the renderer consumes it incrementally.
 
@@ -86,6 +88,12 @@ duplicate. Keyless lines (presence events, msgid-less replays) carry a determini
 and additionally collapse by a content + `server-time` signature, giving the same single-record
 guarantee. The synthetic key is never surfaced as a real `msgid`, so it cannot anchor a
 `CHATHISTORY` request.
+
+Servers without `message-ids` support fall back to that same synthetic key for every line, so
+caching still works, just on a best-effort content signature instead of an authoritative id. A
+server that old is unlikely to implement the other IRCv3 features anyway, so the experience stays
+close to plain IRC. Bouncer playback (ZNC and similar) isn't an MVP target; supporting it later
+means reconciling the timestamps the bouncer stamps on replay and matching best-effort.
 
 ## Seeding, Paging, and the Sliding Window
 
