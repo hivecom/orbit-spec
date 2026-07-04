@@ -5,7 +5,7 @@ The frontend, Tauri shell, and shared modules live in a single monorepo. This is
 There are two build outputs: the Tauri binary (desktop) and the web app / PWA (web). There are three runtime contexts: desktop, web, and widget. All three are served from the same `packages/core` source with a different platform adapter from `packages/platform`.
 
 Cross-references:
-- [04-application-seams.md](04-application-seams.md) - How the packages and entrypoints wire together at runtime
+- [04-platform.md](04-platform.md) - How the packages and entrypoints wire together at runtime
 - [../04-clients/01-desktop.md](../04-clients/01-desktop.md) - Tauri desktop target
 - [../04-clients/02-web-app.md](../04-clients/02-web-app.md) - Web / PWA target
 - [../04-clients/03-widget.md](../04-clients/03-widget.md) - Widget mode

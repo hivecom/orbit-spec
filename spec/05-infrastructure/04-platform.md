@@ -14,6 +14,7 @@ export interface Platform {
   readonly deepLinks: DeepLinkPort | null  // null in the browser
   readonly fileTransfer: FileTransferPort
   readonly dns: DnsPort | null             // null in the browser
+  readonly historyCache: HistoryCachePort | null // IndexedDB (web) / SQLite (desktop); null when storage is blocked
 }
 ```
 
@@ -31,6 +32,7 @@ export function createWebPlatform(): Platform {
     deepLinks: null,      // no orbit:// handler in the browser
     fileTransfer: createFileTransferPort(),
     dns: null,            // resolver endpoint used instead
+    historyCache: createIndexedDbCachePort(), // null if IndexedDB is unavailable
   }
 }
 ```
@@ -101,6 +103,7 @@ const platform: Platform = {
   deepLinks: null,
   fileTransfer: { download: async () => {} },
   dns: null,
+  historyCache: null,
 }
 ```
 
