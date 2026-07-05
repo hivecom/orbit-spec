@@ -1,69 +1,59 @@
 # Orbit Specification
 
-This directory contains the full set of Orbit design specifications, organized into focused pages. Each page covers a distinct aspect of the system - start with the [Architecture Overview](01-architecture/01-overview.md) for a high-level picture, then dive into whichever section is most relevant to what you're building or reviewing.
+The full Orbit design spec, split into three layers by altitude plus a research track. Product says what, why, and for whom. Architecture says what the parts are and where the lines between them run. Implementation is real and runnable: configs, payloads, sequences. Start with the [Architecture Overview](02-architecture/01-overview.md) for the system picture, or [Vision](01-product/01-vision.md) for the reasoning behind it, then dive into whichever page covers what you're building or reviewing.
+
+## Product
+
+- [Vision](01-product/01-vision.md) - The problem, who Orbit is for, and where the value lives
+- [Experience](01-product/02-experience.md) - What using Orbit feels like per surface: desktop, web/PWA, mobile, embedded
+- [Scope](01-product/03-scope.md) - What Orbit is not, and the exclusions that keep it honest
+- [Platform Comparison](01-product/04-platform-comparison.md) - Honest gap assessment vs Discord, Slack, and Teams
 
 ## Architecture
 
-- [Overview](01-architecture/01-overview.md) - System diagram, session flows, and component map
-- [Philosophy](01-architecture/02-philosophy.md) - Core design principles and opinionated choices
-- [Glossary](01-architecture/03-glossary.md) - Definitions for all named components (Uplink, Satellite, Depot, Transponder)
-- [IRC Compatibility Profile](01-architecture/04-compatibility-profile.md) - What IRC clients see on an Uplink server
-- [Platform Comparison](01-architecture/05-platform-comparison.md) - Honest gap assessment vs Discord, Slack, and Teams
+- [Overview](02-architecture/01-overview.md) - System diagram, component map, component independence
+- [Protocol Posture](02-architecture/02-protocol-posture.md) - IRCv3 conformance, the no-fork rule, compatibility profile
+- [Uplink](02-architecture/03-uplink.md) - Channel model, metadata, renaming, retractions, threads
+- [Tags and Trust](02-architecture/04-tags-and-trust.md) - The tag layer, versioning, trust boundary, identity display rules
+- [Satellite](02-architecture/05-satellite.md) - Session model, discovery, BYOS, trust, permissions, scaling
+- [Depot](02-architecture/06-depot.md) - Storage boundary, driver contract, credential model, moderation posture
+- [Transponder](02-architecture/07-transponder.md) - Identity provider role, verification model, multi-server identity
+- [Services](02-architecture/08-services.md) - NickServ/ChanServ/HistServ abstraction principles
+- [Identity](02-architecture/09-identity.md) - Auth model, permissions, verified vs unverified, graceful degradation
+- [Messaging](02-architecture/10-messaging.md) - DMs, presence, retention and erasure, moderation, notifications
+- [Clients](02-architecture/11-clients.md) - Client family, platform adapters, cache design, reconnection, mobile
+- [Infrastructure](02-architecture/12-infrastructure.md) - Topology, discovery, community directory, TLS, backups
+- [E2E Encryption](02-architecture/13-e2e.md) - Double Ratchet design, key transport, key sync options, risks
+- [Federation](02-architecture/14-federation.md) - Identity bridging, trust chain, the IRC linking dependency
+- [Extensions](02-architecture/15-extensions.md) - IRC bots, webhook bridge, REST gateway, the Orbit extension API
+- [ADR: Tauri vs. Electron](02-architecture/decisions/01-adr-tauri-vs-electron.md) - Why Tauri v2 over Electron
+- [ADR: Vue Alternatives](02-architecture/decisions/02-adr-vue-alternatives.md) - Why Vue 3 over Leptos, Svelte, and Quasar
 
-## Components
+## Implementation
 
-- [Uplink](02-components/01-uplink/01-overview.md) - IRC layer: IRCv3, required extensions, Ergochat configuration
-- [DMs & Group DMs](02-components/01-uplink/03-dms.md) - DM storage model, E2E interaction, always-on delivery
-- [Presence](02-components/01-uplink/04-presence.md) - Metadata, avatars, status, read markers
-- [Satellite](02-components/02-satellite.md) - Real-time media layer: SFU, voice sessions, BYOS, authentication, codecs
-- [Depot](02-components/03-depot.md) - Storage layer: file uploads, the Depot API, download model
-- [Transponder](02-components/04-transponder.md) - Identity bridging: signed tokens, verified vs. unverified users
-- [IRC Services Abstraction](02-components/05-services.md) - NickServ/ChanServ intent mapping, account claim, always-on, service-notice suppression
+- [Uplink](03-implementation/01-uplink.md) - Ergo configuration, IRC command mechanics, thread creation sequence
+- [Tags](03-implementation/02-tags.md) - The `+orbit/*` table, payloads, encoding, standard IRCv3 tags
+- [Satellite](03-implementation/03-satellite.md) - Session flows, handshake payloads, knocking, codecs, STUN/TURN, multi-node mechanics
+- [Depot](03-implementation/04-depot.md) - API table, presign flow, keys, quotas, schema, configuration
+- [Identity](03-implementation/05-identity.md) - OIDC flows, token refresh, auth bridge, account claim, notice routing
+- [Platform](03-implementation/06-platform.md) - How core, platform adapters, and entrypoints hang together at runtime
+- [Local Cache](03-implementation/07-local-cache.md) - Schema, seeding and paging, lifecycle, eviction, environment limits
+- [Clients](03-implementation/08-clients.md) - URI schemes, reconnection sequence, memory values, PWA config, embedding
+- [Deployment](03-implementation/09-deployment.md) - DNS records, services.json, Docker Compose, CORS, monitoring, backups
+- [Monorepo](03-implementation/10-monorepo.md) - Monorepo structure, build commands, CI pipeline
+- [Push](03-implementation/11-push.md) - Delivery backends, the `/push/register` API, token store
 
-## Uplink Tags
+## Shared
 
-- [Namespace](02-components/01-uplink/02-tags/01-namespace.md) - The `+orbit/*` tag table, base64 encoding, extensions sub-namespace
-- [Trust Model](02-components/01-uplink/02-tags/02-trust-model.md) - Client enforcement rules for client-asserted tags (edits, deletes, invites)
+- [Glossary](GLOSSARY.md) - Definitions for every named component and concept
+- [Open Questions](OPEN-QUESTIONS.md) - The working decision log: unresolved items and the record of resolved ones
 
-## Identity & Auth
+## Research
 
-- [Authentication](03-identity/01-authentication.md) - Registered users (SASL), anonymous guest flow (SASL ANONYMOUS)
-- [Permissions](03-identity/02-permissions.md) - IRC channel modes, identity display rules
+Deliberate explorations with no commitment; each needs a standalone prototype and benchmark before any decision.
 
-## Clients
-
-- [Desktop](04-clients/01-desktop.md) - Tauri v2 + Vue desktop client: features, URI scheme, memory discipline, reconnection
-- [Web App](04-clients/02-web-app.md) - Web app and PWA: platform adapter, service worker, capability matrix
-- [Widget](04-clients/03-widget.md) - Embeddable iframe widget mode
-- [Local History Cache & Storage](04-clients/04-local-cache.md) - On-device history cache, progressive loading, IndexedDB/SQLite seam, storage management
-
-## Infrastructure
-
-- [Domain Discovery](05-infrastructure/01-domain-discovery.md) - DNS SRV records, resolution algorithm, per-service discovery
-- [Deployment](05-infrastructure/02-deployment.md) - Component resource requirements, TLS, reference Docker Compose
-- [Monorepo](05-infrastructure/03-monorepo.md) - Monorepo structure, build commands, CI pipeline
-- [Platform](05-infrastructure/04-platform.md) - How core, platform adapters, and entrypoints hang together at runtime
-
-## Next
-
-- [Federation](06-next/01-federation.md) - Federation between Orbit instances and IRC network linking
-- [Mobile Clients](06-next/02-mobile-clients.md) - Tauri Mobile for iOS and Android
-- [Bot API](06-next/03-bot-api.md) - Bot and Integration API: IRC bots, webhooks, REST gateway
-- [Push Notifications](06-next/04-push-notifications.md) - Uplink-native push notification delivery
-- [E2E Encryption](06-next/05-e2e-encryption.md) - End-to-end encryption for DMs and group channels
-- [Server Discovery](06-next/06-server-discovery.md) - Public server directory and community discovery
-- [Satellite Gateway](06-next/07-satellite-gateway.md) - Multi-node Satellite routing and autoscaling
-
-## Decisions & ADRs
-
-- [ADR: Tauri vs. Electron](0A-decisions/01-adr-tauri-vs-electron.md) - ADR: Why Tauri v2 over Electron
-- [ADR: Vue Alternatives](0A-decisions/02-adr-vue-alternatives.md) - ADR: Why Vue 3 over Leptos, Svelte, and Quasar
-- [Open Questions](0A-decisions/03-open-questions.md) - Unresolved design decisions requiring resolution
-- [Out of Scope](0A-decisions/04-out-of-scope.md) - Features explicitly deferred from the MVP
-
-## Research Tracks
-
-- [MoQ / Iroh](0B-research/01-moq-iroh.md) - Media over QUIC using Iroh (R&D)
-- [Leptos / WASM](0B-research/02-leptos-wasm.md) - Leptos/WASM frontend rewrite (R&D)
-- [Linux Overlay](0B-research/03-linux-overlay.md) - Linux gaming overlay: Wayland layer-shell and X11 (Tier 1)
-- [Vulkan Overlay](0B-research/04-vulkan-overlay.md) - Linux gaming overlay: Vulkan explicit layer (Tier 2)
+- [MoQ / Iroh](0R-research/01-moq-iroh.md) - Media over QUIC using the Iroh networking stack
+- [Leptos / WASM](0R-research/02-leptos-wasm.md) - Leptos/WASM frontend rewrite
+- [Linux Overlay](0R-research/03-linux-overlay.md) - Linux gaming overlay: Wayland layer-shell and X11 (Tier 1)
+- [Vulkan Overlay](0R-research/04-vulkan-overlay.md) - Linux gaming overlay: Vulkan implicit layer (Tier 2)
+- [Broadcast Streaming](0R-research/05-broadcast-streaming.md) - One-to-many livestreaming beside the Satellite call model

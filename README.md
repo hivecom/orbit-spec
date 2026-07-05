@@ -16,7 +16,7 @@ Orbit survives by not owning what it does not have to. The IRC server is stock. 
 - **Satellite** - real-time voice, video, and screen sharing. Embeds LiveKit, owns the session model, supports 1:1 P2P calls that work without any server infrastructure at all.
 - **Depot** - thin storage gateway over S3-compatible backends or local disk. Handles auth, quotas, and policy so a raw bucket doesn't have to.
 - **Transponder** - any OIDC provider (Keycloak, Authentik, Supabase). One login, verified everywhere.
-- **Clients** - desktop (Tauri), web app, embeddable widget. Where the UX lives.
+- **Clients** - desktop (Tauri), web app, embedded client. Where the UX lives.
 
 Entry is frictionless. Anonymous guest access, no-account voice calls, browser-first on any device. A friend joins a call from a link without signing up for anything. The product demonstrates itself.
 
@@ -32,16 +32,14 @@ The `spec/` directory contains the full design spec:
 
 | Section | Contents |
 |---------|----------|
-| [Architecture](spec/01-architecture/) | System overview, design philosophy, component glossary, platform comparison |
-| [Components](spec/02-components/) | Uplink (incl. tag namespace and trust model), Satellite, Depot, Transponder |
-| [Identity and Auth](spec/03-identity/) | Authentication, permissions |
-| [Clients](spec/04-clients/) | Desktop, web app, widget, local history cache |
-| [Infrastructure](spec/05-infrastructure/) | DNS discovery, deployment, monorepo |
-| [Next](spec/06-next/) | Mobile, bot API, push delivery, E2E encryption, server discovery, Satellite gateway |
-| [Decisions](spec/0A-decisions/) | ADRs, open questions, out-of-scope |
-| [Research](spec/0B-research/) | MoQ/Iroh, Leptos/WASM, Linux overlay, Vulkan overlay |
+| [Product](spec/01-product/) | Vision, per-surface experience, scope, platform comparison |
+| [Architecture](spec/02-architecture/) | Components, boundaries, contracts, trust and failure models, ADRs |
+| [Implementation](spec/03-implementation/) | Configs, payloads, endpoints, sequences, deployment |
+| [Research](spec/0R-research/) | MoQ/Iroh, Leptos/WASM, Linux overlay, Vulkan overlay, broadcast streaming |
+| [Glossary](spec/GLOSSARY.md) | Shared vocabulary for every named component and concept |
+| [Open Questions](spec/OPEN-QUESTIONS.md) | The working decision log |
 
-Start with the [Platform Comparison](spec/01-architecture/05-platform-comparison.md) if your first question is "how does this compare to Discord." Then read the [Design Philosophy](spec/01-architecture/02-philosophy.md) for the reasoning behind every major decision.
+Start with the [Platform Comparison](spec/01-product/04-platform-comparison.md) if your first question is "how does this compare to Discord." Then read the [Vision](spec/01-product/01-vision.md) for the reasoning behind every major decision.
 
 ## Status
 

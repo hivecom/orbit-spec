@@ -26,4 +26,6 @@ Unresolved decisions that need answering before or during implementation. Resolv
 
 12. ~~**Message editing**~~ *Resolved*: Deferred until IRC standardizes in-place editing; Orbit adopts whatever Ergo or IRCv3 ships. If nothing has landed by the time editing matters, the workaround is client-side edit message tags. That covers display only: it does not remove the original from stored history the way `REDACT` does for retractions.
 
+13. **E2E cross-device key sync** - Three options are on the table: A, key backup to Depot; B, direct P2P transfer between devices; C, per-device keys (the Signal model). Genuinely undecided. See [E2E Encryption](02-architecture/13-e2e.md).
+
 *This document is updated as questions are resolved. Changes are tracked in the repository commit history.*
