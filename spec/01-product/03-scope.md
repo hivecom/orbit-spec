@@ -10,7 +10,7 @@ Orbit works the way IRC always has. A single server hosts many communities simul
 
 Some Discord features don't translate to this model:
 
-- **Complex role hierarchies** exist in Discord because each server is a self-contained organization that needs its own bureaucracy. On Orbit, IRC channel modes cover the permission model, and communities that need richer automation run an IRC bot. That bot story is one of Orbit's genuine strengths: any IRC bot library in any language, zero Orbit-specific API required.
+- **Complex role hierarchies** exist in Discord because each server is a self-contained organization that needs its own bureaucracy. On Orbit, IRC channel modes cover the permission model, and communities that need richer automation run an IRC bot. That bot story is one of Orbit's strengths: any IRC bot library in any language, zero Orbit-specific API required.
 - **Per-channel permission overrides** exist in Discord because one server hosts hundreds of channels under one administrative roof. On Orbit, a community that needs its own administrative boundary runs its own instance, a single-binary deployment. This is how IRC networks have always been structured.
 - **Server-level settings dashboards** exist in Discord because operators have no other way to manage their walled garden. Orbit operators have thirty years of IRC management tooling.
 
@@ -22,7 +22,7 @@ The core handles four things: text chat, real-time media, identity, and client U
 
 Orbit stays thin so it stays fast and maintainable. Complexity belongs at the edges.
 
-## Genuine Exclusions
+## Exclusions
 
 Evaluated and excluded, with the reasoning:
 

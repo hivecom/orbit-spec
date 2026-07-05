@@ -2,8 +2,8 @@
 
 The Orbit client family: desktop, web app/PWA, embedded, and mobile. One Vue
 component tree serves all of them; the divergence between environments is
-isolated behind a platform adapter. This page covers the client architecture
-- stacks, contexts, channel semantics, caching, and connection models. The
+isolated behind a platform adapter. This page covers the client architecture:
+stacks, contexts, channel semantics, caching, and connection models. The
 per-surface user experience lives in
 [Product - Experience](../01-product/02-experience.md); URI schemes,
 reconnection sequences, embed and theming mechanics, and concrete limits live
@@ -32,7 +32,7 @@ targets) and the web app (full, PWA, and embedded presentations).
 ## The Platform Adapter
 
 All clients share the entire component tree; the only divergence is a thin
-platform adapter - a contract of capability ports the shared core calls for
+platform adapter: a contract of capability ports the shared core calls for
 anything that differs between environments (notifications, tray, audio
 devices, deep links, DNS resolution, file transfer, the history cache). A
 port an environment can't provide is null, and the core degrades explicitly
@@ -82,7 +82,7 @@ its parent's list when rendering.
   indicator in the channel list and header.
 
 Because only channel operators can set metadata on a channel, the allowlist
-is operator-controlled - a user can't register an impersonating channel and
+is operator-controlled: a user can't register an impersonating channel and
 then authorize it themselves. The check is recursive for deeper paths: every
 level of the chain must authorize the next, and a missing allowlist anywhere
 marks the channel unverified. For unjoined parents the client fetches the
@@ -96,27 +96,26 @@ capability or permission claim
 ## Invite Model
 
 Orbit is decentralized, so there is no central invite service. An `orbit://`
-link is the invite - sharing the link is sharing the invite. The server
-operator controls access via IRC channel modes (invite-only, key-protected);
-the URI is a deep link, not a magic token. Operators sharing links publicly
+link is the invite. The server operator controls access via IRC channel
+modes (invite-only, key-protected); the URI is a deep link, not a magic
+token. Operators sharing links publicly
 SHOULD publish equivalent web app URLs alongside, since the custom scheme is
-inert without the client installed - the web app accepts the same parameters
+inert without the client installed; the web app accepts the same parameters
 and is a full fallback. URI grammar, platform registration, and the fallback
 mapping live in [Implementation - Clients](../03-implementation/08-clients.md).
 
 ## Local History Cache
 
 Every Orbit client keeps a persistent, on-device copy of the message history
-it has seen: the durable archive underneath the in-memory live window, and
-distinct from it.
+it has seen: the durable archive underneath the in-memory live window.
 
 The IRC history model is unusually cache-friendly, which is why this design
 holds together:
 
 - **Records are immutable and append-only.** A delivered message never
   changes; the only post-delivery mutations are retraction tombstones (never
-  a content edit) and edits - via the interim edit tag today, via whatever
-  editing standard lands upstream later. It's a write-once store with rare
+  a content edit) and edits (via the interim edit tag today, or whatever
+  editing standard lands upstream later). It's a write-once store with rare
   overlay events, not a cache-coherence problem.
 - **There's a stable server-assigned dedup key.** Every message carries a
   server `msgid` and an authoritative `server-time`, so the same line merges
@@ -128,35 +127,35 @@ holds together:
   server.
 
 The cache shifts the load profile off Uplink. Ergo's retention is
-operator-configured and intentionally bounded - the source of truth, not a
-long-term archive - and every history request costs the server CPU, disk,
-and a round-trip. With a local cache, scrollback is served from disk,
+operator-configured and bounded (the source of truth, not a long-term
+archive), and every history request costs the server CPU, disk, and a
+round-trip. With a local cache, scrollback is served from disk,
 reconnection fetches only the delta past the newest cached message, messages
 that aged out of server retention stay readable on every device that saw
 them, and the cache is the foundation for client-side search. The cache
 never weakens the trust model: it stores what the server delivered, keyed by
-server-asserted identity and message IDs - a performance and availability
-layer, not a new source of authority.
+server-asserted identity and message IDs. It's a performance and
+availability layer, not a new source of authority.
 
 The cache is a capability port on the platform adapter. The backing store
-differs by environment, and the asymmetry is intentional:
+differs by environment:
 
-- **Web app / PWA**: IndexedDB. Browser-managed, quota-bounded, best-effort -
+- **Web app / PWA**: IndexedDB. Browser-managed, quota-bounded, best-effort:
   the browser can evict it under pressure, so the web cache is an accelerator
   and recent-history archive with the server as durable fallback.
 - **Desktop and mobile**: SQLite via the Rust backend. Bounded only by disk,
-  no surprise eviction - effectively a complete personal archive. A user who
+  no surprise eviction; effectively a complete personal archive. A user who
   wants a permanent searchable archive runs the desktop client.
 - **Embedded**: IndexedDB if available, otherwise a null port and an
   ephemeral in-memory buffer.
 
 The cache writer is owned at app scope, subscribed to the message stream for
-all joined targets - never by a view component, so what's persisted is
+all joined targets, never by a view component, so what's persisted is
 independent of what's rendered. Users get a storage management surface:
 per-buffer stats, eviction (oldest-first within a target, never
 cross-target), export, and a configurable per-buffer cap.
 
-Known limits: the web cache can be evicted by the browser; and the cache
+Known limits: the web cache can be evicted by the browser, and the cache
 can't recover content the server never delivered or that was retracted.
 
 Schema, seeding and paging algorithms, lifecycle, and environment quotas live
@@ -208,16 +207,15 @@ connectivity returns.
 
 Guest and client rate limiting is handled by Ergo's built-in flood protection
 and per-IP connection limits, configured by the operator. No separate service
-exists, and the same limits apply to every connecting client - desktop, web,
+exists, and the same limits apply to every connecting client: desktop, web,
 embedded, or third-party IRC.
 
 ## Embedded Client
 
-The embedded client is the web app running with an embed mode parameter - a
-constrained presentation layer, not a separate build. There is no separate
-bundle, no separate deployment, and no version drift: embedders load the same
-deployed web app, so they receive the same fixes, performance work, and
-WebRTC stack automatically. Route-based code splitting keeps the embedded
+The embedded client is the web app running with an embed mode parameter: a
+constrained presentation layer, not a separate build. Embedders load the
+same deployed web app with no version drift, so they receive the same fixes,
+performance work, and WebRTC stack automatically. Route-based code splitting keeps the embedded
 surface from downloading features it never navigates to.
 
 In embed mode the full sidebar, server browser, and settings are hidden; a
@@ -244,7 +242,7 @@ For app store presence and deeper OS integration, the native path is Tauri
 v2's mobile targets: the same Rust backend and the same shared frontend
 compile to iOS and Android apps, with a thin mobile entrypoint in the
 monorepo and a mobile platform adapter that reuses the desktop adapter and
-overrides only what differs. This preserves the single-codebase guarantee - a
+overrides only what differs. This preserves the single-codebase guarantee: a
 fix in the shared core propagates to desktop, web, and mobile simultaneously.
 
 Two alternatives were considered and rejected. Capacitor is more mature on
@@ -255,7 +253,7 @@ codebase per platform, which a small team can't sustain; pure native clients
 are something the community can build on Orbit's open protocol
 ([Product - Scope](../01-product/03-scope.md)).
 
-Known risks, stated as facts:
+Known risks:
 
 - Tauri's mobile targets are younger than its desktop targets, and the iOS
   and Android WebView layers have different capabilities and rough edges.

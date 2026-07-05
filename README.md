@@ -1,14 +1,14 @@
 # Orbit
 
-Orbit is a modern communication platform built on IRC. It is not an IRC client. It is a polished client layer, a voice/video service, and a file storage gateway, orchestrated into one cohesive product over infrastructure communities have trusted for thirty years.
+Orbit is a communication platform built on IRC, but it isn't an IRC client: it's a polished client layer, a voice/video service, and a file storage gateway, orchestrated into one product over infrastructure communities have trusted for thirty years.
 
 Everything your friend group needs from Discord, privately, on a $5 VPS. `docker compose up`.
 
 ## Why
 
-Every Discord alternative that died tried to out-Discord Discord - custom protocols, custom servers, years catching up to feature parity. They failed because they were not decoupled, scaled poorly on cost, and were horrible to maintain.
+Every Discord alternative that died tried to out-Discord Discord: custom protocols, custom servers, years catching up to feature parity. They failed because they weren't decoupled, scaled poorly on cost, and were horrible to maintain.
 
-Orbit survives by not owning what it does not have to. The IRC server is stock. The identity provider is stock. Orbit builds only the parts where product value lives: the clients, Satellite (voice and video), and Depot (file storage). The rest is adopted, battle-tested, and someone else's maintenance burden.
+Orbit survives by not owning what it doesn't have to. The IRC server is stock. The identity provider is stock. Orbit builds only the parts where product value lives: the clients, Satellite (voice and video), and Depot (file storage). The rest is adopted, battle-tested, and someone else's maintenance burden.
 
 ## What It Is
 
@@ -18,13 +18,13 @@ Orbit survives by not owning what it does not have to. The IRC server is stock. 
 - **Transponder** - any OIDC provider (Keycloak, Authentik, Supabase). One login, verified everywhere.
 - **Clients** - desktop (Tauri), web app, embedded client. Where the UX lives.
 
-Entry is frictionless. Anonymous guest access, no-account voice calls, browser-first on any device. A friend joins a call from a link without signing up for anything. The product demonstrates itself.
+Entry is frictionless: anonymous guest access, no-account voice calls, browser-first on any device. A friend joins a call from a link without signing up for anything. The product demonstrates itself.
 
 ## What It Is Not
 
 Orbit is not a Discord clone. Discord isolates communities into walled-off servers. Orbit works the way IRC always has: channels are lightweight, communities are porous, users belong to many at once. Permissions use IRC channel modes and the bot ecosystem that has existed for decades.
 
-Orbit is not a product to sell. It is infrastructure and a cultural push - resistance to surveillance and platform lock-in. If Orbit ever provides hosted instances, that is a convenience service, not a SaaS play.
+Orbit is not a product to sell. It's infrastructure and a cultural push: resistance to surveillance and platform lock-in. If Orbit ever provides hosted instances, that's a convenience service, not a SaaS play.
 
 ## Specification
 
@@ -51,4 +51,4 @@ Code, documentation, architecture, and project structure must be designed and cr
 
 Developers may consult an LLM or chat agent when researching a problem. However, LLM-generated output should be treated as guidance only. Developers are expected to understand, evaluate, and implement solutions themselves rather than allowing the LLM to be in the driver's seat.
 
-This project should be built with intention and judgement. Human finess is the key.
+This project should be built with intention and judgement. Human finesse is the key.

@@ -4,7 +4,7 @@ Authentication in Orbit is built on standard OIDC. The Orbit client
 authenticates against the domain's identity provider (the
 [Transponder](07-transponder.md) role) using the Authorization Code flow with
 PKCE, obtains a signed identity token, and uses it across all Orbit
-components - Uplink, Satellite, and Depot. One login, verified everywhere on
+components: Uplink, Satellite, and Depot. One login, verified everywhere on
 that domain: each component verifies the token independently against the
 provider's published keys, per the
 [verification model](07-transponder.md#the-verification-model).
@@ -23,8 +23,8 @@ truth for accounts: a valid token wins, and the user's provider account maps
 directly to their IRC account via the configured username claim.
 
 That doesn't require disabling NickServ. The two layers coexist cleanly
-because they own different things: OIDC owns identity and login; NickServ
-provides a compatibility and recovery surface OIDC structurally can't -
+because they own different things. OIDC owns identity and login; NickServ
+provides a compatibility and recovery surface OIDC structurally can't:
 legacy SASL identify, self-serve renames, and email-based password recovery.
 Both configurations are supported:
 
@@ -58,7 +58,7 @@ email won't match the email on the squatted NickServ record. Orbit clients
 surface the mismatch as an account-integrity warning and prompt a re-claim,
 which syncs the email; fully evicting the prior credential additionally
 requires overwriting the stored password through the recovery flow or an
-operator clearing it. There is no automatic eviction - token verification
+operator clearing it. There is no automatic eviction: token verification
 only resolves the account name and can't mutate IRC state.
 
 Operators who want to eliminate this risk entirely choose the strict
@@ -72,7 +72,7 @@ single-source configuration, where no one can pre-register a nick.
    ([Transponder - Uplink](07-transponder.md#uplink)).
 3. Decide on coexistence (keep NickServ for recovery and legacy clients) or
    strict mode (disable NickServ registration).
-4. Existing nickname reservations continue to work - Ergo's enforcement
+4. Existing nickname reservations continue to work: Ergo's enforcement
    mechanism is unchanged; only the credential verification path is swapped.
 
 ## Legacy IRC Clients
@@ -88,12 +88,12 @@ coexistence mode.
 ## Anonymous Users
 
 The Orbit web client (embedded or full web app) connects directly to Ergo's
-WebSocket endpoint, the same path as the desktop client - no middleware
+WebSocket endpoint, the same path as the desktop client, with no middleware
 proxy. Anonymous guests connect via SASL ANONYMOUS and receive an
 automatically assigned nickname under a reserved guest prefix. No account
 creation, no backend, no token, no session state. The guest prefix is
-reserved so no registered user can collide with it, and any IRC client -
-including third-party web UIs - can connect the same way: Orbit doesn't
+reserved so no registered user can collide with it, and any IRC client
+(including third-party web UIs) can connect the same way: Orbit doesn't
 gatekeep access to a standard IRC server.
 
 Anonymous users have no persistent identity, which is why they can't
@@ -102,7 +102,7 @@ can't upload files ([Depot](06-depot.md#guest-users)).
 
 ## Permissions
 
-Orbit uses IRC's built-in channel modes. Period.
+Orbit uses IRC's built-in channel modes.
 
 | IRC Mode | Role         | Capabilities                                                |
 |----------|--------------|-------------------------------------------------------------|
@@ -112,17 +112,17 @@ Orbit uses IRC's built-in channel modes. Period.
 | (none)   | Default user | Read and send messages in unmoderated channels              |
 
 There are no custom roles, no role colors, no granular permission overrides.
-This is an opinionated decision: IRC has a proven, battle-tested permissions
-model that covers the needs of the vast majority of communities.
+IRC's permissions model is proven and covers the needs of the vast majority
+of communities.
 
-Channel modes are ephemeral - they live only while the channel is in memory.
+Channel modes are ephemeral: they live only while the channel is in memory.
 Persistent channel state (founder ownership, standing grants, standing bans,
 survival across restarts) is owned by ChanServ; Orbit keeps live moderation
 on raw channel modes and maps persistent administration to ChanServ behind a
 channel-settings UI. See [Services - ChanServ](08-services.md#chanserv).
 
-Communities that need more - role hierarchies, per-channel upload limits,
-auto-mod rules - run an IRC bot: a bot connected to Uplink can enforce
+Communities that need more (role hierarchies, per-channel upload limits,
+auto-mod rules) run an IRC bot: a bot connected to Uplink can enforce
 arbitrarily complex rules by mapping accounts to roles and applying channel
 modes, the way IRC communities have managed roles for decades, on any IRCv3
 server. The concrete pattern lives in
@@ -152,13 +152,13 @@ Unverified users:
   it, and publish media subject to the Satellite's guest publish policy
   (publish-enabled by default - see
   [Satellite](05-satellite.md#authentication)).
-- Have self-asserted display names, which are not trustworthy - the UI must
+- Have self-asserted display names, which are not trustworthy; the UI must
   never present them as equivalent to verified identities.
 - Can't impersonate a verified user: an unverified participant claiming the
   same name as a verified one must be visually distinguishable.
 - Are subject to the same session moderation controls as anyone else.
 
-The verification must be framed as informational, not as a status hierarchy -
+The verification must be framed as informational, not as a status hierarchy;
 a two-tier feel in the UI is a real product risk.
 
 ## Graceful Degradation
@@ -179,5 +179,5 @@ service discovery ([Infrastructure](12-infrastructure.md)). If none is found,
 it skips the identity token step, joins Satellite sessions unverified, and
 hides verification UI rather than presenting a broken state. Without a
 provider there's no single sign-on across components and Depot can't
-attribute uploads to an identity - an acceptable configuration for
+attribute uploads to an identity, an acceptable configuration for
 communities that don't need verified identity.

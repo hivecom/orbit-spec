@@ -283,4 +283,4 @@ Key decisions already made. See the [ADRs](spec/02-architecture/decisions/) for 
 
 ## Out of Scope
 
-Genuine product exclusions (application platform, walled-garden servers, group E2E, enterprise compliance tooling, script-tag embedding, native per-platform clients, forking the IRC server) live in [Scope](spec/01-product/03-scope.md) with the reasoning.
+The product exclusions (application platform, walled-garden servers, group E2E, enterprise compliance tooling, script-tag embedding, native per-platform clients, forking the IRC server) live in [Scope](spec/01-product/03-scope.md) with the reasoning.

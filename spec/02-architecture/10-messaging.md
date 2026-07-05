@@ -9,13 +9,13 @@ delivery mechanics live in [Implementation - Push](../03-implementation/11-push.
 ## Direct Messages
 
 Direct messages are standard IRC `PRIVMSG` to a nickname. No special channel
-convention, no synthetic construct, no new primitive: if you know someone's
-nickname, you message them, and Orbit clients render the exchange in a
-conversation UI over plain IRC transport.
+convention, no new primitive: if you know someone's nickname, you message
+them, and Orbit clients render the exchange in a conversation UI over plain
+IRC transport.
 
 If a group wants a private conversation, they make an invite-only private
-channel and invite the participants. That's already IRC - there's no separate
-"group DM" concept in the spec because the tool already exists.
+channel and invite the participants. That's already IRC; there's no separate
+"group DM" concept because the tool already exists.
 
 ### Storage
 
@@ -30,7 +30,7 @@ delivery, and continuity across sessions.
 
 **E2E-encrypted DMs** store ciphertext with the same retention and delivery
 model. The server holds, delivers, and eventually expires encrypted messages
-exactly as it would plaintext - it just can't read them. Offline delivery
+exactly as it would plaintext; it just can't read them. Offline delivery
 works, history works (the client decrypts locally), and server-side search
 doesn't (the server can't index ciphertext; client-side search over decrypted
 local history is the answer). When retention expires the ciphertext is
@@ -57,7 +57,7 @@ server holds ciphertext it can't read.
 
 Operator-configured retention doesn't mean zero risk. Standard DMs travel
 through the Uplink server in plaintext, and the operator can in principle
-read content at the server level - the same trust model as channels: you're
+read content at the server level, the same trust model as channels: you're
 trusting the server you joined.
 
 The real answer to eavesdropping is end-to-end encryption. With E2E the
@@ -66,9 +66,9 @@ inspecting the database. E2E for DMs is designed but not built; until it
 ships, DM content is stored with operator-configured retention and isn't
 encrypted, and users who need confidentiality should know that.
 
-This doesn't apply to channels. Channels are intentionally server-readable -
-encrypting one would break the features that make channels useful: history,
-search, threads, moderation. Choose your server accordingly.
+This doesn't apply to channels. Channels are server-readable: encrypting one
+would break the features that make them useful (history, search, threads,
+moderation). Choose your server accordingly.
 
 ## Presence
 
@@ -85,7 +85,7 @@ profile data.
   display name, and a vendor-prefixed status string. The avatar and display
   name keys are the IRCv3 quasi-standard ones so other metadata-aware clients
   interoperate. Clients subscribe to the keys they understand and receive
-  live push updates - no polling. On join, current metadata for visible users
+  live push updates with no polling. On join, current metadata for visible users
   arrives as part of the burst.
 - **Fallback**: when metadata is unavailable (older server, or the operator
   hasn't enabled it), clients fall back to generated avatars, nickname as
@@ -111,7 +111,7 @@ history is kept per channel, with no mandate to store everything forever and
 no mandated default. DMs use the same model, and E2E content follows the same
 mechanics as ciphertext.
 
-Orbit ships no compliance product - DLP, eDiscovery, and audit exports are
+Orbit ships no compliance product: DLP, eDiscovery, and audit exports are
 out of scope ([Product - Scope](../01-product/03-scope.md)). But because
 Orbit is self-hosted infrastructure, the operator is the data controller and
 carries any legal obligations (GDPR, CCPA, and similar) for their instance.
@@ -119,7 +119,7 @@ Orbit's posture is to give operators the technical levers, not to make the
 decisions for them:
 
 - **Time-bounded retention.** Per-channel and per-DM retention windows mean
-  personal data isn't kept indefinitely by default - data minimisation is a
+  personal data isn't kept indefinitely by default; data minimisation is a
   setting, not a custom build.
 - **Per-message erasure.** Server-enforced retraction lets users delete their
   own messages and operators delete others', satisfying targeted takedown and
@@ -132,10 +132,10 @@ decisions for them:
   the storage and privacy trade-off of the index itself. Configuration lives
   in [Implementation - Uplink](../03-implementation/01-uplink.md).
 - **Architectural non-retention.** For P2P calls and E2E DMs, the operator
-  never holds plaintext or media at all - the strongest erasure guarantee is
+  never holds plaintext or media at all; the strongest erasure guarantee is
   never having the data.
 
-Whether to enable any of these is a deliberate operator choice. A hobby
+Whether to enable any of these is an operator choice. A hobby
 instance among friends and an EU-facing public deployment will reasonably
 configure retention and erasure very differently; Orbit doesn't impose a
 default that presumes either.
@@ -144,28 +144,25 @@ default that presumes either.
 
 IRC moderation at scale isn't hypothetical: channel ops, services, bots, and
 network bans ran networks of ninety thousand concurrent users for decades,
-and the primitives work. Orbit adds client-side UX on top - operator tooling,
-moderation panels, visible trust indicators - and doesn't reinvent the
+and the primitives work. Orbit adds client-side UX on top (operator tooling,
+moderation panels, visible trust indicators) and doesn't reinvent the
 permission model ([Identity - Permissions](09-identity.md#permissions)).
 
 Orbit isn't text-only like traditional IRC. Depot adds file uploads and
-Satellite adds voice and video - a content surface IRC never had, and scale
+Satellite adds voice and video, a content surface IRC never had, and scale
 requires additional care there. The posture is layered:
 
 - **Shared content (files via Depot):** every upload is attributed to a user
   identity, content is removable by operators, and Depot provides a gateway
   chokepoint where automated scanning can be added at scale. Small instances
-  don't need it; large public ones can add it. The safe default: anonymous
-  users can join calls and chat but can't upload files. The scanning
+  don't need it; large public ones can add it. The safe default is that
+  anonymous users can join calls and chat but can't upload files. The scanning
   postures and driver asymmetry live in
   [Depot - Content Moderation](06-depot.md#content-moderation).
-- **Private content (P2P calls, E2E DMs):** the shield is cryptographic, not
-  topological. End-to-end encryption plus non-retention means Orbit can't
-  see, decrypt, or produce 1:1 content. "We cannot decrypt and did not
-  store" is the posture - the same model as Signal.
-
-Orbit is infrastructure: for private content it architecturally can't see it;
-for shared content it attributes it and can remove it.
+- **Private content (P2P calls, E2E DMs):** the shield is cryptographic.
+  End-to-end encryption plus non-retention means Orbit can't see, decrypt,
+  or produce 1:1 content. "We cannot decrypt and did not store" is the
+  posture.
 
 ## Security Model: Transport vs. End-to-End
 
@@ -186,8 +183,8 @@ level. The rule for when E2E applies:
 | 1:1 DMs | Yes (designed, not built) | Two parties only. The server carries the envelope but cannot open it. |
 | 1:1 calls / video (P2P) | Yes | Direct WebRTC connection. The server is not in the media path. |
 
-If a server mediates the content, there is no E2E. If it's point-to-point,
-there is. No exceptions, no per-channel toggles, no partial E2E.
+If a server mediates the content, there is no E2E; if it's point-to-point,
+there is. No per-channel toggles, no partial E2E.
 
 This is a stronger privacy story than platforms that offer inconsistent or
 partial E2E, because the boundary is explicit: when you join a channel or a
@@ -209,7 +206,7 @@ Detection belongs inside the IRC server for two reasons:
 - **It avoids duplicating knowledge.** Online/offline state is core session
   state, highlight matching is native, and DM recipients are known at
   delivery time. A separate service would have to re-derive all of this from
-  the outside - redundant and fragile.
+  the outside.
 - **It can observe DMs.** A DM is delivered only to its target; a bot-based
   approach could never see DMs directed at other users without operator-level
   privileges and the privacy implications those carry. Native integration has
