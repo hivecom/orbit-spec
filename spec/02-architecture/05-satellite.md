@@ -209,6 +209,14 @@ to a room and identity.
   the Satellite; all participants are unverified. Sessions can still be
   password-protected.
 
+Whether unverified participants can publish media - speak, send video, share
+a screen - is an operator setting on each Satellite, applied by the token
+service when it issues session credentials. The default is publish-enabled: a
+guest joining from a link or the embedded client can speak. Operators who
+want receive-only guests configure that on their Satellite; verified
+participants are unaffected. The token-grant mechanics live in
+[Implementation - Satellite](../03-implementation/03-satellite.md#token-service).
+
 The verified/unverified user model is specified in
 [Identity](09-identity.md#verified-and-unverified-users).
 

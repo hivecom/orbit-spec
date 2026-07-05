@@ -160,8 +160,8 @@ deleting others'. Configuration specifics live in
 There is no fallback tag-based retraction system - retraction is
 server-enforced or not available.
 
-Message editing isn't standardized in IRC yet; Orbit defers it until a
-standard lands. See
+Message editing isn't standardized in IRC yet; Orbit clients handle it in the
+interim with the `+orbit/msg-amend` edit tag until a standard lands. See
 [Protocol Posture](02-protocol-posture.md#current-gaps-and-how-each-resolves).
 
 ### Replies

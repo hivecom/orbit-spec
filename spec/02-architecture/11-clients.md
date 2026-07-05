@@ -115,8 +115,9 @@ holds together:
 
 - **Records are immutable and append-only.** A delivered message never
   changes; the only post-delivery mutations are retraction tombstones (never
-  a content edit) and, once editing standardizes upstream, edits. It's a
-  write-once store with rare overlay events, not a cache-coherence problem.
+  a content edit) and edits - via the interim edit tag today, via whatever
+  editing standard lands upstream later. It's a write-once store with rare
+  overlay events, not a cache-coherence problem.
 - **There's a stable server-assigned dedup key.** Every message carries a
   server `msgid` and an authoritative `server-time`, so the same line merges
   into one cached record whether it arrives live, as an echo, or in a history

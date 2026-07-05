@@ -16,7 +16,7 @@ The short version:
 |---|---|
 | Text chat, DMs, history | + |
 | Replies, threads, retractions | + |
-| Message editing | - (waiting on an IRC standard; client-side edit tags as fallback) |
+| Message editing | + (client-side edit tags in the interim; adopts the IRC standard when one lands) |
 | Message reactions | + (client-side via tags) |
 | Full-text search | + (via Ergo Postgres/SQLite history backends) |
 | Group voice, video, screen share | + |
@@ -39,7 +39,7 @@ The short version:
 
 **Legend:** + covered by the design, - not covered (the row says why where it matters), * model difference (covered differently by design)
 
-Orbit does not fork the IRC server. The Uplink is any stock IRCv3 server (Ergo is the reference), and Orbit conforms to IRCv3: whatever Ergo implements, the Orbit client supports. The one text feature IRC has not standardized yet is message editing, which Orbit defers until a standard lands; if none has by the time editing matters, the fallback is client-side edit message tags.
+Orbit does not fork the IRC server. The Uplink is any stock IRCv3 server (Ergo is the reference), and Orbit conforms to IRCv3: whatever Ergo implements, the Orbit client supports. The one text feature IRC has not standardized yet is message editing; Orbit covers it with client-side edit message tags in the interim and adopts the standard when one lands.
 
 For information about enterprise tools, see [Platform Comparison](spec/01-product/04-platform-comparison.md) and [Scope](spec/01-product/03-scope.md).
 
@@ -52,7 +52,7 @@ For information about enterprise tools, see [Platform Comparison](spec/01-produc
 | Message retractions | Server-enforced via `REDACT` / `draft/message-redaction` (shipped in stable Ergo) - tombstone in Orbit, NOTICE fallback for basic IRC clients | [uplink](spec/02-architecture/03-uplink.md) |
 | Message replies | Standard IRCv3 `+draft/reply` tag referencing a `msgid` - inline excerpt if original is in buffer; interoperates with other IRC clients | [uplink](spec/02-architecture/03-uplink.md) |
 | Threads | Client-managed sub-channels (`#parent/t-<msgid>`). IRC clients can `/join` directly | [uplink](spec/02-architecture/03-uplink.md) |
-| Message editing | Not yet an IRC standard; deferred until Ergo or IRCv3 ships one, with client-side edit tags as the fallback | [uplink](spec/02-architecture/03-uplink.md) |
+| Message editing | Interim client-side edit tags (`+orbit/msg-amend`) until Ergo or IRCv3 ships a standard, which Orbit then adopts | [tags](spec/03-implementation/02-tags.md) |
 | Channel renaming | Optional, capability-gated (`draft/channel-rename`); blocked on registered channels, so `display-name` metadata is the rename path for established channels | [uplink](spec/02-architecture/03-uplink.md) |
 | DMs | Standard IRC `PRIVMSG` with operator-configured retention and always-on mode | [messaging](spec/02-architecture/10-messaging.md) |
 | Group private conversations | Invite-only private channels (`+s +i`) | [messaging](spec/02-architecture/10-messaging.md) |
@@ -73,6 +73,7 @@ For information about enterprise tools, see [Platform Comparison](spec/01-produc
 | P2P 1-on-1 calls | Direct WebRTC handshake via `+orbit/p2p-offer`/`+orbit/p2p-answer` - 2 IRC messages only | [satellite](spec/02-architecture/05-satellite.md) |
 | BYOS (Bring Your Own Satellite) | Users can add their own Satellite URL; displayed as "Community" (no verified badge) | [satellite](spec/02-architecture/05-satellite.md) |
 | Session permissions | Creator = admin. Mute, kick, password, lock/unlock, allow-list, moderator delegation | [satellite](spec/02-architecture/05-satellite.md) |
+| Guest publish policy | Unverified participants can speak by default; per-Satellite operator toggle for receive-only guests, enforced via token grants | [satellite (implementation)](spec/03-implementation/03-satellite.md) |
 | Knocking | Rejected users can knock; creator admits/rejects with 60s timeout | [satellite](spec/02-architecture/05-satellite.md) |
 | Password-protected sessions | Password set at creation, sent to token service on join, never over IRC | [satellite](spec/02-architecture/05-satellite.md) |
 | Standalone mode | `satellite://` URI - no IRC needed. Quick calls, embedded voice on websites | [satellite](spec/02-architecture/05-satellite.md) |
@@ -260,13 +261,9 @@ Decisions still pending that affect scope or design. See [Open Questions](spec/O
 
 | Question | Context |
 |----------|---------|
-| ~~Embedded guest voice permissions~~ | Resolved: guests can speak by default. Configurable per Satellite instance by the operator. |
-| ~~File upload limits~~ | Resolved: configurable per deployment. Storage-layer enforcement with operator-configurable limits. |
-| Message history retention | Default retention period? Per-channel configurability? Storage implications of unlimited retention? |
 | Satellite `/info` shape | What should the metadata endpoint return beyond name/region/capacity/version? Codecs? Max participants? TURN hints? |
-| ~~BYOS trust UX~~ | Resolved: the domain's DNS records are the network's authoritative Satellite source; anything unsanctioned requires first-connect confirmation (SSH host key model). |
 | Satellite token bootstrapping | Is a public join key sufficient? (Probably yes - same trust model as public TeamSpeak/Mumble.) |
-| Multi-node sessions | Can a voice session span multiple LiveKit nodes? Probably not. What happens on node failure? |
+| E2E cross-device key sync | Depot backup, P2P device transfer, or per-device keys (Signal model)? Genuinely undecided. |
 
 ## Architecture Decisions
 
@@ -277,7 +274,7 @@ Key decisions already made. See the [ADRs](spec/02-architecture/decisions/) for 
 | Desktop framework | **Tauri v2** over Electron - ~10-15 MB binary, ~30-50 MB idle RAM | [ADR-01](spec/02-architecture/decisions/01-adr-tauri-vs-electron.md) |
 | Frontend framework | **Vue 3 + Vite + VUI** over Leptos, Svelte, Quasar | [ADR-02](spec/02-architecture/decisions/02-adr-vue-alternatives.md) |
 | Protocol | **IRC (Ergochat / IRCv3)** - 30 years of tooling, bot ecosystem, component independence | [vision](spec/01-product/01-vision.md) |
-| No IRC server fork | **Do not fork the IRC server.** Run a stock IRCv3 server (Ergo reference) and conform to IRCv3. Push, OIDC, metadata, and redaction are already native; editing waits on IRC standardization. Forking would break IRC compatibility and make features Orbit-only | [protocol posture](spec/02-architecture/02-protocol-posture.md) |
+| No IRC server fork | **Do not fork the IRC server.** Run a stock IRCv3 server (Ergo reference) and conform to IRCv3. Push, OIDC, metadata, and redaction are already native; editing uses interim client-side tags until IRC standardizes. Forking would break IRC compatibility and make features Orbit-only | [protocol posture](spec/02-architecture/02-protocol-posture.md) |
 | Federation | **Not a goal for now** - requires server-to-server linking absent from stock Ergo; not a fork reason | [federation](spec/02-architecture/14-federation.md) |
 | Media transport | **WebRTC (LiveKit SFU)** - MoQ/Iroh stays a research track | [satellite](spec/02-architecture/05-satellite.md) |
 | Identity provider | **Any OIDC-compliant provider** (Keycloak, Authentik, Zitadel, Supabase) - Transponder is a role, not Orbit-built software; the auth-script bridge is the general-purpose JWT verification path (any provider/algorithm), with native Ergo `accounts.jwt-auth` as an option for RS256/EdDSA/HMAC providers | [transponder](spec/02-architecture/07-transponder.md) |

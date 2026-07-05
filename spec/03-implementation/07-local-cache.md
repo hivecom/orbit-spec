@@ -35,7 +35,7 @@ interface CachedMessage {
   text: string
   tags: Record<string, string> // surviving +orbit/* and +draft/* tags (reply ref, reactions, etc.)
   redacted?: boolean       // tombstone overlay; original text is NOT retained when set
-  edited?: boolean         // set when text was edited in place (editing is not standardized upstream yet)
+  edited?: boolean         // set when text was edited in place via the interim +orbit/msg-amend tag
 }
 ```
 
@@ -186,8 +186,9 @@ never what is *persisted*.
 - Retractions call `markRedacted(msgid)`, setting the tombstone flag and dropping stored `text`;
   original content is never retained, matching the server contract (see
   [Uplink - Message Retractions](01-uplink.md#message-retractions-redact)).
-- Edits update the record's `text` in place, keyed by `msgid`. Message editing is not standardized
-  upstream yet; the `edited` flag is reserved on `CachedMessage` so the overlay is representable.
+- Edits update the record's `text` in place, keyed by `msgid`, and set the `edited` flag. Edits
+  arrive via the interim `+orbit/msg-amend` tag (see [Tags](02-tags.md#orbitmsg-amend)) until
+  editing standardizes upstream.
 - Presence events (`JOIN`/`PART`) from `event-playback` are persisted too, keyed on their synthetic
   `evt:*` id, so scrollback renders them consistently rather than only when a live replay happens to
   include them.

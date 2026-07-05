@@ -33,10 +33,12 @@ support and how each gap is resolved:
 
 - **Message editing** isn't standardized in IRC yet. There is active draft
   work on in-place editing across the IRC ecosystem; Orbit follows it and
-  adopts a standard when Ergo or IRCv3 ships one. If none has landed by the
-  time editing matters, the fallback is a client-side edit convention over
-  message tags. That covers display only: stored history keeps the original,
-  unlike retraction, where `REDACT` deletes server-side.
+  adopts a standard when Ergo or IRCv3 ships one. Until then, Orbit edits
+  through a client-side convention over message tags (`+orbit/msg-amend`) -
+  the interim direction until a real solution exists at the protocol level,
+  retired the moment one ships. It covers display only: stored history keeps
+  the original, unlike retraction, where `REDACT` deletes server-side. The
+  tag lives in [Implementation - Tags](../03-implementation/02-tags.md).
 - **Message retractions** use the IRC-standard `REDACT` command via
   `draft/message-redaction`, shipped and stable in Ergo. Server-enforced, not
   a client tag. See [Uplink](03-uplink.md#message-retractions-and-replies).
@@ -79,7 +81,7 @@ supported for guest access.
 | Text chat | ✓ Full | ✓ Full | ✓ Full |
 | Message history (`chathistory`) | ✓ Full | ✓ Full | Limited (no `chathistory` support) |
 | Message retractions | ✓ Tombstone rendered | ✓ Message removed (via `draft/message-redaction`) | Sees `*** alice retracted a message ***` NOTICE |
-| Message editing | Pending upstream IRCv3 | Pending upstream IRCv3 | Pending upstream IRCv3 |
+| Message editing | ✓ Interim edit tag (`+orbit/msg-amend`) | Sees original text (tag invisible) | Sees original text |
 | Threads | ✓ Thread panel UI | Can `/join` thread channel manually | Can `/join` thread channel manually |
 | Voice / video | ✓ Full | Not available | Not available |
 | File uploads | ✓ Inline preview | Sees plain URL | Sees plain URL |

@@ -19,7 +19,7 @@ Where Orbit is behind, the table says so. The goal is to give operators, contrib
 | Category | Orbit | Discord | Slack | Teams |
 |---|---|---|---|---|
 | Text chat basics | + | + | + | + |
-| Message editing | ~ | + | + | + |
+| Message editing | + | + | + | + |
 | Message reactions | + | + | + | + |
 | Message retractions | + | + | + | + |
 | Replies and threads | + | + | + | + |
@@ -59,7 +59,7 @@ Orbit covers channels, DMs, group private conversations, persistent server-side 
 
 ### Message actions
 
-**Message editing is the one gap today.** IRC hasn't standardized in-place editing yet, so Orbit defers editing until Ergo or IRCv3 ships a standard; it doesn't fork the server to add it. If nothing has landed by the time editing matters, the fallback is client-side edit message tags, which fix the display but don't rewrite stored history the way REDACT does for retractions. Reactions work today, handled client-side via message tags, with one concession: reactions can't be shown on messages surfaced purely from a search result. Retractions, replies (with inline excerpt), and client-managed threads are covered. Full-text search is available via Ergo's history backends plus an external indexer.
+**Message editing is covered by an interim mechanism.** IRC hasn't standardized in-place editing yet, and Orbit doesn't fork the server to add it. In the interim, Orbit clients edit via a client-side edit tag - that is the direction until a real solution lands at the protocol level, at which point Orbit adopts the standard and retires the tag. Two caveats: edits render between Orbit clients only (plain IRC clients keep seeing the original), and stored history isn't rewritten the way REDACT rewrites retractions. Reactions work today, handled client-side via message tags, with one concession: reactions can't be shown on messages surfaced purely from a search result. Retractions, replies (with inline excerpt), and client-managed threads are covered. Full-text search is available via Ergo's history backends plus an external indexer.
 
 ### Files and media
 
@@ -111,8 +111,8 @@ Discord's Activities, Slack's app marketplace, and Teams' tab/app ecosystem are 
 
 ## What This Means in Practice
 
-**Right now:** Orbit is a good fit for technical communities, open-source projects, gaming groups, and operators who want full control over their infrastructure. It covers text, voice, video, files, presence, identity, push notifications, reactions, and search well enough for daily use. The one remaining gap is message editing, which IRC hasn't standardized yet and Orbit defers until it does. Communities where in-place editing is table stakes should evaluate whether the trade-off is acceptable today.
+**Right now:** Orbit is a good fit for technical communities, open-source projects, gaming groups, and operators who want full control over their infrastructure. It covers text, voice, video, files, presence, identity, push notifications, reactions, and search well enough for daily use. Message editing works through an interim client-side tag: edits show between Orbit clients but not on plain IRC clients, and stored history isn't rewritten. Communities where full-fidelity editing is table stakes should weigh that until IRC standardizes editing.
 
-**As IRC evolves:** if an editing standard lands in stock Ergo or IRCv3, Orbit gains it without a fork, closing the last text gap. Orbit is already a credible general-purpose alternative for communities that prioritize self-hosting, open protocols, and operator control over convenience features. Federation is not a goal for now: it requires server-to-server linking that stock IRC servers don't provide.
+**As IRC evolves:** when an editing standard lands in stock Ergo or IRCv3, Orbit adopts it without a fork and retires the interim edit tag, closing the last text gap. Orbit is already a credible general-purpose alternative for communities that prioritize self-hosting, open protocols, and operator control over convenience features. Federation is not a goal for now: it requires server-to-server linking that stock IRC servers don't provide.
 
 **Who Orbit is not for:** Organizations that require enterprise compliance tooling (DLP, eDiscovery, audit exports), teams that depend heavily on embedded third-party applications, and anyone who needs a fully managed hosted service with commercial SLAs. Orbit is infrastructure, not a SaaS product.

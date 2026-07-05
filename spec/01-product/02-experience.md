@@ -14,7 +14,7 @@ Because Orbit is decentralized, there's no central invite service. A link to a s
 
 Channels are lightweight and communities organize them into collapsible folders just by naming them with slashes (`#dev/frontend` renders as `frontend` inside a `dev` group). History is there when you come back, and read positions sync across devices, so the phone knows what you read on the desktop.
 
-Messages support replies with an inline excerpt of the original, retraction (removed messages leave a tombstone, never the content), reactions, link previews, image thumbnails, emoji, and basic Markdown. In-place editing is the one gap: IRC hasn't standardized it yet, so Orbit waits for the standard, with client-side edit tags as the fallback if none lands in time. Unread indicators and mention highlights work as you'd expect, and messages composed while disconnected are held and sent when the connection returns.
+Messages support replies with an inline excerpt of the original, retraction (removed messages leave a tombstone, never the content), reactions, link previews, image thumbnails, emoji, and basic Markdown. In-place editing works between Orbit clients through an interim edit convention; IRC hasn't standardized editing yet, so people on plain IRC clients keep seeing the original text until a standard lands and Orbit adopts it. Unread indicators and mention highlights work as you'd expect, and messages composed while disconnected are held and sent when the connection returns.
 
 ### Threads
 
@@ -53,7 +53,7 @@ What works where:
 | Text chat and history | Yes | Yes | Yes, recent messages |
 | On-device message archive | Yes, disk-bounded | Yes, browser-managed and best-effort | No, session only |
 | Message retractions | Yes | Yes | Yes |
-| Message editing | Not yet: no IRC standard | Not yet | Not yet |
+| Message editing | Interim, between Orbit clients | Interim, between Orbit clients | Interim, between Orbit clients |
 | Rich rendering | Yes | Yes | Yes |
 | File uploads | Yes | Yes | No (guest surface; operator-configurable) |
 | Voice and video | Yes | Yes | Yes |

@@ -149,7 +149,9 @@ modes:
 Unverified users:
 
 - Can join voice and video sessions if the Satellite's access policy allows
-  it.
+  it, and publish media subject to the Satellite's guest publish policy
+  (publish-enabled by default - see
+  [Satellite](05-satellite.md#authentication)).
 - Have self-asserted display names, which are not trustworthy - the UI must
   never present them as equivalent to verified identities.
 - Can't impersonate a verified user: an unverified participant claiming the

@@ -52,6 +52,7 @@ data the server itself asserts.
 | `+orbit/p2p-offer`  | Set by the sending client                           | Client-asserted | Yes                              |
 | `+orbit/p2p-answer` | Set by the sending client                           | Client-asserted | Yes                              |
 | `+orbit/file`       | Set by the sending client                           | Client-asserted | Yes                              |
+| `+orbit/msg-amend`  | Set by the sending client                           | Client-asserted | Yes                              |
 
 This model is analogous to email: the transport (SMTP) delivers messages
 without validating sender claims, and the receiving client checks DKIM and
@@ -80,12 +81,21 @@ Orbit clients MUST enforce the following rules using the server-asserted
 5. **Thread signals**: accept a thread signal as a creation notice for the
    referenced parent message. Thread signals are informational; no identity
    verification is required beyond `account-tag`.
+6. **Message amendments**: an edit tag claims to modify an existing message,
+   so authorship MUST be verified before it is applied - the amend's
+   `account-tag` must match the original message's `account-tag`. Amends that
+   fail the check, or that target a message with no server-asserted author,
+   are ignored.
 
 ### Unverified Senders
 
 Replies and thread signals from unauthenticated users are permitted - a reply
 is a new message, not a modification of an existing one, and starting a
 thread doesn't require a registered account.
+
+Message amendments are the opposite case: an amend modifies an existing
+message, so it requires a verifiable author on both sides. Amends from
+senders without an `account-tag` are never applied.
 
 Satellite invites and P2P offers from users without an `account-tag` MUST be
 visually flagged as unverified, so the user knows the sender's identity can't

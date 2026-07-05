@@ -129,8 +129,12 @@ An **interim mechanism** for in-place message editing, used until the IRC ecosys
 message editing (active draft work is ongoing). The payload is base64 JSON:
 `{ "msgid": "<original-msgid>", "body": "<new-message-body>" }`. Receiving clients that
 understand this tag SHOULD update the displayed message body and render an "edited" indicator.
-Clients that do not understand the tag see nothing - the edit is invisible to them. If Ergo or
-IRCv3 adopts a standard editing mechanism, Orbit clients will adopt it and retire this tag.
+Clients that do not understand the tag see nothing - the edit is invisible to them. Before
+applying an amend, clients MUST verify authorship: the amend's `account-tag` must match the
+original message's `account-tag`, and amends from senders without one are never applied (see
+[Tags and Trust](../02-architecture/04-tags-and-trust.md#client-enforcement-rules)). This is the
+direction until a real solution exists at the protocol level: when Ergo or IRCv3 adopts a
+standard editing mechanism, Orbit clients adopt it and retire this tag.
 
 ### `+orbit/e2e`
 

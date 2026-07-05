@@ -162,6 +162,13 @@ that issues LiveKit-compatible JWTs scoped to a room and identity.
   sessions simultaneously.
 - **No identity provider configured**: The token service issues tokens to anyone who can reach
   the Satellite. All participants are unverified. Sessions can still be password-protected.
+- **Guest publish policy**: Whether unverified participants receive publish permissions is a
+  per-Satellite operator setting (default: publish enabled). When disabled, the token service
+  issues LiveKit JWTs for unverified participants with the `canPublish` grant set to `false`, so
+  they join receive-only - they can hear and see the session but not speak or share. Verified
+  participants always receive publish grants. Enforcement lives in the token grant and the SFU,
+  not the client, so a modified or embedded client cannot bypass it. The product-level default
+  (guests can speak) is in [Experience](../01-product/02-experience.md).
 
 ### Session Creation Payloads
 
