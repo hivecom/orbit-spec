@@ -1,52 +1,77 @@
 # Push Delivery
 
-The IRC server side of push notifications is native in stock Ergo: since v2.15.0, Ergo implements
-the `draft/webpush` specification, so push subscription registration and transport are built into
-the adopted server. Ergo already holds the state needed to detect notification-worthy events
-(session state, online/offline status, DM recipients, channel membership) and dispatches push
-events internally.
+Push reaches Orbit clients over two paths in very different states. The native path is standard
+Web Push: stock Ergo implements the
+[`draft/webpush`](https://github.com/ircv3/ircv3-specifications/pull/471) extension (v2.15.0+),
+covering event detection, subscription registration, and delivery to any Web Push endpoint. It
+works today, and the remaining work is client-side. The relay path covers the proprietary push
+services that native mobile apps are required to use (APNs on iOS, FCM on Google-ecosystem
+Android). That layer doesn't exist yet, and nothing needs it until native mobile clients exist.
+The notification model (which events trigger a push, why detection is server-native) lives in
+[Messaging](../02-architecture/10-messaging.md).
 
-The delivery side - the relays and integration that carry Ergo's push events to each platform -
-does not exist yet; this page specifies it. The notification model (why detection is
-server-native, which events trigger a push, and the payload privacy policy) lives in
-[Messaging](../02-architecture/10-messaging.md). The short version of the payload policy: a push
-carries sender and channel only, never message content - content stays on the server and is
-retrieved via `CHATHISTORY` on reconnect.
+## Native Path: Web Push
 
-## Delivery Backends
+Ergo detects notification-worthy events itself (it already holds session state, online/offline
+status, DM recipients, and channel membership) and POSTs the notification directly to the
+subscription endpoint per RFC 8030. No Orbit component sits in this path. Push is disabled by
+default; operators enable it with `webpush.enabled: true` in the Ergo config.
 
-The delivery layer carries Ergo's `draft/webpush` events to the appropriate platform delivery
-channel:
+The client side:
 
-- **FCM (Firebase Cloud Messaging)** - Android (Google ecosystem)
-- **APNs (Apple Push Notification service)** - iOS (required by the platform; unavoidable)
-- **UnifiedPush** - Android FOSS alternative to FCM; enables fully Google-free push delivery on Android
-- **Web Push** - the PWA subscribes via the standard browser Push API and receives notifications through the same `draft/webpush` flow
+1. Negotiate the `draft/webpush` capability at connect time.
+2. Obtain a push subscription. In a browser this comes from the service worker's Push API; the
+   PWA plumbing is in [Clients](08-clients.md#pwa-configuration).
+3. Register it with the server via the `WEBPUSH REGISTER` command, passing the endpoint and the
+   subscription's key material.
+4. Decrypt and render incoming pushes in the service worker, and re-register when the browser
+   rotates the subscription.
 
-All of these are configured by the server operator.
+The payload of each push is exactly one IRC message line (the triggering `PRIVMSG`), encrypted to
+the subscription keys per RFC 8291. The push service in the middle relays ciphertext it can't
+read; only the subscribed client holds the decryption keys. What the notification displays is the
+client's decision at render time - Orbit shows sender and channel, per the notification policy in
+[Messaging](../02-architecture/10-messaging.md).
 
-For Android, UnifiedPush support means operators can route notifications through any compatible
-distributor (e.g., ntfy, Gotify), removing the FCM dependency entirely. This makes a fully FOSS,
-Google-free push stack possible.
+This path serves:
 
-For iOS, APNs is unavoidable - Apple's platform does not permit alternative push delivery
-mechanisms. However, the APNs connection is made by the operator's deployment using the
-operator's registered APNs credentials.
+- **The web app / PWA on every platform.** Desktop browsers, Android, and installed PWAs on iOS
+  (16.4+), where Safari's push service speaks the same protocol.
+- **A future native Android client via UnifiedPush.** Distributors (ntfy, Gotify) expose Web
+  Push-compatible endpoints, so Ergo delivers to them directly. Google-free push with no
+  server-side additions.
 
-## Push Token Registration API
+The desktop client doesn't use push at all: it holds a persistent IRC connection, and Ergo's
+always-on mode covers delivery while it's closed.
+
+## Relay Path: FCM and APNs
+
+Native mobile apps can't receive Web Push directly. Apple requires APNs for iOS apps, and Android
+apps in the Google ecosystem use FCM. Carrying Ergo's push events to those services takes a
+relay: a small operator-deployed service holding the platform credentials. This component doesn't
+exist yet; this section specifies its surface.
+
+Unlike the native path, FCM and APNs can read what passes through them, so the relay enforces the
+minimization policy from [Messaging](../02-architecture/10-messaging.md): sender and channel
+only, never message content. Content stays on the server and is retrieved over `CHATHISTORY` on
+reconnect.
+
+For iOS, the APNs connection is made by the operator's deployment using the operator's registered
+APNs credentials. Token-based auth (JWT, not certificates) avoids certificate expiry and renewal
+where possible.
+
+### Push Token Registration API
 
 Called by the Orbit mobile client at login time. Associates a device's push token with the user's
-IRC account name. Ergo's `draft/webpush` support handles subscription registration natively; the
-endpoint shape below illustrates the delivery layer's view of registration.
+IRC account name.
 
 ```
 POST /push/register
 Authorization: Bearer <JWT>
 
 {
-  "platform": "fcm" | "apns" | "unifiedpush",
-  "token": "<device push token>",
-  "endpoint": "<UnifiedPush distributor URL, if platform=unifiedpush>"
+  "platform": "fcm" | "apns",
+  "token": "<device push token>"
 }
 ```
 
@@ -61,30 +86,28 @@ Authorization: Bearer <JWT>
 
 Called at logout. Removes the token for the authenticated account on this device.
 
-## Token Store
+### Token Store
 
-The push subscription store maps account names to registered device tokens. Ergo persists
-`draft/webpush` subscriptions natively; the delivery layer reads them to dispatch:
+The relay maps account names to registered device tokens:
 
 | Field | Description |
 |-------|-------------|
 | `account` | IRC account name (from OIDC `preferred_username` or NickServ account) |
-| `platform` | `fcm`, `apns`, or `unifiedpush` |
+| `platform` | `fcm` or `apns` |
 | `token` | Platform-issued device push token |
-| `endpoint` | UnifiedPush distributor URL (UnifiedPush only) |
 | `registered_at` | Timestamp of registration |
 
-A single user may have multiple registered tokens (phone, tablet, etc.). The delivery layer
-dispatches to all registered tokens for the target account and prunes any token that the delivery
-backend reports as expired or invalid.
+A single user may have multiple registered tokens (phone, tablet, etc.). The relay dispatches to
+all registered tokens for the target account and prunes any token the delivery backend reports as
+expired or invalid.
 
 Token churn is expected: push tokens are invalidated when users reinstall the app or reset
-devices. The delivery layer prunes invalid tokens on delivery failure, and clients re-register on
-every login. For APNs, token-based auth (JWT, not certificates) avoids certificate expiry and
-renewal where possible.
+devices. The relay prunes invalid tokens on delivery failure, and clients re-register on every
+login.
 
 ## Cross-References
 
-- [Messaging](../02-architecture/10-messaging.md) - the notification model and payload privacy policy
-- [Uplink](01-uplink.md) - the IRC layer; push subscription/transport is native via `draft/webpush`
-- [Identity](05-identity.md) - JWT verification for token registration
+- [Messaging](../02-architecture/10-messaging.md) - the notification model and display policy
+- [Uplink](01-uplink.md) - the IRC layer; Web Push subscription and transport are native
+- [Clients](08-clients.md) - PWA and service worker configuration
+- [Identity](05-identity.md) - JWT verification for the relay registration API

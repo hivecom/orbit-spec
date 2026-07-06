@@ -41,7 +41,7 @@ The full Orbit design spec, split into three layers by altitude plus a research 
 - [Clients](03-implementation/08-clients.md) - URI schemes, reconnection sequence, memory values, PWA config, embedding
 - [Deployment](03-implementation/09-deployment.md) - DNS records, services.json, Docker Compose, CORS, monitoring, backups
 - [Monorepo](03-implementation/10-monorepo.md) - Monorepo structure, build commands, CI pipeline
-- [Push](03-implementation/11-push.md) - Delivery backends, the `/push/register` API, token store
+- [Push](03-implementation/11-push.md) - The native Web Push path, the FCM/APNs relay, token store
 
 ## Shared
 
