@@ -1,10 +1,10 @@
 # Clients
 
-Client implementation reference: URI schemes and OS registration, the reconnection sequence,
-memory values, rendering edge cases, PWA configuration, and embedding. The client family, the
-platform adapter concept, channel organization semantics, and the cache design live in
-[Clients architecture](../02-architecture/11-clients.md); the per-surface experience lives in
-[Experience](../01-product/02-experience.md).
+Client implementation reference: URI schemes and OS registration, the window layout, the
+reconnection sequence, memory values, rendering edge cases, PWA configuration, and embedding.
+The client family, the platform adapter concept, channel organization semantics, and the cache
+design live in [Clients architecture](../02-architecture/11-clients.md); the per-surface
+experience lives in [Experience](../01-product/02-experience.md).
 
 ## Custom URI Schemes
 
@@ -70,7 +70,34 @@ Sharing the `https://` link is the recommended approach for public-facing commun
 (websites, social media, README files). The `orbit://` link is more appropriate for in-app
 sharing between users who are expected to have the client installed.
 
-## Reconnection Flow
+## Window Layout
+
+The main view is a tiled layout of windows managed by the client's window manager. A window is
+one of three types:
+
+| Type | Parameters | Content |
+|------|------------|---------|
+| `chat` | server, channel | A conversation buffer |
+| `voice` | channel | A voice session |
+| `empty` | none | Placeholder; a `chat` window without a channel renders the server's chat picker instead |
+
+Windows occupy named locations: `f` (full), `l`/`r` (left and right columns), and `lt`/`lb`/
+`rt`/`rb` (column quadrants). The layout operations:
+
+- **Replace** puts a window at a location.
+- **Split** divides a location in two: `f` becomes `l` + `r`, a column becomes its top and
+  bottom quadrants. The new slot starts empty.
+- **Swap** exchanges two locations.
+- **Close** removes a window and reflows: a closed quadrant promotes its sibling back to the
+  column, a closed column promotes the other column (or its quadrants) toward `f`. The `f`
+  window can't be closed.
+
+The entire layout serializes into a single URL search parameter (`w1`; the digit versions the
+format) as `location:type:params` entries, e.g. `w1=l:c:serverId:channelId;r:v:channelId`. The
+same string is mirrored to localStorage on every change. On startup the URL wins, then
+localStorage, then a default single empty window. Because the URL is authoritative, a layout is
+shareable, browser history navigates between layouts, and deep links (`orbit://`, `?channel=`)
+resolve by replacing the focused window.
 
 When the Orbit client reconnects after a disconnection:
 

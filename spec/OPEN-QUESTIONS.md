@@ -8,4 +8,8 @@ Unresolved decisions that need answering before or during implementation. Resolv
 
 3. **E2E cross-device key sync** - Three options are on the table: A, key backup to Depot; B, direct P2P transfer between devices; C, per-device keys (the Signal model). Genuinely undecided. See [E2E Encryption](02-architecture/13-e2e.md).
 
+4. **Image proxy path** - The memory discipline rule says images are proxied and resized before display ([Clients implementation](03-implementation/08-clients.md#memory-discipline)), and the desktop client's Rust backend can do that locally. What serves the web client? Options: a Depot-side resize endpoint, a generic proxy in the reverse proxy layer, or accepting direct loads on the web with strict size caps. Loading a remote image also reveals the reader's IP to the host, so the answer doubles as a privacy decision.
+
+5. **Link unfurl path** - Link preview cards need metadata from the target URL. A client-direct fetch hits CORS on the web and reveals the reader's IP to arbitrary hosts; a proxy avoids both but adds infrastructure that anonymous and BYOS deployments may not have. Related to the image proxy question above and likely shares its answer.
+
 *This document is updated as questions are resolved. Changes are tracked in the repository commit history.*

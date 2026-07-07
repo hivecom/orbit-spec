@@ -144,7 +144,8 @@ federation concern - see [Federation](../02-architecture/14-federation.md).
 ## Token Service
 
 Each Satellite runs a token service (or gateway, in multi-node deployments) - a small HTTP API
-that issues LiveKit-compatible JWTs scoped to a room and identity.
+that issues LiveKit-compatible JWTs scoped to a room and identity. Alongside the session
+endpoints it exposes `GET /health` for deployment tooling, mirroring Depot's.
 
 - **OIDC identity verification**: When the domain's OIDC identity provider is configured (the
   [Transponder](../02-architecture/07-transponder.md) role), the token service verifies the

@@ -1,7 +1,7 @@
 # Depot
 
-The runnable side of Depot: the upload flow, the API surface, keys, quotas, deletion, the
-metadata store, object keys, and configuration. The component boundary (what S3 does vs what
+The runnable side of Depot: the upload flow, places, the API surface, keys, quotas, deletion,
+the metadata store, object keys, and configuration. The component boundary (what S3 does vs what
 Depot does), the storage driver contract, the credential model, guest policy, recipient-scoped
 downloads, and the moderation posture live in
 [Depot architecture](../02-architecture/06-depot.md).
@@ -9,7 +9,7 @@ downloads, and the moderation posture live in
 ## Upload Flow
 
 1. User selects a file in the Orbit client.
-2. The client sends a presign request to Depot (`POST /upload/presign`). Depot authenticates the request against the accepted credentials, enforces rate limits and maximum file size, checks per-user quota (when an identity is present), and - if all checks pass - returns an upload URL.
+2. The client sends a presign request to Depot (`POST /upload/presign`) naming a [place](#places). Depot authenticates the request against the accepted credentials, validates it against the place's policy, enforces rate limits and maximum file size, checks per-user quota (when an identity is present), and - if all checks pass - returns an upload URL.
 3. The client PUTs the file to the returned upload URL. With the `s3` driver this goes directly to the storage backend and never passes through Depot; with the `fs` driver the URL points back at Depot, which proxies the bytes to disk.
 4. On successful upload, the client posts a `PRIVMSG` to the channel containing the public file URL as the message body.
 5. The client attaches file metadata as a single `+orbit/file` tag (base64-encoded JSON containing name, size, and type) on the same `PRIVMSG`. The payload is defined in [Tags](02-tags.md#orbitfile).
@@ -22,11 +22,15 @@ POST /upload/presign
 Authorization: Bearer <JWT>        # when oidc or api_key credential is used
 
 {
+  "place": "uploads",
   "filename": "screenshot.png",
   "size": 2048576,
   "content_type": "image/png"
 }
 ```
+
+`place` may be omitted when the operator has configured a `default_place`; without one, every
+request must name a place.
 
 ```mermaid
 sequenceDiagram
@@ -51,6 +55,34 @@ The diagram shows the `s3` driver (direct pre-signed PUT) as the primary illustr
 `U->>S3` is instead `U->>D` and Depot writes to local disk; everything else, including the client
 contract, is identical.
 
+## Places
+
+A place is a named upload destination with a policy and a key strategy. Every place is declared
+in configuration; there is no built-in default. Clients name a place in the presign request and
+never supply an object key. Keys derive from the place and the caller's verified identity, so a
+caller can only ever write within their own namespace.
+
+| Field | Default | Purpose |
+|-------|---------|---------|
+| `prefix` | the place name | Leading path segment of every key this place produces |
+| `key` | `"dump"` | Key strategy: `dump` or `account` (below) |
+| `max_size` | global `max_file_size` | Per-place size cap, applied on top of the global limit |
+| `allowed_mime` | any | MIME allowlist; presigns for other types are rejected before a URL is issued |
+| `require_identity` | `false` | Reject anonymous callers (implied by `key = "account"`) |
+
+The two key strategies:
+
+- `dump`: a fresh key per upload, for place-and-forget content like chat uploads and
+  screenshots. This is the strategy behind the [object key structure](#object-key-structure)
+  below.
+- `account`: one deterministic key per account. Re-uploading overwrites, which is exactly right
+  for avatars and other set-and-replace content. Requires an identity, since the key is derived
+  from it.
+
+A permissive place (no MIME restriction, `dump` keys) serves as the catch-all; the operator
+points `default_place` at it, or leaves `default_place` unset to force every request to name its
+destination.
+
 ## The Depot API
 
 Depot is a thin HTTP service deployed co-located with (or in front of) the storage backend.
@@ -69,6 +101,7 @@ Depot is a thin HTTP service deployed co-located with (or in front of) the stora
 **Responsibilities:**
 
 - **Authentication**: Verify the caller against the accepted credential flags (`anonymous`, `oidc`, `api_key` - the credential model is in [Depot architecture](../02-architecture/06-depot.md)).
+- **Place policy**: Resolve the named place and validate the request against its MIME allowlist, size cap, and identity requirement before any URL is issued.
 - **Upload URL issuance**: Generate a time-limited upload URL via the active storage driver. With the `s3` driver the SDK handles signing natively; no custom signing logic is needed.
 - **Rate limiting**: Enforce per-IP upload rate limits always, and per-user limits when an identity is present.
 - **Size enforcement**: Reject requests that exceed the configurable maximum file size per upload.
@@ -206,20 +239,23 @@ When only `anonymous` is enabled, no metadata is stored and Depot is stateless.
 ## Object Key Structure
 
 The object key encodes the uploader identity for easy grouping, admin tooling, and backend-level
-lifecycle policies:
+lifecycle policies. Keys derive from the place's strategy; the client never supplies one.
 
 ```
-uploads/{account_hash}/{timestamp}-{random}/{filename}
+dump:     {prefix}/{account_hash}/{timestamp}-{random}/{filename}
+account:  {prefix}/{account_hash}/{filename}
 ```
 
 | Segment | Purpose |
 |---------|---------|
-| `uploads/` | Top-level prefix; separates user uploads from other contents (avatars, etc.) |
-| `{account_hash}` | A short hash of the uploader's account name; groups files by user at the backend level without exposing the raw account name in the URL |
-| `{timestamp}-{random}` | Collision-free directory per upload; timestamp enables chronological listing |
-| `{filename}` | Original filename, sanitized; preserves human-readable context in the URL |
+| `{prefix}` | The place's prefix (defaults to the place name); separates content classes (uploads, avatars, etc.) |
+| `{account_hash}` | A short, stable hash of the uploader's issuer + subject; groups files by user at the backend level without exposing the account name in the URL |
+| `{timestamp}-{random}` | Collision-free directory per upload (`dump` only); a sortable UTC timestamp plus random bytes, so lexical order matches chronological order |
+| `{filename}` | Original filename, sanitized to a safe path segment; preserves human-readable context in the URL |
 
-For anonymous uploads (no identity), `{account_hash}` is replaced with `_anonymous`.
+The hash is computed over the immutable `iss` + `sub` pair, never the username, so a username
+change doesn't move a user's files. For anonymous uploads (no identity), `{account_hash}` is the
+reserved segment `_anonymous`, which can't collide with a real hash.
 
 ## Service Discovery
 
@@ -233,6 +269,13 @@ well-known services file. For record format and the full client resolution algor
 [depot]
 # Axis 1: storage driver - where bytes live
 driver = "s3"                       # "s3" | "fs"
+default_place = "uploads"            # used when a presign omits a place; unset = always require one
+# Browser origins allowed to call Depot cross-origin (the web client).
+# Empty disables CORS; needed for browser uploads, not for CLI tools.
+cors_origins = ["https://app.example.com"]
+# Read the client IP from X-Forwarded-For for per-IP rate limiting.
+# Enable ONLY behind a trusted reverse proxy; otherwise it is spoofable.
+trust_forwarded_for = false
 
 [depot.s3]                           # used when driver = "s3"
 endpoint = "https://s3.example.com"
@@ -257,6 +300,17 @@ oneshot_rate_limit  = "10/min"       # /upload proxies bytes; throttle harder
 
 [depot.quota_overrides]
 "botaccount" = "5GB"
+
+# Upload destinations. Declare at least one; apps name a place in the presign request.
+[depot.places.uploads]
+# Permissive catch-all: any MIME up to max_file_size, dump keys.
+
+[depot.places.avatars]
+prefix           = "orbit/user-content/avatars"
+key              = "account"         # deterministic per account; re-upload overwrites
+max_size         = "2MB"
+allowed_mime     = ["image/png", "image/jpeg", "image/webp"]
+require_identity = true              # implied by key = "account"
 
 [depot.store]
 backend = "sqlite"                   # "sqlite" | "postgres"; only needed for stateful capabilities

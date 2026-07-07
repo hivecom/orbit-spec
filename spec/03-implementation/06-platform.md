@@ -1,10 +1,11 @@
 # Platform
 
-Platform defines a target-agnostic API interface, which the `core` can consume. Core does not
-conditionally implement logic based on the platform - it simply calls the method. If said API is
-not available? Then it's a noop. Never perform conditional logic like that inside `core` - though
-in some cases it's necessary, like not rendering a part of UI if the platform does not support
-it. The adapter concept and the three-context client model are described in
+Platform defines a target-agnostic API interface consumed by the app layer (`packages/app`). App
+code does not conditionally implement logic based on the platform - it simply calls the method.
+If said API is not available? Then it's a noop. Never perform conditional logic like that inside
+`app` - though in some cases it's necessary, like not rendering a part of UI if the platform does
+not support it. The contract and its adapters live in `packages/platform`. The adapter concept
+and the three-context client model are described in
 [Clients architecture](../02-architecture/11-clients.md).
 
 Here's an example of the Platform interface (subject to change):
@@ -22,9 +23,9 @@ export interface Platform {
 }
 ```
 
-The `core` can call the `usePlatform` composable anywhere, which exposes the globally injected
+App code can call the `usePlatform` composable anywhere, which exposes the globally injected
 interface based on the active platform. This is what keeps the component tree
-environment-agnostic and `core` headlessly testable.
+environment-agnostic and the app package headlessly testable.
 
 The factory adapter simply nulls out what the current platform cannot do:
 
@@ -50,7 +51,7 @@ The `HistoryCachePort` contract and its per-environment adapters are specified i
 
 Each capability port maps to a concrete implementation per environment:
 
-| Capability                  | Desktop (tauri.ts)                                    | Web (web.ts)                                                            |
+| Capability                  | Desktop (desktop.ts)                                  | Web (web.ts)                                                            |
 |-----------------------------|-------------------------------------------------------|-------------------------------------------------------------------------|
 | System tray + badge         | Native OS tray via Tauri plugin                       | `document.title` badge count; favicon overlay                           |
 | OS notifications            | Tauri notification plugin                             | Web Notifications API (with permission prompt)                          |
@@ -59,10 +60,10 @@ Each capability port maps to a concrete implementation per environment:
 | DNS SRV resolution          | Rust DNS resolver via IPC                             | Not available; user enters host directly or a server-side resolver endpoint is used |
 | File I/O / large IPC        | Tauri custom protocol handler                         | Standard `fetch` + pre-signed S3 URLs                                   |
 
-Everything outside this table - all IRC logic, all Satellite/WebRTC session handling, all VUI
-components, all Pinia stores, all message rendering - is shared and runs identically in both
-environments. The mobile adapter (`tauri-mobile.ts`) reuses the desktop adapter and overrides
-only what differs.
+Everything outside this table is shared and runs identically in both environments: the wasm core
+(IRC logic, Satellite/WebRTC session handling) and the app package (VUI components, Pinia stores,
+message rendering). The mobile adapter reuses the desktop adapter and overrides only what
+differs.
 
 ## Targets
 
@@ -71,14 +72,14 @@ file.
 
 ```ts
 // apps/web/src/main.ts
-import { createOrbitApp } from "core"
+import { createOrbitApp } from "app"
 import { createWebPlatform } from "platform"
 import App from "./App.vue"
 
 // Platform exposes the create web platform factory
 const platform = createWebPlatform()
 
-// Orbit core (or ui) exposes an enhanced Vue app creation composable which automatically provides the platform, routing, and globals
+// The app package exposes an enhanced Vue app creation composable which automatically provides the platform, routing, and globals
 const app = createOrbitApp(App, platform)
 
 // This is where the application starts, for safety we define it explicitly
@@ -87,19 +88,16 @@ app.mount("#app")
 ```
 
 The desktop and mobile entrypoints are the same four lines with a different adapter
-(`createTauriPlatform()`, `createTauriMobilePlatform()`). The adapter is provided **once, before
-mount**, so every component and composable downstream can `usePlatform()` synchronously without
-guards.
+(`createDesktopPlatform()`, the mobile factory extending it). The adapter is provided **once,
+before mount**, so every component and composable downstream can `usePlatform()` synchronously
+without guards.
 
-The app component itself is a pass-through into `core`:
+The app component itself is a pass-through into the app package:
 
 ```vue
 <!-- apps/web/src/App.vue -->
 <script setup lang="ts">
-import { OrbitApp } from "core"
-import { usePlatform } from "platform"
-
-const platform = usePlatform() 
+import { OrbitApp } from "app"
 </script>
 
 <template>
@@ -116,14 +114,14 @@ const platform = usePlatform()
 
 ## Import Discipline
 
-- **No platform imports inside `core`.** A lint boundary forbidding `@tauri-apps/api`, and discouraging raw `navigator.*`/`window.*` capability access, inside `packages/core` is the cheap mechanical guard. If core needs a capability, add a port to the contract.
-- **No deep imports across packages.** Consume `core` and `platform` through their package entrypoints (`packages/*/src/index.ts`)
+- **No platform imports inside `app`.** A lint boundary forbidding `@tauri-apps/*` outside `packages/platform`, and discouraging raw `navigator.*`/`window.*` capability access outside the adapters, is the cheap mechanical guard. If app code needs a capability, add a port to the contract.
+- **No deep imports across packages.** Consume `app` and `platform` through their package entrypoints (`packages/*/src/index.ts`)
 - **Adapters own all the messy parts.** Permission prompts, `enumerateDevices()`, anchor-click downloads, Tauri IPC - all of it lives in their respective packages
 
 ## Testability
 
-Because the only environment dependency is the injected `Platform`, `core` is tested headlessly
-against a mock adapter:
+Because the only environment dependency is the injected `Platform`, the app package is tested
+headlessly against a mock adapter:
 
 ```ts
 const platform: Platform = {
@@ -142,9 +140,9 @@ const platform: Platform = {
 
 The seam reduces "support a new platform" to a mechanical checklist:
 
-1. Add `packages/platform/src/<target>.ts` exporting a factory that returns a `Platform` with the right `target` and ports (reuse an existing adapter and override only what differs - `tauri-mobile.ts` extends `tauri.ts`).
+1. Add `packages/platform/src/<target>.ts` exporting a factory that returns a `Platform` with the right `target` and ports (reuse an existing adapter and override only what differs; the mobile adapter extends `desktop.ts`).
 2. Add `apps/<target>/` with a four-line `main.ts` that injects the new adapter.
-3. If the target unlocks a brand-new capability, add a port to the contract in `core` and implement it across the existing adapters (`null` where unavailable).
+3. If the target unlocks a brand-new capability, add a port to the contract in `platform` and implement it across the existing adapters (`null` where unavailable).
 
 No change to the component tree, stores, or routing is required.
 
